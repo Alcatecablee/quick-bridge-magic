@@ -1,0 +1,25 @@
+User-agent: *
+Allow: /
+Disallow: /session/
+Disallow: /s/
+
+# Block crawling of internal-only assets
+Disallow: /assets/
+
+# Allow established AI crawlers explicitly. Remove or tighten these rules
+# if/when you want to opt out of training-data ingestion.
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+# Sitemap
+Sitemap: https://quickbridge.app/sitemap.xml
+Host: https://quickbridge.app
