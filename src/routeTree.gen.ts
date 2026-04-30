@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WhyQuickbridgeRouteImport } from './routes/why-quickbridge'
+import { Route as VideoRouteImport } from './routes/video'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as HelpRouteImport } from './routes/help'
@@ -26,6 +27,11 @@ import { Route as CompareQuickbridgeVsAirdropRouteImport } from './routes/compar
 const WhyQuickbridgeRoute = WhyQuickbridgeRouteImport.update({
   id: '/why-quickbridge',
   path: '/why-quickbridge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VideoRoute = VideoRouteImport.update({
+  id: '/video',
+  path: '/video',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/help': typeof HelpRoute
   '/join': typeof JoinRoute
   '/privacy': typeof PrivacyRoute
+  '/video': typeof VideoRoute
   '/why-quickbridge': typeof WhyQuickbridgeRoute
   '/compare/quickbridge-vs-airdrop': typeof CompareQuickbridgeVsAirdropRoute
   '/compare/quickbridge-vs-pairdrop': typeof CompareQuickbridgeVsPairdropRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/help': typeof HelpRoute
   '/join': typeof JoinRoute
   '/privacy': typeof PrivacyRoute
+  '/video': typeof VideoRoute
   '/why-quickbridge': typeof WhyQuickbridgeRoute
   '/compare/quickbridge-vs-airdrop': typeof CompareQuickbridgeVsAirdropRoute
   '/compare/quickbridge-vs-pairdrop': typeof CompareQuickbridgeVsPairdropRoute
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   '/help': typeof HelpRoute
   '/join': typeof JoinRoute
   '/privacy': typeof PrivacyRoute
+  '/video': typeof VideoRoute
   '/why-quickbridge': typeof WhyQuickbridgeRoute
   '/compare/quickbridge-vs-airdrop': typeof CompareQuickbridgeVsAirdropRoute
   '/compare/quickbridge-vs-pairdrop': typeof CompareQuickbridgeVsPairdropRoute
@@ -148,6 +157,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/join'
     | '/privacy'
+    | '/video'
     | '/why-quickbridge'
     | '/compare/quickbridge-vs-airdrop'
     | '/compare/quickbridge-vs-pairdrop'
@@ -163,6 +173,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/join'
     | '/privacy'
+    | '/video'
     | '/why-quickbridge'
     | '/compare/quickbridge-vs-airdrop'
     | '/compare/quickbridge-vs-pairdrop'
@@ -178,6 +189,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/join'
     | '/privacy'
+    | '/video'
     | '/why-quickbridge'
     | '/compare/quickbridge-vs-airdrop'
     | '/compare/quickbridge-vs-pairdrop'
@@ -194,6 +206,7 @@ export interface RootRouteChildren {
   HelpRoute: typeof HelpRoute
   JoinRoute: typeof JoinRoute
   PrivacyRoute: typeof PrivacyRoute
+  VideoRoute: typeof VideoRoute
   WhyQuickbridgeRoute: typeof WhyQuickbridgeRoute
   CompareQuickbridgeVsAirdropRoute: typeof CompareQuickbridgeVsAirdropRoute
   CompareQuickbridgeVsPairdropRoute: typeof CompareQuickbridgeVsPairdropRoute
@@ -211,6 +224,13 @@ declare module '@tanstack/react-router' {
       path: '/why-quickbridge'
       fullPath: '/why-quickbridge'
       preLoaderRoute: typeof WhyQuickbridgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/video': {
+      id: '/video'
+      path: '/video'
+      fullPath: '/video'
+      preLoaderRoute: typeof VideoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -306,6 +326,7 @@ const rootRouteChildren: RootRouteChildren = {
   HelpRoute: HelpRoute,
   JoinRoute: JoinRoute,
   PrivacyRoute: PrivacyRoute,
+  VideoRoute: VideoRoute,
   WhyQuickbridgeRoute: WhyQuickbridgeRoute,
   CompareQuickbridgeVsAirdropRoute: CompareQuickbridgeVsAirdropRoute,
   CompareQuickbridgeVsPairdropRoute: CompareQuickbridgeVsPairdropRoute,

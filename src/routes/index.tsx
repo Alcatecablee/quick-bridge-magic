@@ -3,19 +3,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   Camera,
-  Check,
   Copy,
-  Download,
-  Globe,
   KeyRound,
   Link2,
-  MessageSquare,
   RefreshCw,
   Loader2,
   Share2,
-  Wifi,
-  X as XIcon,
-  Zap,
 } from "@/components/quickbridge/icons";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -53,13 +46,10 @@ import {
   BigFilesIllustration,
   MultiContentIllustration,
   ResilientIllustration,
-  FileTransferIllustration,
-  PhotoTransferIllustration,
-  LinkShareIllustration,
   InstantIllustration,
   NoServerIllustration,
 } from "@/components/quickbridge/FlowIllustrations";
-import { HowItWorksSequencer } from "@/components/quickbridge/HowItWorksSequencer";
+
 import { CrossEcosystemMatrix } from "@/components/quickbridge/CrossEcosystemMatrix";
 import { Reveal } from "@/components/quickbridge/Reveal";
 import { generateSessionId } from "@/lib/session";
@@ -818,6 +808,27 @@ function Home() {
           </div>
         </Reveal>
 
+        {/* How it works - video demo */}
+        <Reveal as="section" id="how" className="mt-16 scroll-mt-24 sm:mt-20">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-primary">How it works</p>
+            <h2 className="mt-2 text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl md:text-4xl">
+              Three steps. No setup. No accounts.
+            </h2>
+          </div>
+          <div className="mt-8 overflow-hidden rounded-2xl border border-border shadow-lg">
+            <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+              <iframe
+                src="/video"
+                className="absolute inset-0 h-full w-full"
+                style={{ border: "none" }}
+                title="How QuickBridge works"
+                allow="autoplay"
+              />
+            </div>
+          </div>
+        </Reveal>
+
         {/* Cross-ecosystem matrix - infograph showing the gap that native OS
             sharing leaves (only same-ecosystem) vs QuickBridge's full coverage. */}
         <Reveal as="section" id="cross-ecosystem-matrix" className="scroll-mt-24 mt-16 sm:mt-20">
@@ -862,70 +873,6 @@ function Home() {
                 </div>
               ))}
             </div>
-          </div>
-        </Reveal>
-
-        {/* Use cases - keyword-rich SEO blocks targeting common searches.
-            Each block stands on its own; the AirDrop one links to a dedicated
-            landing page for deeper search intent. */}
-        <Reveal as="section" id="use-cases" className="mt-20 scroll-mt-24 sm:mt-28">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-primary">
-              Popular ways to use QuickBridge
-            </p>
-            <h2 className="mt-2 text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl md:text-4xl">
-              The fastest way to move things between your devices.
-            </h2>
-            <p className="mx-auto mt-3 max-w-xl text-[14px] leading-relaxed text-muted-foreground sm:text-[15px]">
-              No matter the device, the operating system, or the network - these
-              are the everyday transfers QuickBridge nails in seconds.
-            </p>
-          </div>
-          <div className="mt-10 grid gap-3 sm:grid-cols-2 sm:gap-4">
-            {[
-              {
-                icon: Download,
-                title: "Send files from phone to PC",
-                body: "No cable, no email, no cloud upload. Scan and send any file in seconds.",
-              },
-              {
-                icon: Share2,
-                title: "AirDrop alternative for Android & Windows",
-                body: "AirDrop experience between any two devices - Android, Windows, iPhone, Mac. Browser only, no install.",
-                href: "/airdrop-alternative",
-              },
-              {
-                icon: Camera,
-                title: "Transfer photos without USB",
-                body: "Move photos and videos wirelessly. Streams directly between browsers - your gallery never touches a server.",
-              },
-              {
-                icon: Link2,
-                title: "Share links between devices",
-                body: "Push URLs, OTPs, and notes from phone to PC instantly. No more messaging yourself.",
-              },
-            ].map(({ icon: Icon, title, body, href }) => (
-              <div
-                key={title}
-                className="flex gap-4 rounded-xl border border-border bg-card p-5 transition-colors hover:border-primary/30"
-              >
-                <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                  <Icon className="h-5 w-5 text-primary" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-[15px] font-semibold text-foreground">{title}</h3>
-                  <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{body}</p>
-                  {href && (
-                    <Link
-                      to={href}
-                      className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-primary hover:underline"
-                    >
-                      Learn more <ArrowRight className="h-3 w-3" />
-                    </Link>
-                  )}
-                </div>
-              </div>
-            ))}
           </div>
         </Reveal>
 
@@ -982,85 +929,6 @@ function Home() {
                 <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted-foreground">{body}</p>
               </Card>
             ))}
-          </div>
-        </Reveal>
-
-        {/* How it works */}
-        <Reveal as="section" id="how" className="mt-20 scroll-mt-24 sm:mt-28">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-primary">How it works</p>
-            <h2 className="mt-2 text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl md:text-4xl">
-              Three steps. No setup. No accounts.
-            </h2>
-          </div>
-          <HowItWorksSequencer
-            steps={[
-              {
-                n: "01",
-                title: "Open QuickBridge",
-                body: "Load the site on your computer. A live session and QR are ready before the page finishes painting.",
-                video: "/steps/step-01.mp4",
-              },
-              {
-                n: "02",
-                title: "Scan the QR",
-                body: "Point your phone's camera at the QR code, or use the 6-digit PIN. The transfer page opens automatically.",
-                video: "/steps/step-02.mp4",
-              },
-              {
-                n: "03",
-                title: "Send anything",
-                body: "Drag files, paste text, or share clipboard. Everything streams device-to-device, instantly.",
-                video: "/steps/step-03.mp4",
-              },
-            ]}
-          />
-        </Reveal>
-
-        {/* Comparison */}
-        <Reveal as="section" id="compare" className="mt-20 scroll-mt-24 sm:mt-28">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-primary">How we compare</p>
-            <h2 className="mt-2 text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl md:text-4xl">
-              Every other option asks for something.
-            </h2>
-            <p className="mx-auto mt-3 max-w-xl text-[14px] leading-relaxed text-muted-foreground sm:text-[15px]">
-              QuickBridge doesn't ask for an email, an install, the same OS, or a credit card.
-            </p>
-          </div>
-          <p className="mt-3 text-right text-[11px] text-muted-foreground/60 sm:hidden">← Swipe to see full comparison →</p>
-          <div className="mt-2 overflow-hidden rounded-2xl border border-border bg-card sm:mt-10">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-left text-[13.5px]">
-                <thead>
-                  <tr className="border-b border-border bg-muted/30 text-[12px] uppercase tracking-wider text-muted-foreground">
-                    <th className="px-5 py-3 font-medium"> </th>
-                    <th className="px-5 py-3 font-semibold text-foreground">QuickBridge</th>
-                    <th className="px-5 py-3 font-medium">Email</th>
-                    <th className="px-5 py-3 font-medium">WeTransfer</th>
-                    <th className="px-5 py-3 font-medium">AirDrop</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {[
-                    ["Works on any OS", true, true, true, false],
-                    ["No file upload step", true, false, false, true],
-                    ["End-to-end encrypted", true, false, false, true],
-                    ["No server-side copy", true, false, false, true],
-                    ["No file expiration", true, true, false, true],
-                    ["Works on the same wifi or different networks", true, true, true, false],
-                  ].map(([label, qb, em, wt, ad]) => (
-                    <tr key={label as string} className="hover:bg-muted/10">
-                      <td className="px-5 py-3.5 font-medium text-foreground">{label}</td>
-                      <Cell value={qb as boolean} highlight />
-                      <Cell value={em as boolean} />
-                      <Cell value={wt as boolean} />
-                      <Cell value={ad as boolean} />
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           </div>
         </Reveal>
 
@@ -1154,21 +1022,6 @@ function Home() {
   );
 }
 
-function Cell({ value, highlight = false }: { value: boolean; highlight?: boolean }) {
-  return (
-    <td className={`px-5 py-3.5 ${highlight ? "bg-primary/5" : ""}`}>
-      {value ? (
-        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-primary">
-          <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
-        </span>
-      ) : (
-        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-muted/40 text-muted-foreground/60">
-          <XIcon className="h-3.5 w-3.5" strokeWidth={2.5} />
-        </span>
-      )}
-    </td>
-  );
-}
 
 function StickyScanCta() {
   const [show, setShow] = useState(false);
