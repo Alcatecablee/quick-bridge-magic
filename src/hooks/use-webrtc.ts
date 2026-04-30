@@ -360,7 +360,7 @@ export function useWebRTC(sessionId: string, isInitiator: boolean, deviceName?: 
         // → open → close → open) into a single attempt-per-file so we
         // don't double-send. The receiver enforces the 2-min grace
         // window implicitly via its file-resume-ack offset, so the
-        // sender doesn't need its own grace check here — if the buffer
+        // sender doesn't need its own grace check here. If the buffer
         // is gone, the ack returns 0 and sendFileInternal restarts.
         if (autoResumeTimerRef.current) {
           clearTimeout(autoResumeTimerRef.current);

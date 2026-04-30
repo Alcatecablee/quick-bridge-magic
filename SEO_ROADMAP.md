@@ -29,7 +29,7 @@ These changes have already been implemented in the current codebase. Verify each
 | 6 | Site-wide Organization + WebSite (with SearchAction) JSON-LD injected at root | `__root.tsx` | https://search.google.com/test/rich-results - paste any URL |
 | 7 | Homepage WebApplication + HowTo + FAQPage JSON-LD | `routes/index.tsx` | Rich Results Test should detect SoftwareApp, HowTo, FAQ |
 | 8 | Article + FAQPage JSON-LD on `/why-quickbridge` and `/airdrop-alternative` | both route files | Rich Results Test |
-| 9 | Titles tightened to ≤ 60 chars, keyword-led, brand last; descriptions 150–160 chars | every route file | Manual SERP-preview |
+| 9 | Titles tightened to ≤ 60 chars, keyword-led, brand last; descriptions 150-160 chars | every route file | Manual SERP-preview |
 | 10 | Heading hierarchy fixed on homepage (no h1 → h3 jump) | `routes/index.tsx` | https://wave.webaim.org/ |
 | 11 | Security & quality headers in Vercel: HSTS preload, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, X-DNS-Prefetch-Control | `vercel.json` | https://securityheaders.com/?q=quickbridge.app |
 | 12 | Long-cache for immutable assets, short-cache for HTML/sitemap, must-revalidate for sw.js | `vercel.json` | `curl -I https://quickbridge.app/assets/index-XXXX.js` |
@@ -85,7 +85,7 @@ These changes have already been implemented in the current codebase. Verify each
 
 ---
 
-## Phase 3: Content engine - pages that target real intent (4–6 weeks)
+## Phase 3: Content engine - pages that target real intent (4-6 weeks)
 
 **Objective:** Move from "two marketing pages competing for everything" to a content surface area that owns long-tail traffic. Each page targets one keyword cluster with one job-to-be-done.
 
@@ -121,16 +121,16 @@ Routes are registered in `src/lib/site-routes.ts` with `inNav: false`. Flipping 
 **Progress (4 of 8 shipped - 2026-04-28):**
 - ✅ `/compare/quickbridge-vs-snapdrop` (2026-04-26) - canonical template. Established the per-page contract: keyword-led H1 + verdict in the first paragraph, neutral comparison cells (true / false / "different model"), an honest two-column verdict box, a visible `Status note` for product-status uncertainty, a visible `Sources` section backed by an inline `SOURCES` constant, breadcrumb, `Article` + `FAQPage` JSON-LD, and `?utm_source=compare-snapdrop` on both CTAs.
 - The Snapdrop page also documents the LimeWire acquisition note from the upstream README. The deep-research report had Snapdrop as plain "LAN-only P2P" - fetching the actual repo caught a major status change the report missed. Reinforces the source-citation policy.
-- ✅ `/compare/quickbridge-vs-wormhole` (2026-04-28) - second page off the template. Six sources cited inline (homepage, FAQ, Security Design, Roadmap, Why-We-Built, Legal). Caught a contradiction worth flagging: Wormhole's roadmap lists "Peer-to-peer Mode (no cloud)" as upcoming, while their FAQ says >5 GB already transfers P2P via WebTorrent - the page's Status note explains the present-day hybrid (≤5 GB cloud relay on Backblaze for 24h, 5–10 GB P2P) instead of papering over it. Also corrected a sitemap omission - `/compare/quickbridge-vs-snapdrop` was prerendered but missing from `public/sitemap.xml`; both compare URLs are now listed with today's `lastmod`.
+- ✅ `/compare/quickbridge-vs-wormhole` (2026-04-28) - second page off the template. Six sources cited inline (homepage, FAQ, Security Design, Roadmap, Why-We-Built, Legal). Caught a contradiction worth flagging: Wormhole's roadmap lists "Peer-to-peer Mode (no cloud)" as upcoming, while their FAQ says >5 GB already transfers P2P via WebTorrent. The page's Status note explains the present-day hybrid (≤5 GB cloud relay on Backblaze for 24h, 5-10 GB P2P) instead of papering over it. Also corrected a sitemap omission: `/compare/quickbridge-vs-snapdrop` was prerendered but missing from `public/sitemap.xml`; both compare URLs are now listed with today's `lastmod`.
 - ✅ `/compare/quickbridge-vs-airdrop` (2026-04-28) - third page. Five primary sources cited (Apple iPhone/iPad support page, Apple macOS support page, Apple Platform Security guide, 9to5Google Quick Share AirDrop coverage, Wikipedia). The source-fetch round caught two major framing changes the deep-research report missed: (1) **Quick Share now bridges AirDrop on Pixel 10/9 and some Samsung Galaxy** (Nov 2025-April 2026), so the "AirDrop is Apple-only" framing is now a half-truth and is explicitly qualified throughout the page; (2) **iOS 26.2 introduced AirDrop codes** for non-contact sharing, mentioned in Apple's own help text. A Tom's Guide article claiming Microsoft brought "AirDrop for Windows" via Phone Link could not be independently verified at write time and was deliberately excluded - the page only states what Apple's own docs confirm (no Apple-supported AirDrop on Windows). **Audit needed:** the existing `/airdrop-alternative` page was last edited before the Quick Share AirDrop bridge shipped; copy that asserts "AirDrop is Apple-only" or "no Android can talk to AirDrop" should be re-checked against the new April 2026 reality.
-- ✅ `/compare/quickbridge-vs-wetransfer` (2026-04-28) - fourth page. Three primary sources cited (pricing page, about page, December 2024 plan-change help article). The source-fetch round caught a significant data correction: the roadmap previously stated "2 GB free, expires in 7 days" — WeTransfer restructured its plans in December 2024, raising the free limit to 3 GB/month (rolling 30-day cap) while simultaneously shortening expiry from 7 days to 3 days and introducing a 10-transfer/month cap. The Status note documents this change explicitly. Also confirmed from the live pricing page: free tier shows "Advertising (and art)" in the wallpaper row, and the "Data encryption" checkbox covers TLS + at-rest storage encryption (not E2E — WeTransfer holds the keys). A ninth comparison row ("Recipient can download later") was added to give WeTransfer honest credit for its async delivery model, which QuickBridge cannot match.
-- ✅ `/compare/quickbridge-vs-pairdrop` (2026-04-28) - fifth page. Three primary sources cited (pairdrop.net live app v1.11.2, GitHub README, docs/faq.md). The source-fetch round caught an important nuance the roadmap summary missed: PairDrop is not purely LAN-only (unlike the original Snapdrop) — it added cross-network transfers via persistent device pairs and temporary public rooms. The comparison therefore focuses on the pairing model difference (PairDrop's three-mode system vs QB's single QR/PIN flow) rather than a LAN vs internet framing. Also surfaced from the live site: the disclaimer "Traffic is routed through the server if WebRTC is not available" — a TURN-relay model equivalent to QB's own cross-NAT handling. This is noted honestly in the Status note rather than used as a negative against PairDrop. GitHub repo confirmed actively maintained (last commit Apr 22, 2026, 5 days before page was written; 10.2k stars).
+- ✅ `/compare/quickbridge-vs-wetransfer` (2026-04-28) - fourth page. Three primary sources cited (pricing page, about page, December 2024 plan-change help article). The source-fetch round caught a significant data correction: the roadmap previously stated "2 GB free, expires in 7 days". WeTransfer restructured its plans in December 2024, raising the free limit to 3 GB/month (rolling 30-day cap) while simultaneously shortening expiry from 7 days to 3 days and introducing a 10-transfer/month cap. The Status note documents this change explicitly. Also confirmed from the live pricing page: free tier shows "Advertising (and art)" in the wallpaper row, and the "Data encryption" checkbox covers TLS + at-rest storage encryption (not E2E, since WeTransfer holds the keys). A ninth comparison row ("Recipient can download later") was added to give WeTransfer honest credit for its async delivery model, which QuickBridge cannot match.
+- ✅ `/compare/quickbridge-vs-pairdrop` (2026-04-28) - fifth page. Three primary sources cited (pairdrop.net live app v1.11.2, GitHub README, docs/faq.md). The source-fetch round caught an important nuance the roadmap summary missed: PairDrop is not purely LAN-only (unlike the original Snapdrop). It added cross-network transfers via persistent device pairs and temporary public rooms. The comparison therefore focuses on the pairing model difference (PairDrop's three-mode system vs QB's single QR/PIN flow) rather than a LAN vs internet framing. Also surfaced from the live site: the disclaimer "Traffic is routed through the server if WebRTC is not available", a TURN-relay model equivalent to QB's own cross-NAT handling. This is noted honestly in the Status note rather than used as a negative against PairDrop. GitHub repo confirmed actively maintained (last commit Apr 22, 2026, 5 days before page was written; 10.2k stars).
 - Remaining 3: Nearby Share, FilePizza, LocalSend. Each requires its own source-fetch round before any claim ships.
 
 Per page must include:
 - **H1** matching the primary keyword (not brand-led).
 - **First 200 words** include the keyword and a one-sentence verdict.
-- **Comparison table** of the 6–10 most-searched feature differences (file size cap, accounts, OS support, encryption, ads, install required, network requirement, expiration).
+- **Comparison table** of the 6-10 most-searched feature differences (file size cap, accounts, OS support, encryption, ads, install required, network requirement, expiration).
 - **Honest verdict box**: "QuickBridge wins when…", "Use [competitor] when…". Search engines (and humans) reward fairness.
 - **JSON-LD**: `Article` + `FAQPage` (3 questions: what is X, how does QB compare, is QB free).
 - **Internal links** to `/airdrop-alternative` and `/why-quickbridge`.
@@ -168,7 +168,7 @@ Initial 8-post calendar (one per week):
 7. **"Privacy of file transfer apps: what each one actually sees"** - original research, audit-style
 8. **"How we made our QR pairing work in 1 second flat"** - technical, behind-the-scenes
 
-Each post: 1500–2500 words, 1 hero image, 3+ in-body images or diagrams, 5+ internal links, 1+ external link to a respected source.
+Each post: 1500-2500 words, 1 hero image, 3+ in-body images or diagrams, 5+ internal links, 1+ external link to a respected source.
 
 ### 3.4 IA + internal linking ✅ DONE 2026-04-26
 **Shipped:**
@@ -187,7 +187,7 @@ Each post: 1500–2500 words, 1 hero image, 3+ in-body images or diagrams, 5+ in
 
 **Checks performed against every prerendered page in `dist/client/**/*.html`:**
 - `<title>` exists, ≤ 60 chars, unique across pages
-- `<meta name="description">` exists, length 140–160 chars, unique across pages
+- `<meta name="description">` exists, length 140-160 chars, unique across pages
 - exactly one `<h1>`
 - heading hierarchy never skips a level (h1→h3 is invalid)
 - `<link rel="canonical">` exists and matches the page's expected URL
@@ -201,7 +201,7 @@ Each post: 1500–2500 words, 1 hero image, 3+ in-body images or diagrams, 5+ in
 
 ---
 
-## Phase 4: Performance & Core Web Vitals (1–2 weeks)
+## Phase 4: Performance & Core Web Vitals (1-2 weeks)
 
 **Why this is SEO:** since 2021, CWV is a confirmed ranking factor. Mobile LCP, INP, and CLS thresholds are gates for "Good URL" status in Search Console.
 
@@ -263,7 +263,7 @@ Submit (most are free, all need a 1-line description and an icon):
 - [ ] Tools.fyi
 - [ ] uneed.best
 
-### 5.2 Editorial outreach (weeks 2–8)
+### 5.2 Editorial outreach (weeks 2-8)
 Pitch a guest post or "tool spotlight" to:
 - The Verge - "best AirDrop alternatives" annual roundup is updated every spring
 - TechCrunch - startup launch coverage if you have a fundraising/milestone hook
@@ -284,7 +284,7 @@ Track each pitch in a sheet: outlet, contact, date sent, response, link if lande
 - Set up a Google Alert for `airdrop alternative for android` and `send files phone to pc`.
 
 ### 5.5 Creator partnerships
-- 5 micro-influencer YouTubers in the "tech tips" niche (10k–100k subs). Free product (it's free anyway) + a custom UTM link + an offer to co-author a blog. Cost: time only.
+- 5 micro-influencer YouTubers in the "tech tips" niche (10k-100k subs). Free product (it's free anyway) + a custom UTM link + an offer to co-author a blog. Cost: time only.
 
 ---
 

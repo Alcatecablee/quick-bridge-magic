@@ -292,15 +292,15 @@ export function Session({ sessionId, isInitiator }: Props) {
     const { count } = lastAutoResume;
     toast.success(
       count === 1
-        ? "Connection restored — resuming transfer…"
-        : `Connection restored — resuming ${count} transfers…`,
+        ? "Connection restored. Resuming transfer…"
+        : `Connection restored. Resuming ${count} transfers…`,
       { id: `auto-resume:${lastAutoResume.ts}`, duration: 4000 },
     );
   }, [lastAutoResume]);
 
   // Brief per-row "Resumed" indicator. Derived from a real state
-  // transition — a row that was in a retryable error state and is now
-  // actively sending again — NOT from auto-resume events. This way the
+  // transition (a row that was in a retryable error state and is now
+  // actively sending again), NOT from auto-resume events. This way the
   // badge only appears when bytes are actually flowing again, never on
   // a resume attempt that immediately re-failed. Auto-clears at 3s.
   const [resumedRowIds, setResumedRowIds] = useState<Record<string, number>>({});
@@ -326,7 +326,7 @@ export function Session({ sessionId, isInitiator }: Props) {
     const timer = window.setTimeout(() => {
       setResumedRowIds((s) => {
         const filtered = { ...s };
-        // Only clear ids we just stamped — a later resume of the same
+        // Only clear ids we just stamped. A later resume of the same
         // row would overwrite the stamp and start its own 3s timer.
         for (const id of newlyResumed) {
           if (filtered[id] === stamp) delete filtered[id];
@@ -339,8 +339,8 @@ export function Session({ sessionId, isInitiator }: Props) {
 
   // Host-not-found dead-state: progressive wording so the wait doesn't feel
   // abrupt on slow networks.
-  //   0–3s : default "Waiting for the host…" header
-  //   3–6s : eyebrow flips to "Still trying…"
+  //   0-3s : default "Waiting for the host…" header
+  //   3-6s : eyebrow flips to "Still trying…"
   //   6s+  : full dead-end card with Retry / Go home
   const [hostMissing, setHostMissing] = useState(false);
   const [stillTrying, setStillTrying] = useState(false);
@@ -436,7 +436,7 @@ export function Session({ sessionId, isInitiator }: Props) {
       if (!seen && isTouch && status === "connected") {
         toast("Heads up", {
           description:
-            "Picking a file may briefly pause the link — we'll send it automatically when reconnected.",
+            "Picking a file may briefly pause the link. We'll send it automatically when reconnected.",
           duration: 6000,
         });
         writeJSON(StorageKeys.mobilePickerHintSeen, true);
@@ -598,7 +598,7 @@ export function Session({ sessionId, isInitiator }: Props) {
 
   // Surface quality transitions so the user understands sudden slowness.
   // We only fire toasts on real flips between known qualities (direct ↔ relay)
-  // and only while connected — flicker through "unknown" during reconnect
+  // and only while connected. Flicker through "unknown" during reconnect
   // shouldn't trigger noise. The persistent inline notice in the file-picker
   // card covers the steady-state "you're on a relay right now" case.
   useEffect(() => {
@@ -671,8 +671,8 @@ export function Session({ sessionId, isInitiator }: Props) {
         // state. On Android the OS backgrounds the tab while the file picker
         // is open and suspends WebRTC; on a slow device the reconnect budget
         // can be fully exhausted (status="disconnected") before the picker
-        // closes, so we MUST queue for "disconnected" too — not just
-        // "reconnecting" — otherwise the file is silently dropped. We also
+        // closes, so we MUST queue for "disconnected" too, not just
+        // "reconnecting", otherwise the file is silently dropped. We also
         // queue mid-handshake ("connecting") and "stalled" so a fast pick
         // during initial setup or post-stall doesn't fall through.
         const recoverable =
@@ -693,7 +693,7 @@ export function Session({ sessionId, isInitiator }: Props) {
               description: "We'll send as soon as the link is back.",
             });
           }
-          // Wake the bridge if reconnect already gave up or stalled — the
+          // Wake the bridge if reconnect already gave up or stalled. The
           // existing visibility-change handler covers the picker-close case
           // but if it lost the race we still want a kick now.
           if (status === "disconnected" || status === "stalled") {
@@ -701,9 +701,9 @@ export function Session({ sessionId, isInitiator }: Props) {
           }
           return;
         }
-        // peerPresent === false (peer left) or status === "waiting" — there's
+        // peerPresent === false (peer left) or status === "waiting": there's
         // genuinely no one on the other side; queueing would sit forever.
-        toast.error(peerPresent ? "Connection lost — try again" : "No peer connected");
+        toast.error(peerPresent ? "Connection lost. Try again." : "No peer connected");
         return;
       }
       for (const f of Array.from(files)) {
@@ -770,7 +770,7 @@ export function Session({ sessionId, isInitiator }: Props) {
     // transient disconnect should bounce back to "connected" and drain
     // normally. The hopeless case is covered by `endBridge` (user-initiated)
     // and the queue stays visible in the inline banner so the user can
-    // discard or wait — surfacing the count beats a fire-and-forget toast.
+    // discard or wait. Surfacing the count beats a fire-and-forget toast.
   }, [status, handleFiles]);
 
   const handleSendText = () => {
@@ -1493,7 +1493,7 @@ export function Session({ sessionId, isInitiator }: Props) {
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
               <span>
                 {pendingCount === 1 ? "1 file queued" : `${pendingCount} files queued`}
-                {" — "}
+                {" · "}
                 {status === "connected" ? "sending now…" : "sending when reconnected"}
               </span>
             </span>
@@ -1510,12 +1510,12 @@ export function Session({ sessionId, isInitiator }: Props) {
           <div
             role="status"
             aria-live="polite"
-            title="A direct peer-to-peer path was blocked, so traffic is being relayed through a TURN server. Your data is still end-to-end encrypted between this device and the peer — the relay only forwards encrypted bytes."
+            title="A direct peer-to-peer path was blocked, so traffic is being relayed through a TURN server. Your data is still end-to-end encrypted between this device and the peer. The relay only forwards encrypted bytes."
             className="mt-1 flex w-full items-center gap-2 rounded-md border border-warning/40 bg-warning/5 px-3 py-2 text-xs text-warning"
           >
             <Globe className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span>
-              Slow link — going through a TURN relay.{" "}
+              Slow link, going through a TURN relay.{" "}
               <span className="text-warning/80">Still end-to-end encrypted, just slower.</span>
             </span>
           </div>

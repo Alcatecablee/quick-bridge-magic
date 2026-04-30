@@ -3,7 +3,7 @@
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://quickbridge.app/</loc>
-    <lastmod>2026-04-28</lastmod>
+    <lastmod>2026-04-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <image:image>
@@ -13,7 +13,7 @@
   </url>
   <url>
     <loc>https://quickbridge.app/airdrop-alternative</loc>
-    <lastmod>2026-04-28</lastmod>
+    <lastmod>2026-04-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
     <image:image>
@@ -23,7 +23,7 @@
   </url>
   <url>
     <loc>https://quickbridge.app/why-quickbridge</loc>
-    <lastmod>2026-04-28</lastmod>
+    <lastmod>2026-04-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
     <image:image>
@@ -33,44 +33,72 @@
   </url>
   <url>
     <loc>https://quickbridge.app/compare/quickbridge-vs-snapdrop</loc>
-    <lastmod>2026-04-28</lastmod>
+    <lastmod>2026-04-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://quickbridge.app/og-compare-snapdrop.png</image:loc>
+      <image:title>QuickBridge vs Snapdrop - cross-network file transfer</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://quickbridge.app/compare/quickbridge-vs-wormhole</loc>
-    <lastmod>2026-04-28</lastmod>
+    <lastmod>2026-04-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://quickbridge.app/og-compare-wormhole.png</image:loc>
+      <image:title>QuickBridge vs Wormhole - browser P2P with no cloud hop</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://quickbridge.app/compare/quickbridge-vs-airdrop</loc>
-    <lastmod>2026-04-28</lastmod>
+    <lastmod>2026-04-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://quickbridge.app/og-compare-airdrop.png</image:loc>
+      <image:title>QuickBridge vs AirDrop - file transfer beyond the Apple ecosystem</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://quickbridge.app/compare/quickbridge-vs-wetransfer</loc>
-    <lastmod>2026-04-28</lastmod>
+    <lastmod>2026-04-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://quickbridge.app/og-compare-wetransfer.png</image:loc>
+      <image:title>QuickBridge vs WeTransfer - no upload step, no account needed</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://quickbridge.app/compare/quickbridge-vs-pairdrop</loc>
-    <lastmod>2026-04-28</lastmod>
+    <lastmod>2026-04-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://quickbridge.app/og-compare-pairdrop.png</image:loc>
+      <image:title>QuickBridge vs PairDrop - no setup, just scan and send</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://quickbridge.app/join</loc>
-    <lastmod>2026-04-25</lastmod>
+    <lastmod>2026-04-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
+    <image:image>
+      <image:loc>https://quickbridge.app/og-join.png</image:loc>
+      <image:title>QuickBridge join with PIN - enter the 6-digit code</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://quickbridge.app/privacy</loc>
-    <lastmod>2026-04-27</lastmod>
+    <lastmod>2026-04-30</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
+    <image:image>
+      <image:loc>https://quickbridge.app/og-privacy.png</image:loc>
+      <image:title>QuickBridge privacy - your data stays on your devices</image:title>
+    </image:image>
   </url>
 </urlset>

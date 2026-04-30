@@ -60,6 +60,7 @@ import {
   NoServerIllustration,
 } from "@/components/quickbridge/FlowIllustrations";
 import { HowItWorksSequencer } from "@/components/quickbridge/HowItWorksSequencer";
+import { CrossEcosystemMatrix } from "@/components/quickbridge/CrossEcosystemMatrix";
 import { Reveal } from "@/components/quickbridge/Reveal";
 import { generateSessionId } from "@/lib/session";
 import {
@@ -815,6 +816,12 @@ function Home() {
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
+        </Reveal>
+
+        {/* Cross-ecosystem matrix - infograph showing the gap that native OS
+            sharing leaves (only same-ecosystem) vs QuickBridge's full coverage. */}
+        <Reveal as="section" id="cross-ecosystem-matrix" className="scroll-mt-24 mt-16 sm:mt-20">
+          <CrossEcosystemMatrix />
         </Reveal>
 
         {/* Compatibility strip */}

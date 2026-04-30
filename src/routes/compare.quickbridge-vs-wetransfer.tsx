@@ -15,14 +15,14 @@ import { RelatedPages } from "@/components/quickbridge/RelatedPages";
 import { Reveal } from "@/components/quickbridge/Reveal";
 
 const PAGE_TITLE =
-  "QuickBridge vs WeTransfer – No Upload, No Account";
+  "QuickBridge vs WeTransfer: No Upload, No Account";
 const PAGE_DESCRIPTION =
-  "WeTransfer uploads your files to the cloud and expires them in 3 days. QuickBridge sends files directly between browsers — no upload, no account, no expiry.";
+  "WeTransfer uploads your files to the cloud and expires them in 3 days. QuickBridge sends files directly between browsers. No upload, no account, no expiry.";
 const PAGE_URL = "https://quickbridge.app/compare/quickbridge-vs-wetransfer";
-const PAGE_OG_IMAGE = "https://quickbridge.app/og-image.png";
+const PAGE_OG_IMAGE = "https://quickbridge.app/og-compare-wetransfer.png";
 
 /**
- * Inline source list — every WeTransfer claim on this page traces to one of
+ * Inline source list. Every WeTransfer claim on this page traces to one of
  * these URLs, fetched directly before writing. Shown in the visible Sources
  * section so any reader can audit the comparison.
  *
@@ -60,7 +60,7 @@ const FAQ_ITEMS: { q: string; a: string }[] = [
   },
   {
     q: "How is QuickBridge different from WeTransfer?",
-    a: "The core difference is where the file goes. WeTransfer uploads your file to its cloud servers, stores it there, then lets the recipient download it — even hours or days later. QuickBridge never uploads anything: the file travels directly between your browser and the recipient's browser over an encrypted WebRTC channel. This means no cloud storage, no expiry date, no server that can see your file, and no account required. The trade-off is that both browsers must be open at the same time.",
+    a: "The core difference is where the file goes. WeTransfer uploads your file to its cloud servers, stores it there, then lets the recipient download it (even hours or days later). QuickBridge never uploads anything: the file travels directly between your browser and the recipient's browser over an encrypted WebRTC channel. This means no cloud storage, no expiry date, no server that can see your file, and no account required. The trade-off is that both browsers must be open at the same time.",
   },
   {
     q: "Is QuickBridge free?",
@@ -135,19 +135,19 @@ const COMPARISON_ROWS: {
     label: "Files travel directly browser-to-browser (no server upload)",
     qb: true,
     wt: false,
-    note: "WeTransfer uploads your file to their cloud servers; the recipient then downloads from those servers. QuickBridge streams the file directly from your browser to the recipient's browser over WebRTC — WeTransfer's servers never handle the data.",
+    note: "WeTransfer uploads your file to their cloud servers; the recipient then downloads from those servers. QuickBridge streams the file directly from your browser to the recipient's browser over WebRTC. WeTransfer's servers never handle the data.",
   },
   {
     label: "No account or sign-up required",
     qb: true,
     wt: false,
-    note: 'WeTransfer free requires creating an account (\'Create account\' on the pricing page). QuickBridge requires no account, email, or login — open the page and share the QR or PIN.',
+    note: 'WeTransfer free requires creating an account (\'Create account\' on the pricing page). QuickBridge requires no account, email, or login. Open the page and share the QR or PIN.',
   },
   {
     label: "No file expiry",
     qb: true,
     wt: false,
-    note: "WeTransfer free transfers expire after 3 days; paid Ultimate plans remove the expiry. QuickBridge has no expiry because nothing is stored — the transfer is live while both browsers are connected.",
+    note: "WeTransfer free transfers expire after 3 days; paid Ultimate plans remove the expiry. QuickBridge has no expiry because nothing is stored. The transfer is live while both browsers are connected.",
   },
   {
     label: "No advertising",
@@ -159,13 +159,13 @@ const COMPARISON_ROWS: {
     label: "End-to-end encrypted",
     qb: true,
     wt: "neutral",
-    note: 'QuickBridge uses WebRTC\'s mandatory DTLS encryption — the key is negotiated between the two browsers and the server never sees the data. WeTransfer encrypts files in transit (TLS) and at rest, but the keys are held server-side, meaning WeTransfer\'s infrastructure can technically access the file. The pricing page lists "Data encryption" for all tiers, but this is storage encryption, not E2E.',
+    note: 'QuickBridge uses WebRTC\'s mandatory DTLS encryption: the key is negotiated between the two browsers and the server never sees the data. WeTransfer encrypts files in transit (TLS) and at rest, but the keys are held server-side, meaning WeTransfer\'s infrastructure can technically access the file. The pricing page lists "Data encryption" for all tiers, but this is storage encryption, not E2E.',
   },
   {
     label: "No monthly transfer cap",
     qb: true,
     wt: false,
-    note: "WeTransfer free is capped at 10 transfers per month and 3 GB total per rolling 30-day window. QuickBridge has no monthly cap — you can start as many transfers as you need.",
+    note: "WeTransfer free is capped at 10 transfers per month and 3 GB total per rolling 30-day window. QuickBridge has no monthly cap; you can start as many transfers as you need.",
   },
   {
     label: "No app install required",
@@ -183,7 +183,7 @@ const COMPARISON_ROWS: {
     label: "Recipient can download later (async)",
     qb: false,
     wt: true,
-    note: "Because WeTransfer stores your file server-side, the recipient can download at any time while the link is live. QuickBridge requires both browsers to be open simultaneously — it is a live transfer, not a drop-and-collect service.",
+    note: "Because WeTransfer stores your file server-side, the recipient can download at any time while the link is live. QuickBridge requires both browsers to be open simultaneously: it is a live transfer, not a drop-and-collect service.",
   },
 ];
 
@@ -229,7 +229,7 @@ function CompareWeTransferPage() {
               Short answer:
             </strong>{" "}
             WeTransfer is the gold standard for "upload once, share a link"
-            convenience — great when the recipient isn't online yet, or when you
+            convenience: great when the recipient isn't online yet, or when you
             need to send the same file to multiple people. QuickBridge is what
             you reach for when you need the file to move right now without
             touching a server: no account, no upload, no 3-day countdown, and
@@ -325,7 +325,7 @@ function CompareWeTransferPage() {
               <ul className="mt-3 space-y-2 text-[13.5px] leading-relaxed text-muted-foreground">
                 {[
                   "Both people are online at the same time and you want the file to move immediately, browser to browser.",
-                  "You don't want your file to touch any server — the content should only exist on the two devices involved.",
+                  "You don't want your file to touch any server. The content should only exist on the two devices involved.",
                   "You have no account and don't want to create one just to send a single file.",
                   "You're transferring something private and the 3-day window in a third-party cloud feels like an unnecessary exposure.",
                   "You hit WeTransfer's 10-transfer-per-month or 3 GB/month free cap and need an alternative.",
@@ -343,7 +343,7 @@ function CompareWeTransferPage() {
               </h3>
               <ul className="mt-3 space-y-2 text-[13.5px] leading-relaxed text-muted-foreground">
                 {[
-                  "The recipient isn't online right now — WeTransfer lets them download the file at their convenience within the link's active window.",
+                  "The recipient isn't online right now. WeTransfer lets them download the file at their convenience within the link's active window.",
                   "You need to send the same file to multiple recipients via a single link.",
                   "You're sending large deliverables to a client and want a branded, professional download page (available on paid tiers).",
                   "You want an audit trail or email confirmation that a file was downloaded.",
@@ -423,7 +423,7 @@ function CompareWeTransferPage() {
                   {src.title}
                 </a>{" "}
                 <span className="text-muted-foreground/70">
-                  — verified {src.fetched}
+                  · verified {src.fetched}
                 </span>
               </li>
             ))}
@@ -439,7 +439,7 @@ function CompareWeTransferPage() {
             />
             <div className="relative">
               <h2 className="text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl md:text-4xl">
-                Send a file right now — no upload, no account
+                Send a file right now. No upload, no account.
               </h2>
               <p className="mx-auto mt-3 max-w-md text-[14px] leading-relaxed text-muted-foreground sm:text-[15px]">
                 Open QuickBridge on your computer, scan the QR with the

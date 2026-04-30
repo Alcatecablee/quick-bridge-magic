@@ -19,7 +19,7 @@ const PAGE_TITLE =
 const PAGE_DESCRIPTION =
   "Wormhole uploads your encrypted files to its servers for 24 hours. QuickBridge sends them browser-to-browser with no server hop and no upload wait.";
 const PAGE_URL = "https://quickbridge.app/compare/quickbridge-vs-wormhole";
-const PAGE_OG_IMAGE = "https://quickbridge.app/og-image.png";
+const PAGE_OG_IMAGE = "https://quickbridge.app/og-compare-wormhole.png";
 
 /**
  * Inline source list - every competitor claim on this page must trace to one

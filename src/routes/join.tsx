@@ -13,6 +13,7 @@ const JOIN_TITLE = "Join with PIN - QuickBridge";
 const JOIN_DESCRIPTION =
   "Enter the 6-digit PIN from the other device to join a QuickBridge transfer session - no install, no account, end-to-end encrypted in your browser.";
 const JOIN_URL = "https://quickbridge.app/join";
+const JOIN_OG_IMAGE = "https://quickbridge.app/og-join.png";
 
 export const Route = createFileRoute("/join")({
   component: JoinPage,
@@ -23,8 +24,11 @@ export const Route = createFileRoute("/join")({
       { property: "og:title", content: JOIN_TITLE },
       { property: "og:description", content: JOIN_DESCRIPTION },
       { property: "og:url", content: JOIN_URL },
+      { property: "og:image", content: JOIN_OG_IMAGE },
+      { property: "og:image:alt", content: "QuickBridge join with PIN: enter the 6-digit code shown on the other device" },
       { name: "twitter:title", content: JOIN_TITLE },
       { name: "twitter:description", content: JOIN_DESCRIPTION },
+      { name: "twitter:image", content: JOIN_OG_IMAGE },
     ],
     links: [{ rel: "canonical", href: JOIN_URL }],
   }),

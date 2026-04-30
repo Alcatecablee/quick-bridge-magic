@@ -72,6 +72,9 @@ const FAQ_JSONLD = {
   })),
 };
 
+const ARTICLE_PUBLISHED = "2026-04-28";
+const ARTICLE_MODIFIED = "2026-04-30";
+
 const ARTICLE_JSONLD = {
   "@context": "https://schema.org",
   "@type": "Article",
@@ -79,7 +82,14 @@ const ARTICLE_JSONLD = {
   description: PAGE_DESCRIPTION,
   url: PAGE_URL,
   mainEntityOfPage: PAGE_URL,
-  image: "https://quickbridge.app/og-image.png",
+  image: PAGE_OG_IMAGE,
+  datePublished: ARTICLE_PUBLISHED,
+  dateModified: ARTICLE_MODIFIED,
+  author: {
+    "@type": "Organization",
+    name: "QuickBridge",
+    url: "https://quickbridge.app",
+  },
   publisher: {
     "@type": "Organization",
     name: "QuickBridge",
@@ -188,8 +198,8 @@ function WhyQuickBridgePage() {
             Why QuickBridge
           </p>
           <h1 className="mt-3 text-balance tracking-tight text-foreground font-black text-[32px] sm:text-[40px] md:text-[60px]">
-            The fastest way to move files{" "}
-            <span className="text-muted-foreground">between your devices.</span>
+            Why QuickBridge is the fastest way{" "}
+            <span className="text-muted-foreground">to send files between devices.</span>
           </h1>
           <p className="mx-auto mt-3 max-w-3xl text-[13.5px] leading-relaxed text-muted-foreground sm:mt-4 sm:text-[15px]">
             Open. Scan. Send. No app, no cable, no upload step, no cloud

@@ -22,7 +22,7 @@ const ORG_JSONLD = {
   name: SITE_NAME,
   url: SITE_URL,
   logo: `${SITE_URL}/icon-512.png`,
-  sameAs: [],
+  sameAs: ["https://x.com/just_clive_sa"],
 };
 
 const WEBSITE_JSONLD = {
@@ -71,6 +71,8 @@ export const Route = createRootRoute({
       { property: "og:image:alt", content: "QuickBridge - Send anything between phone and PC instantly" },
       // Twitter / X
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:site", content: "@just_clive_sa" },
+      { name: "twitter:creator", content: "@just_clive_sa" },
       { name: "twitter:title", content: DEFAULT_TITLE },
       { name: "twitter:description", content: DEFAULT_DESCRIPTION },
       { name: "twitter:image", content: DEFAULT_OG_IMAGE },
@@ -94,9 +96,21 @@ export const Route = createRootRoute({
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
+      // Async font loading: preload the stylesheet, then request it with
+      // media="print" so the browser fetches without render-blocking. A tiny
+      // inline script in RootShell flips the media back to "all" on load.
+      // <noscript> in RootShell ensures fonts still load with JS disabled.
+      {
+        rel: "preload",
+        as: "style",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap",
+      },
       {
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap",
+        media: "print",
+        // Marker so the inline swap script can find this exact link.
+        "data-async-fonts": "true",
       },
     ],
   }),
@@ -106,11 +120,26 @@ export const Route = createRootRoute({
   errorComponent: ({ error, reset }) => <RouteError error={error} reset={reset} />,
 });
 
+// Inline script that promotes the print-media font stylesheet to media="all"
+// once it has loaded, eliminating render-blocking on first paint without
+// breaking the no-JS path (handled by <noscript> below).
+const FONT_SWAP_SCRIPT = `(function(){var l=document.querySelector('link[data-async-fonts]');if(!l)return;function s(){l.media='all'}if(l.sheet){s()}else{l.addEventListener('load',s,{once:true})}})();`;
+
+const FONT_NOSCRIPT_HTML = `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">`;
+
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <head suppressHydrationWarning>
         <HeadContent />
+        <script
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: FONT_SWAP_SCRIPT }}
+        />
+        <noscript
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: FONT_NOSCRIPT_HTML }}
+        />
       </head>
       <body className="antialiased" suppressHydrationWarning>
         {children}

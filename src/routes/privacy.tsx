@@ -19,11 +19,11 @@ import { SiteFooter } from "@/components/quickbridge/SiteFooter";
 import { Reveal } from "@/components/quickbridge/Reveal";
 import { ContactModal } from "@/components/quickbridge/ContactModal";
 
-const PAGE_TITLE = "Privacy at QuickBridge — Your data stays on your devices";
+const PAGE_TITLE = "Privacy at QuickBridge: Your data stays on your devices";
 const PAGE_DESCRIPTION =
   "QuickBridge never stores your files, never uploads your data, and never tracks what you send. Everything happens directly between your devices via WebRTC.";
 const PAGE_URL = "https://quickbridge.app/privacy";
-const PAGE_OG_IMAGE = "https://quickbridge.app/og-home.png";
+const PAGE_OG_IMAGE = "https://quickbridge.app/og-privacy.png";
 
 const PRIVACY_PAGE_JSONLD = {
   "@context": "https://schema.org",
@@ -104,8 +104,8 @@ function PrivacyPage() {
             <span className="text-muted-foreground">on your devices.</span>
           </h1>
           <p className="mx-auto mt-3 max-w-3xl text-[13.5px] leading-relaxed text-muted-foreground sm:mt-4 sm:text-[15px]">
-            QuickBridge is designed so that we never have access to your files
-            — even if we wanted to. Everything moves directly between the two
+            QuickBridge is designed so that we never have access to your files,
+            even if we wanted to. Everything moves directly between the two
             devices you connect.
           </p>
           <p className="mt-3 text-[12px] text-muted-foreground">
@@ -143,7 +143,7 @@ function PrivacyPage() {
           </h2>
           <p className="mt-3 max-w-2xl text-[14.5px] leading-relaxed text-muted-foreground">
             When you connect two devices using QuickBridge, a secure
-            peer-to-peer connection is created using WebRTC — the same
+            peer-to-peer connection is created using WebRTC, the same
             technology that powers browser video calls. Files, messages, and
             clipboard data are sent directly between your devices over an
             encrypted channel.
@@ -175,7 +175,7 @@ function PrivacyPage() {
             <li className="flex items-start gap-3 rounded-lg border border-border bg-card/40 p-4">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               If you enable "Save incoming files to folder", files are written
-              directly to the folder you chose on your device — through your
+              directly to the folder you chose on your device, through your
               browser's File System Access API, which we never see.
             </li>
             <li className="flex items-start gap-3 rounded-lg border border-border bg-card/40 p-4">
@@ -258,7 +258,7 @@ function PrivacyPage() {
           <ul className="mt-5 space-y-3 text-[14px] leading-relaxed text-foreground/90">
             <li className="flex items-start gap-3 rounded-lg border border-border bg-card/40 p-4">
               <Lock className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              All connections use encrypted WebRTC data channels (DTLS) — the
+              All connections use encrypted WebRTC data channels (DTLS), the
               same encryption used for browser video calls.
             </li>
             <li className="flex items-start gap-3 rounded-lg border border-border bg-card/40 p-4">
@@ -342,7 +342,7 @@ function PrivacyPage() {
               </p>
               <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
                 The QuickBridge website itself is served from a standard web
-                host. The host serves static pages — it never sees the contents
+                host. The host serves static pages and never sees the contents
                 of your transfers.
               </p>
             </li>

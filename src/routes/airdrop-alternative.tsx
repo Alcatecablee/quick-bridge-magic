@@ -36,7 +36,7 @@ const PAGE_OG_IMAGE = "https://quickbridge.app/og-airdrop.png";
 const FAQ_ITEMS: { q: string; a: string }[] = [
   {
     q: "Is QuickBridge a real AirDrop alternative for Android and Windows?",
-    a: "Yes. AirDrop is an Apple-only protocol — it works between iPhone, iPad, and Mac. Google's Quick Share added a one-way AirDrop bridge for Pixel 9 and Pixel 10 devices (February 2026), but that only covers Android-to-Apple transfers on specific Pixel hardware. If you have a Windows PC, an Android phone that isn't a Pixel 9/10, or need transfers in the other direction (Apple to Android), AirDrop still cannot help. QuickBridge works between any two devices with a modern browser — Android, Windows, Linux, ChromeOS, iOS, macOS — on any network.",
+    a: "Yes. AirDrop is an Apple-only protocol that works between iPhone, iPad, and Mac. Google's Quick Share added a one-way AirDrop bridge for Pixel 9 and Pixel 10 devices (February 2026), but that only covers Android-to-Apple transfers on specific Pixel hardware. If you have a Windows PC, an Android phone that isn't a Pixel 9/10, or need transfers in the other direction (Apple to Android), AirDrop still cannot help. QuickBridge works between any two devices with a modern browser (Android, Windows, Linux, ChromeOS, iOS, macOS) on any network.",
   },
   {
     q: "Do I need to install an app?",
@@ -74,6 +74,9 @@ const FAQ_JSONLD = {
   })),
 };
 
+const ARTICLE_PUBLISHED = "2026-04-28";
+const ARTICLE_MODIFIED = "2026-04-30";
+
 const ARTICLE_JSONLD = {
   "@context": "https://schema.org",
   "@type": "Article",
@@ -81,7 +84,14 @@ const ARTICLE_JSONLD = {
   description: PAGE_DESCRIPTION,
   url: PAGE_URL,
   mainEntityOfPage: PAGE_URL,
-  image: "https://quickbridge.app/og-image.png",
+  image: PAGE_OG_IMAGE,
+  datePublished: ARTICLE_PUBLISHED,
+  dateModified: ARTICLE_MODIFIED,
+  author: {
+    "@type": "Organization",
+    name: "QuickBridge",
+    url: "https://quickbridge.app",
+  },
   publisher: {
     "@type": "Organization",
     name: "QuickBridge",

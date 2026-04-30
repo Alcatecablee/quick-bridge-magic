@@ -30,7 +30,7 @@ export function NotFound() {
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-muted-foreground sm:text-base">
             The link may be broken or the page may have moved. Your files and
-            connections are unaffected — nothing is ever stored on a server.
+            connections are unaffected. Nothing is ever stored on a server.
           </p>
 
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -113,7 +113,7 @@ export function RouteError({
           </h1>
           <p className="mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-muted-foreground">
             An unexpected error stopped the page from loading. Try again, or
-            head home — your transfers are unaffected.
+            head home. Your transfers are unaffected.
           </p>
 
           {error?.message && (

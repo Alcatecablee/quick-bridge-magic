@@ -19,7 +19,7 @@ const PAGE_TITLE =
 const PAGE_DESCRIPTION =
   "Snapdrop only pairs devices on the same Wi-Fi network. QuickBridge sends files between any two browsers on any network, no install or sign-up needed.";
 const PAGE_URL = "https://quickbridge.app/compare/quickbridge-vs-snapdrop";
-const PAGE_OG_IMAGE = "https://quickbridge.app/og-image.png";
+const PAGE_OG_IMAGE = "https://quickbridge.app/og-compare-snapdrop.png";
 
 /**
  * Inline source list - every competitor claim on this page must trace to one

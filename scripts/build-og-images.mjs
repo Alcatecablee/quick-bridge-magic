@@ -125,6 +125,284 @@ function speedBarsMotif(x, y) {
   </g>`;
 }
 
+function pinKeypadMotif(x, y) {
+  // Six PIN digit boxes echoing the actual /join input UI: three filled
+  // (cyan tinted), the next box highlighted (the cursor), and a "listening"
+  // status pip below. The partial PIN "739..." is illustrative, not real.
+  const boxW = 62;
+  const boxH = 78;
+  const gap = 12;
+  const values = ["7", "3", "9", "", "", ""];
+  const cells = values
+    .map((v, i) => {
+      const bx = i * (boxW + gap);
+      const filled = !!v;
+      const isCursor = !filled && (i === 0 || values[i - 1] !== "");
+      const stroke = isCursor ? CYAN : RULE;
+      const strokeWidth = isCursor ? 2.5 : 1.5;
+      const fillOp = filled ? 0.18 : 0;
+      const cellRect = `<rect x="${bx}" y="0" width="${boxW}" height="${boxH}" rx="14" fill="${CYAN}" fill-opacity="${fillOp}" stroke="${stroke}" stroke-width="${strokeWidth}"/>`;
+      const digit = filled
+        ? `<text x="${bx + boxW / 2}" y="${boxH / 2 + 16}" text-anchor="middle" font-family="${FONT_STACK}" font-size="44" font-weight="800" fill="${TEXT}">${v}</text>`
+        : "";
+      const caret = isCursor
+        ? `<rect x="${bx + boxW / 2 - 2}" y="20" width="3" height="38" rx="1.5" fill="${CYAN}"/>`
+        : "";
+      return cellRect + digit + caret;
+    })
+    .join("");
+  return `
+  <g transform="translate(${x},${y})">
+    <text x="0" y="-22" font-family="${FONT_STACK}" font-size="14" font-weight="700" fill="${MUTED}" letter-spacing="3">SESSION PIN</text>
+    ${cells}
+    <g transform="translate(0,${boxH + 36})" font-family="${FONT_STACK}">
+      <circle cx="8" cy="8" r="5" fill="${GREEN}"/>
+      <circle cx="8" cy="8" r="9" fill="${GREEN}" fill-opacity="0.25"/>
+      <text x="24" y="13" font-size="16" font-weight="600" fill="${MUTED}">Listening for PIN match…</text>
+    </g>
+  </g>`;
+}
+
+function privacyDirectMotif(x, y) {
+  // Two device glyphs connected by a direct cyan→green encrypted path,
+  // with a server icon in the middle visibly crossed out. Encodes the
+  // page's core promise: "no server in the file path".
+  return `
+  <g transform="translate(${x},${y})">
+    <!-- left phone -->
+    <rect x="0" y="60" width="96" height="160" rx="18" fill="none" stroke="${CYAN}" stroke-width="3.5"/>
+    <rect x="12" y="76" width="72" height="118" rx="6" fill="${CYAN}" fill-opacity="0.10"/>
+    <circle cx="48" cy="208" r="3.5" fill="${CYAN}"/>
+    <!-- right monitor -->
+    <rect x="360" y="40" width="120" height="80" rx="8" fill="none" stroke="${CYAN}" stroke-width="3.5"/>
+    <rect x="370" y="50" width="100" height="60" rx="3" fill="${CYAN}" fill-opacity="0.10"/>
+    <rect x="400" y="126" width="40" height="4" rx="2" fill="${CYAN}"/>
+    <!-- direct encrypted path (curve from phone to monitor) -->
+    <path d="M 96 140 C 180 140, 260 80, 360 80" stroke="url(#cyanGreen)" stroke-width="4" fill="none" stroke-linecap="round" stroke-dasharray="0"/>
+    <!-- middle: server crossed out -->
+    <g transform="translate(196,160)">
+      <rect x="0" y="0" width="68" height="20" rx="3" fill="none" stroke="${MUTED}" stroke-width="1.5" opacity="0.45"/>
+      <rect x="0" y="26" width="68" height="20" rx="3" fill="none" stroke="${MUTED}" stroke-width="1.5" opacity="0.45"/>
+      <circle cx="10" cy="10" r="2" fill="${MUTED}" opacity="0.45"/>
+      <circle cx="10" cy="36" r="2" fill="${MUTED}" opacity="0.45"/>
+      <line x1="-10" y1="-10" x2="78" y2="56" stroke="${CYAN}" stroke-width="3" stroke-linecap="round"/>
+      <text x="34" y="76" text-anchor="middle" font-family="${FONT_STACK}" font-size="13" font-weight="700" fill="${CYAN}" letter-spacing="2">NO SERVER</text>
+    </g>
+    <!-- end-to-end lock badge near right device -->
+    <g transform="translate(420,140)">
+      <rect x="-22" y="-2" width="44" height="34" rx="7" fill="${GREEN}" fill-opacity="0.12" stroke="${GREEN}" stroke-width="1.5"/>
+      <path d="M-8 8 v-4 a8 8 0 0 1 16 0 v4" fill="none" stroke="${GREEN}" stroke-width="2" stroke-linecap="round"/>
+      <rect x="-7" y="8" width="14" height="13" rx="2.5" fill="${GREEN}"/>
+    </g>
+  </g>`;
+}
+
+function ecosystemMotif(x, y) {
+  // QuickBridge node in the center with arrows reaching out to four OS
+  // chips around it (vs AirDrop's single-ecosystem walled garden). Uses
+  // abstract OS glyphs (no real brand marks) consistent with osChipGrid().
+  const node = (cx, cy, label, glyph) => `
+    <g transform="translate(${cx},${cy})">
+      <rect x="-58" y="-26" width="116" height="52" rx="14" fill="${CYAN}" fill-opacity="0.06" stroke="${CYAN}" stroke-opacity="0.4" stroke-width="1.5"/>
+      <g transform="translate(-46,-14)">${glyph}</g>
+      <text x="6" y="6" font-family="${FONT_STACK}" font-size="16" font-weight="700" fill="${TEXT}">${label}</text>
+    </g>`;
+  const win = `<g fill="${CYAN}"><rect x="0" y="0" width="11" height="11" rx="1.5"/><rect x="14" y="0" width="11" height="11" rx="1.5"/><rect x="0" y="14" width="11" height="11" rx="1.5"/><rect x="14" y="14" width="11" height="11" rx="1.5"/></g>`;
+  const droid = `<g fill="${CYAN}"><rect x="2" y="8" width="22" height="16" rx="3"/><circle cx="8" cy="6" r="2"/><circle cx="18" cy="6" r="2"/></g>`;
+  const ios = `<g fill="${CYAN}"><rect x="8" y="0" width="12" height="26" rx="3"/></g>`;
+  const linux = `<g fill="${GREEN}"><circle cx="14" cy="14" r="11"/><circle cx="10" cy="10" r="2" fill="${BG}"/><circle cx="18" cy="10" r="2" fill="${BG}"/></g>`;
+
+  return `
+  <g transform="translate(${x},${y})">
+    <!-- spokes -->
+    <g stroke="${CYAN}" stroke-width="1.5" stroke-opacity="0.5" stroke-dasharray="3 5">
+      <line x1="225" y1="135" x2="80" y2="40"/>
+      <line x1="225" y1="135" x2="370" y2="40"/>
+      <line x1="225" y1="135" x2="80" y2="230"/>
+      <line x1="225" y1="135" x2="370" y2="230"/>
+    </g>
+    <!-- center QB node -->
+    <g transform="translate(225,135)">
+      <circle r="46" fill="${CYAN}" fill-opacity="0.10" stroke="${CYAN}" stroke-width="2"/>
+      <circle r="32" fill="${BG}"/>
+      <text y="6" text-anchor="middle" font-family="${FONT_STACK}" font-size="14" font-weight="800" fill="${TEXT}" letter-spacing="1">QB</text>
+    </g>
+    ${node(80, 40, "Windows", win)}
+    ${node(370, 40, "Android", droid)}
+    ${node(80, 230, "iPhone", ios)}
+    ${node(370, 230, "Linux", linux)}
+  </g>`;
+}
+
+function networkReachMotif(x, y) {
+  // Two phones at opposite corners of a stylized globe arc - illustrating
+  // "anywhere on the web" reach (vs Snapdrop's same-LAN limit).
+  return `
+  <g transform="translate(${x},${y})">
+    <!-- globe arcs -->
+    <g fill="none" stroke="${CYAN}" stroke-opacity="0.45" stroke-width="1.6">
+      <ellipse cx="225" cy="135" rx="160" ry="160"/>
+      <ellipse cx="225" cy="135" rx="160" ry="60"/>
+      <ellipse cx="225" cy="135" rx="60" ry="160"/>
+      <line x1="65" y1="135" x2="385" y2="135"/>
+      <line x1="225" y1="-25" x2="225" y2="295"/>
+    </g>
+    <!-- transfer arc -->
+    <path d="M 80 200 Q 225 -30 370 200" stroke="url(#cyanGreen)" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <!-- left device -->
+    <g transform="translate(40,170)">
+      <rect width="72" height="100" rx="12" fill="${BG}" stroke="${CYAN}" stroke-width="2.5"/>
+      <rect x="8" y="10" width="56" height="74" rx="3" fill="${CYAN}" fill-opacity="0.15"/>
+    </g>
+    <!-- right device -->
+    <g transform="translate(338,170)">
+      <rect width="72" height="100" rx="12" fill="${BG}" stroke="${GREEN}" stroke-width="2.5"/>
+      <rect x="8" y="10" width="56" height="74" rx="3" fill="${GREEN}" fill-opacity="0.15"/>
+    </g>
+    <!-- "any network" label -->
+    <text x="225" y="295" text-anchor="middle" font-family="${FONT_STACK}" font-size="13" font-weight="700" fill="${MUTED}" letter-spacing="3">ANY NETWORK</text>
+  </g>`;
+}
+
+function noCloudHopMotif(x, y) {
+  // Top row: file → cloud → file (greyed out, with X). Bottom row: file →
+  // direct arrow → file (cyan/green, alive). Wormhole stages files in the
+  // cloud for 24h; QuickBridge does not stage at all.
+  const fileGlyph = (color, op = 1) => `
+    <g fill="none" stroke="${color}" stroke-width="2.2" stroke-opacity="${op}">
+      <path d="M0 0 h28 l8 8 v40 a4 4 0 0 1 -4 4 h-32 a4 4 0 0 1 -4 -4 v-44 a4 4 0 0 1 4 -4 z"/>
+      <path d="M28 0 v8 h8"/>
+    </g>`;
+  return `
+  <g transform="translate(${x},${y})">
+    <!-- TOP: cloud-staged path (greyed) -->
+    <g transform="translate(0,8)" opacity="0.55">
+      ${fileGlyph(MUTED)}
+      <line x1="44" y1="26" x2="156" y2="26" stroke="${MUTED}" stroke-width="2" stroke-dasharray="4 4"/>
+      <g transform="translate(160,0)" stroke="${MUTED}" stroke-width="2.2" fill="none">
+        <path d="M10 32 a14 14 0 0 1 14 -14 a16 16 0 0 1 30 4 a12 12 0 0 1 4 22 h-44 a10 10 0 0 1 -4 -12 z"/>
+      </g>
+      <line x1="220" y1="26" x2="332" y2="26" stroke="${MUTED}" stroke-width="2" stroke-dasharray="4 4"/>
+      <g transform="translate(336,0)">${fileGlyph(MUTED)}</g>
+      <!-- ✕ across the cloud -->
+      <line x1="170" y1="8" x2="222" y2="48" stroke="${CYAN}" stroke-width="3" stroke-linecap="round"/>
+      <text x="190" y="80" font-family="${FONT_STACK}" font-size="13" font-weight="700" fill="${MUTED}" letter-spacing="2">CLOUD HOP</text>
+    </g>
+    <!-- BOTTOM: direct path (alive) -->
+    <g transform="translate(0,180)">
+      ${fileGlyph(CYAN)}
+      <path d="M44 26 L332 26" stroke="url(#cyanGreen)" stroke-width="4" stroke-linecap="round"/>
+      <polygon points="332,18 348,26 332,34" fill="${GREEN}"/>
+      <g transform="translate(336,0)">${fileGlyph(GREEN)}</g>
+      <text x="160" y="80" font-family="${FONT_STACK}" font-size="13" font-weight="700" fill="${CYAN}" letter-spacing="2">DIRECT PEER PATH</text>
+    </g>
+  </g>`;
+}
+
+function noUploadMotif(x, y) {
+  // Vertical stack: greyed "upload → wait → download" pipeline (WeTransfer
+  // model), then below it a single bright cyan/green arrow labeled "stream"
+  // (QuickBridge model). Conveys the page's central pitch: no upload step.
+  return `
+  <g transform="translate(${x},${y})">
+    <!-- WeTransfer-style pipeline (greyed) -->
+    <g opacity="0.55" font-family="${FONT_STACK}">
+      <g transform="translate(0,0)">
+        <rect width="120" height="42" rx="10" fill="none" stroke="${MUTED}" stroke-width="1.5"/>
+        <text x="60" y="26" text-anchor="middle" font-size="14" font-weight="700" fill="${MUTED}">UPLOAD</text>
+      </g>
+      <line x1="120" y1="21" x2="160" y2="21" stroke="${MUTED}" stroke-width="2" stroke-dasharray="4 4"/>
+      <g transform="translate(160,0)">
+        <rect width="120" height="42" rx="10" fill="none" stroke="${MUTED}" stroke-width="1.5"/>
+        <text x="60" y="26" text-anchor="middle" font-size="14" font-weight="700" fill="${MUTED}">WAIT</text>
+      </g>
+      <line x1="280" y1="21" x2="320" y2="21" stroke="${MUTED}" stroke-width="2" stroke-dasharray="4 4"/>
+      <g transform="translate(320,0)">
+        <rect width="120" height="42" rx="10" fill="none" stroke="${MUTED}" stroke-width="1.5"/>
+        <text x="60" y="26" text-anchor="middle" font-size="14" font-weight="700" fill="${MUTED}">DOWNLOAD</text>
+      </g>
+      <line x1="20" y1="60" x2="420" y2="60" stroke="${CYAN}" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <!-- QuickBridge stream (alive) -->
+    <g transform="translate(0,140)" font-family="${FONT_STACK}">
+      <rect width="440" height="60" rx="14" fill="${CYAN}" fill-opacity="0.08" stroke="url(#cyanGreen)" stroke-width="2"/>
+      <text x="22" y="38" font-size="18" font-weight="800" fill="${TEXT}" letter-spacing="-0.3">STREAM</text>
+      <!-- streaming dots -->
+      <g fill="${CYAN}">
+        <circle cx="120" cy="30" r="3"/>
+        <circle cx="140" cy="30" r="3" fill-opacity="0.85"/>
+        <circle cx="160" cy="30" r="3" fill-opacity="0.7"/>
+        <circle cx="180" cy="30" r="3" fill-opacity="0.55"/>
+        <circle cx="200" cy="30" r="3" fill-opacity="0.4"/>
+      </g>
+      <path d="M 230 30 L 408 30" stroke="url(#cyanGreen)" stroke-width="3" stroke-linecap="round"/>
+      <polygon points="408,22 422,30 408,38" fill="${GREEN}"/>
+    </g>
+    <text x="0" y="232" font-family="${FONT_STACK}" font-size="13" font-weight="700" fill="${GREEN}" letter-spacing="2">NO UPLOAD STEP</text>
+  </g>`;
+}
+
+function scanSendMotif(x, y) {
+  // QR-style symbol on the left, motion lines into a phone on the right.
+  // "Scan and send" — the PairDrop point of comparison: zero-setup pairing.
+  const qrCell = (cx, cy, w) =>
+    `<rect x="${cx}" y="${cy}" width="${w}" height="${w}" fill="${CYAN}"/>`;
+  // Hand-laid QR-like glyph (decorative, not a real code).
+  const qrCells = [
+    [0, 0, 36],
+    [120, 0, 36],
+    [0, 120, 36],
+    [60, 60, 18],
+    [90, 70, 12],
+    [70, 100, 14],
+    [100, 110, 16],
+    [44, 30, 10],
+    [44, 50, 8],
+    [60, 0, 8],
+    [80, 0, 12],
+    [102, 60, 10],
+    [120, 100, 14],
+    [140, 60, 14],
+    [120, 130, 18],
+    [148, 130, 8],
+  ]
+    .map(([cx, cy, w]) => qrCell(cx, cy, w))
+    .join("");
+  return `
+  <g transform="translate(${x},${y})">
+    <!-- QR card -->
+    <g transform="translate(0,30)">
+      <rect x="-18" y="-18" width="192" height="192" rx="20" fill="${CYAN}" fill-opacity="0.06" stroke="${CYAN}" stroke-opacity="0.45" stroke-width="1.5"/>
+      ${qrCells}
+      <!-- corner brackets -->
+      <g stroke="${CYAN}" stroke-width="3" fill="none" stroke-linecap="round">
+        <path d="M-6 0 v-6 h6"/>
+        <path d="M162 0 h6 v-6"/>
+        <path d="M-6 156 v6 h6"/>
+        <path d="M162 162 h6 v-6"/>
+      </g>
+    </g>
+    <!-- motion lines -->
+    <g stroke="url(#cyanGreen)" stroke-width="4" stroke-linecap="round" fill="none">
+      <path d="M210 90 L 290 90"/>
+      <path d="M210 130 L 270 130" stroke-opacity="0.75"/>
+      <path d="M210 170 L 285 170" stroke-opacity="0.9"/>
+    </g>
+    <!-- receiving phone -->
+    <g transform="translate(310,30)">
+      <rect width="96" height="180" rx="16" fill="${BG}" stroke="${GREEN}" stroke-width="2.5"/>
+      <rect x="10" y="14" width="76" height="138" rx="4" fill="${GREEN}" fill-opacity="0.12"/>
+      <circle cx="48" cy="166" r="4" fill="${GREEN}"/>
+      <!-- file icon inside phone -->
+      <g transform="translate(24,40)" fill="none" stroke="${GREEN}" stroke-width="2">
+        <path d="M0 0 h36 l12 12 v60 a4 4 0 0 1 -4 4 h-44 a4 4 0 0 1 -4 -4 v-68 a4 4 0 0 1 4 -4 z"/>
+        <path d="M36 0 v12 h12"/>
+      </g>
+    </g>
+    <text x="0" y="240" font-family="${FONT_STACK}" font-size="13" font-weight="700" fill="${MUTED}" letter-spacing="3">SCAN · SEND · DONE</text>
+  </g>`;
+}
+
 function osChipGrid(x, y) {
   // 2x2 grid of OS chips (Android, Windows, iOS, macOS) drawn purely in SVG.
   const chip = (cx, cy, label, glyph) => `
@@ -218,6 +496,83 @@ async function main() {
       sub: "Direct WebRTC. No upload, no cloud, no waiting.",
     },
     motifSvg: speedBarsMotif(720, 250),
+  });
+
+  await compose({
+    outName: "og-join.png",
+    headline: {
+      eyebrow: "Join with PIN",
+      line1: "Enter the 6-digit PIN",
+      line2: "to start a transfer.",
+      sub: "End-to-end encrypted. No install, no account.",
+    },
+    motifSvg: pinKeypadMotif(720, 270),
+  });
+
+  await compose({
+    outName: "og-privacy.png",
+    headline: {
+      eyebrow: "Privacy",
+      line1: "Your data stays",
+      line2: "on your devices.",
+      sub: "No upload. No storage. No tracking.",
+    },
+    motifSvg: privacyDirectMotif(700, 220),
+  });
+
+  await compose({
+    outName: "og-compare-airdrop.png",
+    headline: {
+      eyebrow: "QuickBridge vs AirDrop",
+      line1: "Beyond the Apple",
+      line2: "ecosystem.",
+      sub: "Windows, Android, iPhone, Linux — in any browser.",
+    },
+    motifSvg: ecosystemMotif(720, 220),
+  });
+
+  await compose({
+    outName: "og-compare-snapdrop.png",
+    headline: {
+      eyebrow: "QuickBridge vs Snapdrop",
+      line1: "Cross-network",
+      line2: "file transfer.",
+      sub: "Not just same-Wi-Fi. Anywhere on the web.",
+    },
+    motifSvg: networkReachMotif(720, 220),
+  });
+
+  await compose({
+    outName: "og-compare-wormhole.png",
+    headline: {
+      eyebrow: "QuickBridge vs Wormhole",
+      line1: "Browser P2P,",
+      line2: "no cloud hop.",
+      sub: "No upload wait. No 24-hour expiry.",
+    },
+    motifSvg: noCloudHopMotif(720, 230),
+  });
+
+  await compose({
+    outName: "og-compare-wetransfer.png",
+    headline: {
+      eyebrow: "QuickBridge vs WeTransfer",
+      line1: "No upload step.",
+      line2: "No account needed.",
+      sub: "Files stream device to device — instantly.",
+    },
+    motifSvg: noUploadMotif(720, 220),
+  });
+
+  await compose({
+    outName: "og-compare-pairdrop.png",
+    headline: {
+      eyebrow: "QuickBridge vs PairDrop",
+      line1: "No setup.",
+      line2: "Just scan & send.",
+      sub: "Same room or across the internet — works the same.",
+    },
+    motifSvg: scanSendMotif(720, 220),
   });
 
   console.log("Done.");

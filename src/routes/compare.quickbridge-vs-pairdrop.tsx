@@ -15,14 +15,14 @@ import { RelatedPages } from "@/components/quickbridge/RelatedPages";
 import { Reveal } from "@/components/quickbridge/Reveal";
 
 const PAGE_TITLE =
-  "QuickBridge vs PairDrop – No Setup, Just Scan and Send";
+  "QuickBridge vs PairDrop: No Setup, Just Scan and Send";
 const PAGE_DESCRIPTION =
-  "PairDrop is a powerful, self-hostable LAN file tool with cross-network rooms and persistent pairing. QuickBridge skips the setup — scan a QR code and send.";
+  "PairDrop is a powerful, self-hostable LAN file tool with cross-network rooms and persistent pairing. QuickBridge skips the setup: scan a QR code and send.";
 const PAGE_URL = "https://quickbridge.app/compare/quickbridge-vs-pairdrop";
-const PAGE_OG_IMAGE = "https://quickbridge.app/og-image.png";
+const PAGE_OG_IMAGE = "https://quickbridge.app/og-compare-pairdrop.png";
 
 /**
- * Inline source list — every PairDrop claim on this page traces to one of
+ * Inline source list. Every PairDrop claim on this page traces to one of
  * these URLs, fetched directly before writing. Shown in the visible Sources
  * section so any reader can audit the comparison.
  */
@@ -55,7 +55,7 @@ const FAQ_ITEMS: { q: string; a: string }[] = [
   },
   {
     q: "How is QuickBridge different from PairDrop?",
-    a: "Both are browser-based, open-source, free, ad-free tools that transfer files over WebRTC without requiring accounts. The main difference is in the pairing model. PairDrop has three separate modes: LAN auto-discovery (devices on the same Wi-Fi appear automatically), persistent device pairs (set up once with a 6-digit PIN), and temporary public rooms (5-letter code for one-off cross-network sessions). QuickBridge uses a single flow for every scenario — scan a QR code or enter a PIN — and the same connection works whether both devices are on the same Wi-Fi or different networks entirely. PairDrop is richer in features; QuickBridge is simpler for a one-time cross-device send.",
+    a: "Both are browser-based, open-source, free, ad-free tools that transfer files over WebRTC without requiring accounts. The main difference is in the pairing model. PairDrop has three separate modes: LAN auto-discovery (devices on the same Wi-Fi appear automatically), persistent device pairs (set up once with a 6-digit PIN), and temporary public rooms (5-letter code for one-off cross-network sessions). QuickBridge uses a single flow for every scenario (scan a QR code or enter a PIN) and the same connection works whether both devices are on the same Wi-Fi or different networks entirely. PairDrop is richer in features; QuickBridge is simpler for a one-time cross-device send.",
   },
   {
     q: "Is QuickBridge free?",
@@ -130,19 +130,19 @@ const COMPARISON_ROWS: {
     label: "Same-LAN auto-discovery (no pairing code needed)",
     qb: false,
     pd: true,
-    note: "PairDrop automatically shows all devices on the same local network — no code required. QuickBridge always uses an explicit QR code or PIN regardless of network, which means one extra step on the same Wi-Fi but a consistent flow in every scenario.",
+    note: "PairDrop automatically shows all devices on the same local network; no code required. QuickBridge always uses an explicit QR code or PIN regardless of network, which means one extra step on the same Wi-Fi but a consistent flow in every scenario.",
   },
   {
     label: "Cross-network transfers (different Wi-Fi, mobile data)",
     qb: true,
     pd: true,
-    note: "Both tools work across different networks. PairDrop does it via persistent device pairs (6-digit PIN) or temporary public rooms (5-letter code). QuickBridge uses the same QR/PIN flow for all connections — local or remote.",
+    note: "Both tools work across different networks. PairDrop does it via persistent device pairs (6-digit PIN) or temporary public rooms (5-letter code). QuickBridge uses the same QR/PIN flow for all connections, local or remote.",
   },
   {
     label: "Single unified pairing flow for all scenarios",
     qb: true,
     pd: "neutral",
-    note: "QuickBridge has one pairing model: QR code or PIN, works on any network. PairDrop has three separate modes — LAN auto-discovery, persistent pairs, and temporary public rooms — each with its own setup. More powerful, but more to learn.",
+    note: "QuickBridge has one pairing model: QR code or PIN, works on any network. PairDrop has three separate modes (LAN auto-discovery, persistent pairs, and temporary public rooms), each with its own setup. More powerful, but more to learn.",
   },
   {
     label: "No app install required",
@@ -172,7 +172,7 @@ const COMPARISON_ROWS: {
     label: "OS Share menu / context menu / CLI integration",
     qb: false,
     pd: true,
-    note: "PairDrop supports sending files directly from the Windows context menu, the iOS/Android Share sheet, and a command-line interface. QuickBridge is browser-only — you drag and drop or pick files from the browser UI.",
+    note: "PairDrop supports sending files directly from the Windows context menu, the iOS/Android Share sheet, and a command-line interface. QuickBridge is browser-only: you drag and drop or pick files from the browser UI.",
   },
   {
     label: "Open source",
@@ -224,7 +224,7 @@ function ComparePairDropPage() {
               Short answer:
             </strong>{" "}
             PairDrop is the most feature-complete open-source AirDrop alternative
-            in a browser — LAN auto-discovery, persistent device pairs, public
+            in a browser: LAN auto-discovery, persistent device pairs, public
             rooms, context-menu integration, CLI support. QuickBridge is built
             for a narrower job: scan one QR code (or share a PIN), and a file
             moves between any two browsers, on any network, in seconds. If you
@@ -328,7 +328,7 @@ function ComparePairDropPage() {
               </h3>
               <ul className="mt-3 space-y-2 text-[13.5px] leading-relaxed text-muted-foreground">
                 {[
-                  "You're doing a one-time send to a colleague or friend and want to be up and running in under ten seconds — one QR scan, done.",
+                  "You're doing a one-time send to a colleague or friend and want to be up and running in under ten seconds. One QR scan, done.",
                   "The two devices are on different networks and you don't want to learn three different pairing modes (LAN, persistent pair, public room).",
                   "You're sending from a device you've never transferred to before and don't want to manage a persistent pairs list.",
                   "You want the simplest possible mental model: one QR or PIN, one connection, one transfer.",
@@ -346,11 +346,11 @@ function ComparePairDropPage() {
               </h3>
               <ul className="mt-3 space-y-2 text-[13.5px] leading-relaxed text-muted-foreground">
                 {[
-                  "You're on the same Wi-Fi and want zero-setup discovery — just open PairDrop and your devices appear automatically.",
+                  "You're on the same Wi-Fi and want zero-setup discovery: just open PairDrop and your devices appear automatically.",
                   "You transfer between the same set of devices regularly and want persistent pairing so you never enter a code again.",
                   "You want to self-host the tool on your own server with your own STUN/TURN configuration.",
                   "You need OS-level integration: send files from the Windows right-click menu, the iOS Share sheet, or the command line.",
-                  "You want a richer feature set — text messages, ZIP bundling, video preview, HEIC conversion, 30+ language UI.",
+                  "You want a richer feature set: text messages, ZIP bundling, video preview, HEIC conversion, 30+ language UI.",
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2">
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
@@ -369,7 +369,7 @@ function ComparePairDropPage() {
               Status note (April 2026)
             </h3>
             <p className="mt-2 text-[13.5px] leading-relaxed text-foreground/85">
-              PairDrop is actively maintained — the{" "}
+              PairDrop is actively maintained. The{" "}
               <a
                 href="https://github.com/schlagmichdoch/PairDrop"
                 rel="noopener"
@@ -380,7 +380,7 @@ function ComparePairDropPage() {
               (schlagmichdoch/PairDrop) received its most recent commit on
               April 22, 2026, five days before this page was written. The live
               app at pairdrop.net displays version v1.11.2. Unlike Snapdrop,
-              PairDrop has not been acquired by any third party — it remains a
+              PairDrop has not been acquired by any third party; it remains a
               volunteer open-source project. One thing worth understanding
               before choosing either tool: when two devices are on different
               networks behind a NAT and cannot establish a direct WebRTC
@@ -432,7 +432,7 @@ function ComparePairDropPage() {
                   {src.title}
                 </a>{" "}
                 <span className="text-muted-foreground/70">
-                  — verified {src.fetched}
+                  · verified {src.fetched}
                 </span>
               </li>
             ))}
@@ -448,7 +448,7 @@ function ComparePairDropPage() {
             />
             <div className="relative">
               <h2 className="text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl md:text-4xl">
-                Try it in under ten seconds — no setup required
+                Try it in under ten seconds. No setup required.
               </h2>
               <p className="mx-auto mt-3 max-w-md text-[14px] leading-relaxed text-muted-foreground sm:text-[15px]">
                 Open QuickBridge on your computer, scan the QR with your phone,

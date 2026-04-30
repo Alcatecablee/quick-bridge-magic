@@ -18,7 +18,7 @@ const PAGE_TITLE = "QuickBridge vs AirDrop - File Transfer Beyond Apple";
 const PAGE_DESCRIPTION =
   "AirDrop is Apple-only and proximity-only. QuickBridge sends files browser-to-browser between Windows, Android, iPhone, and Mac, anywhere on the web.";
 const PAGE_URL = "https://quickbridge.app/compare/quickbridge-vs-airdrop";
-const PAGE_OG_IMAGE = "https://quickbridge.app/og-image.png";
+const PAGE_OG_IMAGE = "https://quickbridge.app/og-compare-airdrop.png";
 
 /**
  * Inline source list - every competitor claim on this page must trace to one
