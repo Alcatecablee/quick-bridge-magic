@@ -753,6 +753,27 @@ function Home() {
           </Card>
         </section>
 
+        {/* How it works - video demo */}
+        <Reveal as="section" id="how" className="mt-16 scroll-mt-24 sm:mt-20">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-primary">How it works</p>
+            <h2 className="mt-2 text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl md:text-4xl">
+              Three steps. No setup. No accounts.
+            </h2>
+          </div>
+          <div className="mt-8 overflow-hidden rounded-2xl border border-border shadow-lg">
+            <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+              <iframe
+                src="/video"
+                className="absolute inset-0 h-full w-full"
+                style={{ border: "none" }}
+                title="How QuickBridge works"
+                allow="autoplay"
+              />
+            </div>
+          </div>
+        </Reveal>
+
         {/* Why QuickBridge - problem -> frustration -> solution narrative.
             Anchored on the speed + simplicity positioning, not encryption. */}
         <Reveal as="section" id="why" className="mt-16 scroll-mt-24 sm:mt-20">
@@ -805,27 +826,6 @@ function Home() {
               Read the full story
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
-          </div>
-        </Reveal>
-
-        {/* How it works - video demo */}
-        <Reveal as="section" id="how" className="mt-16 scroll-mt-24 sm:mt-20">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-primary">How it works</p>
-            <h2 className="mt-2 text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl md:text-4xl">
-              Three steps. No setup. No accounts.
-            </h2>
-          </div>
-          <div className="mt-8 overflow-hidden rounded-2xl border border-border shadow-lg">
-            <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-              <iframe
-                src="/video"
-                className="absolute inset-0 h-full w-full"
-                style={{ border: "none" }}
-                title="How QuickBridge works"
-                allow="autoplay"
-              />
-            </div>
           </div>
         </Reveal>
 
