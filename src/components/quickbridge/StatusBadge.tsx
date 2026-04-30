@@ -1,4 +1,4 @@
-import { Loader2, Wifi, Globe } from "lucide-react";
+import { Loader2, Wifi, Globe } from "./icons";
 import type { ConnectionQuality, ConnectionStatus } from "@/hooks/use-webrtc";
 import { cn } from "@/lib/utils";
 

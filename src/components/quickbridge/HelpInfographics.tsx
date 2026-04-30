@@ -1,4 +1,4 @@
-import { ArrowRight, Eye, Lock, QrCode, Smile, Sparkles } from "lucide-react";
+import { ArrowRight, Eye, Lock, QrCode, Smile, Sparkles } from "./icons";
 
 /**
  * Visual explainers for /help. Built as Tailwind + inline SVG components

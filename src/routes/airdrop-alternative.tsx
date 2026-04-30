@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Check, X as XIcon } from "lucide-react";
+import { ArrowRight, Check, X as XIcon } from "@/components/quickbridge/icons";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {

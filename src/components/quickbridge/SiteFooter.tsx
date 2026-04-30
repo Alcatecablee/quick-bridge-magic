@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { InfinityIcon, Lock, ShieldCheck, Smartphone } from "lucide-react";
+import { InfinityIcon, Lock, ShieldCheck, Smartphone } from "./icons";
 import {
   COMPARE_ROUTES,
   PRIMARY_ROUTES,

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight } from "./icons";
 import { Card } from "@/components/ui/card";
 
 interface Step {

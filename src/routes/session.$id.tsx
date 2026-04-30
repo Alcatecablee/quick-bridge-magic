@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "@/components/quickbridge/icons";
 import { AppHeader } from "@/components/quickbridge/Wordmark";
 import { SessionSkeleton } from "@/components/quickbridge/SessionSkeleton";
 

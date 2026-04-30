@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Home, RefreshCw } from "lucide-react";
+import { ArrowRight, Home, RefreshCw } from "./icons";
 import { AppHeader } from "@/components/quickbridge/Wordmark";
 import { SiteNav } from "@/components/quickbridge/SiteNav";
 import { SiteFooter } from "@/components/quickbridge/SiteFooter";

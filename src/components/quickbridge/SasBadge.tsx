@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ShieldCheck, ChevronDown } from "lucide-react";
+import { ShieldCheck, ChevronDown } from "./icons";
 import type { SasCode } from "@/lib/sas";
 import { cn } from "@/lib/utils";
 

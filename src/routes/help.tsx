@@ -12,7 +12,7 @@ import {
   Send,
   ShieldCheck,
   Wifi,
-} from "lucide-react";
+} from "@/components/quickbridge/icons";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {

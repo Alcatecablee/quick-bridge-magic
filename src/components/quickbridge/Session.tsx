@@ -30,7 +30,9 @@ import {
   PowerOff,
   Users,
   HelpCircle,
-} from "lucide-react";
+  Loader2,
+  Globe,
+} from "./icons";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +41,7 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useWebRTC, MAX_TEXT_BYTES, RESUME_GRACE_MS } from "@/hooks/use-webrtc";
+import { useWebRTC, MAX_TEXT_BYTES, RESUME_GRACE_MS, type ConnectionQuality } from "@/hooks/use-webrtc";
 import { useBridgeSignal } from "@/lib/bridge-signal";
 import { StatusBadge } from "./StatusBadge";
 import { Sparkline } from "./Sparkline";
@@ -408,9 +410,40 @@ export function Session({ sessionId, isInitiator }: Props) {
     clearActiveSession();
     if (isInitiator) removeKey(StorageKeys.hostSessionId);
     pendingFilesRef.current = [];
+    setPendingCount(0);
     toast("Bridge ended", { description: "The connection has been closed." });
     navigate({ to: "/" });
   }, [isInitiator, navigate]);
+
+  const discardQueued = useCallback(() => {
+    if (pendingFilesRef.current.length === 0) return;
+    const dropped = pendingFilesRef.current.length;
+    pendingFilesRef.current = [];
+    setPendingCount(0);
+    toast(`Discarded ${dropped} queued file${dropped === 1 ? "" : "s"}`);
+  }, []);
+
+  // One-time hint shown the first time a touch user opens the file picker:
+  // explains why the connection may briefly drop and that we'll auto-send.
+  // Without this, a queued-and-recovered file looks like a glitch instead of
+  // a deliberate, robust behaviour.
+  const handleChooseFiles = useCallback(() => {
+    if (typeof window !== "undefined") {
+      const seen = readJSON<boolean>(StorageKeys.mobilePickerHintSeen, false);
+      const isTouch =
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(pointer: coarse)").matches;
+      if (!seen && isTouch && status === "connected") {
+        toast("Heads up", {
+          description:
+            "Picking a file may briefly pause the link — we'll send it automatically when reconnected.",
+          duration: 6000,
+        });
+        writeJSON(StorageKeys.mobilePickerHintSeen, true);
+      }
+    }
+    fileInputRef.current?.click();
+  }, [status]);
 
   const [text, setText] = useState("");
   const [dragOver, setDragOver] = useState(false);
@@ -422,11 +455,18 @@ export function Session({ sessionId, isInitiator }: Props) {
   const lastMessageIdRef = useRef<string | null>(null);
   const stalledNotifiedRef = useRef(false);
   const prevStatusRef = useRef(status);
-  // Mobile recovery queue: files chosen while the WebRTC peer is reconnecting
-  // (because the OS suspended the tab while the system file picker was open)
-  // are held here and auto-flushed on the next "connected" transition. Without
-  // this, the file picker round-trip on Android silently drops the selection.
+  const prevQualityRef = useRef<ConnectionQuality>(quality);
+  // Mobile recovery queue: files chosen while the WebRTC peer is in any
+  // recoverable non-connected state (reconnecting / disconnected / stalled /
+  // mid-handshake) are held here and auto-flushed on the next "connected"
+  // transition. Without this, the file picker round-trip on Android silently
+  // drops the selection: opening the OS picker backgrounds the tab, the OS
+  // suspends the WebRTC peer, and on slow devices the reconnect attempt
+  // budget can be fully exhausted (status="disconnected") before the user
+  // finishes picking. `pendingCount` is a state mirror so the inline banner
+  // can re-render reactively while the ref holds the actual File objects.
   const pendingFilesRef = useRef<File[]>([]);
+  const [pendingCount, setPendingCount] = useState(0);
 
   // History (per-session)
   const history = useHistory(sessionId);
@@ -556,6 +596,28 @@ export function Session({ sessionId, isInitiator }: Props) {
     prevStatusRef.current = status;
   }, [status]);
 
+  // Surface quality transitions so the user understands sudden slowness.
+  // We only fire toasts on real flips between known qualities (direct ↔ relay)
+  // and only while connected — flicker through "unknown" during reconnect
+  // shouldn't trigger noise. The persistent inline notice in the file-picker
+  // card covers the steady-state "you're on a relay right now" case.
+  useEffect(() => {
+    const prev = prevQualityRef.current;
+    if (status === "connected" && prev !== quality) {
+      if (prev !== "relay" && quality === "relay") {
+        toast.warning("Going through a relay", {
+          description:
+            "A direct path was blocked, so traffic is going through a TURN server. Still end-to-end encrypted, just slower.",
+        });
+      } else if (prev === "relay" && quality === "direct") {
+        toast.success("Direct connection restored", {
+          description: "Transfers will be faster now.",
+        });
+      }
+    }
+    prevQualityRef.current = quality;
+  }, [quality, status]);
+
   useEffect(() => {
     const last = messages[messages.length - 1];
     if (!last || last.from !== "peer" || last.id === lastMessageIdRef.current) return;
@@ -605,26 +667,43 @@ export function Session({ sessionId, isInitiator }: Props) {
       void ensureNotificationPermission();
       if (status !== "connected") {
         const arr = Array.from(files);
-        // If the peer is mid-reconnect (typical on Android: opening the system
-        // file picker backgrounds the tab and the OS suspends WebRTC), hold
-        // the selection in memory and auto-flush on the next "connected"
-        // transition instead of dropping it. Dedupe by name+size+lastModified
-        // so a re-pick of the same file doesn't queue a duplicate.
-        if (status === "reconnecting" && arr.length > 0) {
+        // Hold the selection if the peer is in any recoverable non-connected
+        // state. On Android the OS backgrounds the tab while the file picker
+        // is open and suspends WebRTC; on a slow device the reconnect budget
+        // can be fully exhausted (status="disconnected") before the picker
+        // closes, so we MUST queue for "disconnected" too — not just
+        // "reconnecting" — otherwise the file is silently dropped. We also
+        // queue mid-handshake ("connecting") and "stalled" so a fast pick
+        // during initial setup or post-stall doesn't fall through.
+        const recoverable =
+          status === "reconnecting" ||
+          status === "disconnected" ||
+          status === "stalled" ||
+          status === "connecting";
+        if (recoverable && arr.length > 0) {
           const key = (f: File) => `${f.name}|${f.size}|${f.lastModified}`;
           const have = new Set(pendingFilesRef.current.map(key));
           const adds = arr.filter((f) => !have.has(key(f)));
           if (adds.length > 0) {
             pendingFilesRef.current.push(...adds);
+            setPendingCount(pendingFilesRef.current.length);
             const label =
               adds.length === 1 ? `"${adds[0].name}"` : `${adds.length} files`;
             toast(`Queued ${label}`, {
-              description: "Reconnecting — will send automatically.",
+              description: "We'll send as soon as the link is back.",
             });
+          }
+          // Wake the bridge if reconnect already gave up or stalled — the
+          // existing visibility-change handler covers the picker-close case
+          // but if it lost the race we still want a kick now.
+          if (status === "disconnected" || status === "stalled") {
+            manualReconnect();
           }
           return;
         }
-        toast.error("Not connected yet");
+        // peerPresent === false (peer left) or status === "waiting" — there's
+        // genuinely no one on the other side; queueing would sit forever.
+        toast.error(peerPresent ? "Connection lost — try again" : "No peer connected");
         return;
       }
       for (const f of Array.from(files)) {
@@ -647,7 +726,7 @@ export function Session({ sessionId, isInitiator }: Props) {
         pendingSourcesRef.current.push(f);
       }
     },
-    [sendFile, status],
+    [sendFile, status, peerPresent, manualReconnect, effectiveMaxBytes, effectiveMaxLabel, peerStreamingToDisk],
   );
 
   // Reconcile File sources with outgoing entries
@@ -680,18 +759,18 @@ export function Session({ sessionId, isInitiator }: Props) {
     if (status === "connected" && pendingFilesRef.current.length > 0) {
       const queued = pendingFilesRef.current;
       pendingFilesRef.current = [];
+      setPendingCount(0);
       const label = queued.length === 1 ? `"${queued[0].name}"` : `${queued.length} files`;
       toast.success(`Sending ${label}`);
       void handleFiles(queued);
       return;
     }
-    if (status === "disconnected" && pendingFilesRef.current.length > 0) {
-      const dropped = pendingFilesRef.current.length;
-      pendingFilesRef.current = [];
-      toast.error(`Couldn't send ${dropped} queued file${dropped === 1 ? "" : "s"}`, {
-        description: "The bridge couldn't be restored. Reload and try again.",
-      });
-    }
+    // Note: we deliberately do NOT drain on "disconnected" anymore. handleFiles
+    // now also queues for "disconnected" and kicks manualReconnect, so a
+    // transient disconnect should bounce back to "connected" and drain
+    // normally. The hopeless case is covered by `endBridge` (user-initiated)
+    // and the queue stays visible in the inline banner so the user can
+    // discard or wait — surfacing the count beats a fire-and-forget toast.
   }, [status, handleFiles]);
 
   const handleSendText = () => {
@@ -1401,9 +1480,46 @@ export function Session({ sessionId, isInitiator }: Props) {
           className="hidden"
           onChange={(e) => e.target.files && handleFiles(e.target.files)}
         />
-        <Button size="sm" variant="secondary" onClick={() => fileInputRef.current?.click()} className="h-11 w-full sm:h-8 sm:w-auto">
+        <Button size="sm" variant="secondary" onClick={handleChooseFiles} className="h-11 w-full sm:h-8 sm:w-auto">
           Choose files
         </Button>
+        {pendingCount > 0 && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="mt-1 flex w-full items-center justify-between gap-3 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning-foreground"
+          >
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+              <span>
+                {pendingCount === 1 ? "1 file queued" : `${pendingCount} files queued`}
+                {" — "}
+                {status === "connected" ? "sending now…" : "sending when reconnected"}
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={discardQueued}
+              className="font-medium text-foreground/80 underline-offset-2 hover:underline"
+            >
+              Discard
+            </button>
+          </div>
+        )}
+        {status === "connected" && quality === "relay" && (
+          <div
+            role="status"
+            aria-live="polite"
+            title="A direct peer-to-peer path was blocked, so traffic is being relayed through a TURN server. Your data is still end-to-end encrypted between this device and the peer — the relay only forwards encrypted bytes."
+            className="mt-1 flex w-full items-center gap-2 rounded-md border border-warning/40 bg-warning/5 px-3 py-2 text-xs text-warning"
+          >
+            <Globe className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>
+              Slow link — going through a TURN relay.{" "}
+              <span className="text-warning/80">Still end-to-end encrypted, just slower.</span>
+            </span>
+          </div>
+        )}
       </Card>
 
       {/* Text + clipboard */}

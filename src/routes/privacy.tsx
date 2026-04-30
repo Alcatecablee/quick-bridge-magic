@@ -10,7 +10,7 @@ import {
   Server,
   ShieldCheck,
   X as XIcon,
-} from "lucide-react";
+} from "@/components/quickbridge/icons";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { AppHeader } from "@/components/quickbridge/Wordmark";

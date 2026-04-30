@@ -1,4 +1,4 @@
-import { ArrowRight } from "lucide-react";
+import { ArrowRight } from "./icons";
 import {
   COMPARE_ROUTES,
   USE_CASE_ROUTES,

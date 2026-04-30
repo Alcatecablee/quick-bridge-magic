@@ -7,6 +7,7 @@ export const StorageKeys = {
   history: (sessionId: string) => `${PREFIX}history:${sessionId}`,
   activeSession: `${PREFIX}activeSession`,
   contactDraft: `${PREFIX}contactDraft`,
+  mobilePickerHintSeen: `${PREFIX}mobilePickerHintSeen`,
 } as const;
 
 export type ActiveSession = {

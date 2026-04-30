@@ -19,7 +19,7 @@ import {
   Binary,
   Cpu,
   Antenna,
-} from "lucide-react";
+} from "./icons";
 
 const ICONS = [
   QrCode,

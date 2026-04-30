@@ -16,7 +16,7 @@ import {
   Wifi,
   X as XIcon,
   Zap,
-} from "lucide-react";
+} from "@/components/quickbridge/icons";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
