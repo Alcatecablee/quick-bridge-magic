@@ -50,6 +50,10 @@ const SOURCES: { id: string; title: string; url: string; fetched: string }[] = [
 
 const FAQ_ITEMS: { q: string; a: string }[] = [
   {
+    q: "What is QuickBridge?",
+    a: "QuickBridge is a browser-based peer-to-peer file transfer tool. Unlike Snapdrop, which discovers devices on the same local network, QuickBridge pairs devices with a QR code or 6-digit PIN so transfers work whether both devices are on the same Wi-Fi or on entirely different networks. Files stream directly between the two browsers over a DTLS-encrypted WebRTC channel with no server storage. No account, no install, and no local network requirement.",
+  },
+  {
     q: "What is Snapdrop?",
     a: "Snapdrop is an open-source web app that pairs devices on the same local network and lets them transfer files browser-to-browser using WebRTC. It was created by Robin Linus and is described on snapdrop.net as a tool for sharing files with people nearby. The project's GitHub README also notes that Snapdrop has been acquired by LimeWire - at the time of this page (April 2026) snapdrop.net still serves the classic open-source product.",
   },

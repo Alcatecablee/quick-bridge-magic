@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 const ITEMS = [
   { label: "No accounts", Icon: PersonIcon, indent: "" },
   { label: "No uploads", Icon: UploadIcon, indent: "pl-[10%]" },
-  { label: "Nothing stored", Icon: ServerIcon, indent: "pl-[20%]", emphasis: true },
+  { label: "Nothing stored", Icon: ServerIcon, indent: "pl-[20%]" },
+  { label: "End-to-end encrypted", Icon: LockIcon, indent: "pl-[30%]", emphasis: true },
 ];
 
 export function Scene5() {
@@ -15,6 +16,7 @@ export function Scene5() {
       setTimeout(() => setPhase(1), 150),
       setTimeout(() => setPhase(2), 750),
       setTimeout(() => setPhase(3), 1400),
+      setTimeout(() => setPhase(4), 2100),
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
@@ -86,6 +88,15 @@ function ServerIcon() {
       <ellipse cx="12" cy="5" rx="9" ry="3" />
       <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
       <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+    </svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
     </svg>
   );
 }

@@ -68,6 +68,10 @@ const SOURCES: { id: string; title: string; url: string; fetched: string }[] = [
 
 const FAQ_ITEMS: { q: string; a: string }[] = [
   {
+    q: "What is QuickBridge?",
+    a: "QuickBridge is a browser-based peer-to-peer file transfer tool. Unlike Wormhole, which stores files on cloud servers for up to 24 hours so the recipient can open the link later, QuickBridge never touches a server with your file. The transfer streams directly between two open browser tabs over an encrypted WebRTC channel. Both devices must be online at the same time, but nothing is ever stored, cached, or logged by QuickBridge in the process.",
+  },
+  {
     q: "What is Wormhole?",
     a: "Wormhole is a browser-based file-sharing service operated by WebTorrent, LLC. You drop files into the page and share a link. Files are encrypted in your browser with AES-128-GCM via the Web Crypto API before they leave the device. Per Wormhole's FAQ, files up to 5 GB are stored on Wormhole's servers (Backblaze B2) for 24 hours so the link keeps working after you close the tab; files larger than 5 GB transfer peer-to-peer via WebTorrent. The Wormhole homepage advertises a 10 GB ceiling overall.",
   },

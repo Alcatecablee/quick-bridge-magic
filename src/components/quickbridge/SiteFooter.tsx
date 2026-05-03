@@ -116,7 +116,34 @@ export function SiteFooter() {
         </div>
       </div>
 
-      <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-border pt-6 text-[12px] text-muted-foreground sm:flex-row">
+      <div className="mt-10 flex flex-wrap items-center justify-center gap-4 border-t border-border pt-6 opacity-50">
+        <a
+          href="https://www.producthunt.com/products/quickbridge?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-quickbridge"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <img
+            alt="QuickBridge - Move files between your phone and PC instantly. No apps. | Product Hunt"
+            width="250"
+            height="54"
+            src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1138210&theme=dark&t=1777841949536"
+          />
+        </a>
+        <a
+          href="https://startupfa.me/s/quickbridge?utm_source=quickbridge.app"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <img
+            src="https://startupfa.me/badges/featured/dark-small-rounded.webp"
+            alt="QuickBridge - Featured on Startup Fame"
+            width="240"
+            height="37"
+          />
+        </a>
+      </div>
+
+      <div className="mt-4 flex flex-col items-center justify-between gap-3 border-t border-border pt-6 text-[12px] text-muted-foreground sm:flex-row">
         <p>
           © {new Date().getFullYear()} QuickBridge · End-to-end via WebRTC. Files
           never touch a server.

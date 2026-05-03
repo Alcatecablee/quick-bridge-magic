@@ -1,8 +1,19 @@
 import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import QRCode from 'qrcode';
 
 export function Scene6() {
   const [phase, setPhase] = useState(0);
+  const qrRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (!qrRef.current) return;
+    QRCode.toCanvas(qrRef.current, 'https://quickbridge.app', {
+      width: 88,
+      margin: 1,
+      color: { dark: '#0b0d12', light: '#ffffff' },
+    });
+  }, []);
 
   useEffect(() => {
     const timers = [
@@ -64,24 +75,32 @@ export function Scene6() {
         <span className="text-white/50">between your devices.</span>
       </motion.p>
 
-      {/* CTA pill */}
+      {/* CTA area: URL pill + scannable QR side by side */}
       <motion.div
-        className="mt-10 flex items-center gap-3 bg-[#22d3ee] px-8 py-4 rounded-2xl z-10 shadow-[0_10px_40px_-10px_rgba(34,211,238,0.6)]"
+        className="mt-10 z-10 flex items-center gap-6"
         initial={{ opacity: 0, scale: 0.88, y: 16 }}
         animate={phase >= 3 ? { opacity: 1, scale: 1, y: 0 } : {}}
         transition={{ type: 'spring', damping: 20, stiffness: 320 }}
       >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0b0d12" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="3" width="7" height="7" rx="1" />
-          <rect x="14" y="3" width="7" height="7" rx="1" />
-          <rect x="3" y="14" width="7" height="7" rx="1" />
-          <line x1="14" y1="14" x2="21" y2="14" />
-          <line x1="14" y1="18" x2="18" y2="18" />
-          <line x1="14" y1="21" x2="21" y2="21" />
-        </svg>
-        <span className="text-2xl font-black text-[#0b0d12] tracking-tight">
-          quickbridge.app
-        </span>
+        <div className="flex items-center gap-3 bg-[#22d3ee] px-8 py-4 rounded-2xl shadow-[0_10px_40px_-10px_rgba(34,211,238,0.6)]">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0b0d12" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" />
+            <line x1="14" y1="14" x2="21" y2="14" />
+            <line x1="14" y1="18" x2="18" y2="18" />
+            <line x1="14" y1="21" x2="21" y2="21" />
+          </svg>
+          <span className="text-2xl font-black text-[#0b0d12] tracking-tight">
+            quickbridge.app
+          </span>
+        </div>
+        <div className="flex flex-col items-center gap-1">
+          <div className="bg-white rounded-lg p-1">
+            <canvas ref={qrRef} width={88} height={88} style={{ width: 88, height: 88, display: 'block' }} />
+          </div>
+          <span className="text-[0.65vw] font-semibold uppercase tracking-widest text-white/40">Scan to open</span>
+        </div>
       </motion.div>
 
       <motion.p

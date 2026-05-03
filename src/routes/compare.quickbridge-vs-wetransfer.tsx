@@ -55,6 +55,10 @@ const SOURCES: { id: string; title: string; url: string; fetched: string }[] =
 
 const FAQ_ITEMS: { q: string; a: string }[] = [
   {
+    q: "What is QuickBridge?",
+    a: "QuickBridge is a browser-based peer-to-peer file transfer tool. Unlike WeTransfer, which uploads your file to its cloud servers and stores it there until the recipient downloads it, QuickBridge never uploads anything to a server. Files stream directly between two browsers over an encrypted WebRTC channel in real time, so both devices must be open during the transfer. No account, no storage limit, no link expiry, and no copy of your file ever sitting on someone else's infrastructure.",
+  },
+  {
     q: "What is WeTransfer?",
     a: "WeTransfer is a cloud-based file transfer service used by around 65 million people monthly across 155 countries. You upload files to WeTransfer's servers and they generate a download link that the recipient opens. Free accounts can send up to 3 GB per month across up to 10 transfers, with links expiring after 3 days. WeTransfer funds the free tier through advertising displayed as wallpaper backgrounds.",
   },

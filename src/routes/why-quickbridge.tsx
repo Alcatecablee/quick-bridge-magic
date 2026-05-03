@@ -33,6 +33,10 @@ const PAGE_OG_IMAGE = "https://quickbridge.app/og-why.png";
 
 const FAQ_ITEMS: { q: string; a: string }[] = [
   {
+    q: "What is QuickBridge?",
+    a: "QuickBridge is a browser-based file transfer tool that skips the upload step entirely. Instead of sending your file to a cloud server and waiting for the other side to download it, QuickBridge streams files directly from your browser to the recipient's browser over an encrypted WebRTC channel. No account, no app, no install. Open the page on both devices, scan a QR code, and you are connected. It supports any modern browser on any platform, handles files up to 10 GB with auto-save, and automatically reconnects if the network drops.",
+  },
+  {
     q: "Why is QuickBridge faster than email or cloud upload?",
     a: "Email and cloud tools upload your file to a server first, then download it on the other side. That doubles the transfer time and depends on the server's bandwidth. QuickBridge skips the server entirely - the file streams directly from one browser to the other, so it's limited only by your local network speed.",
   },

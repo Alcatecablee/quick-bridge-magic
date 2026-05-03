@@ -10,6 +10,7 @@ export function Scene4() {
       setTimeout(() => setPhase(2), 1000),
       setTimeout(() => setPhase(3), 2200),
       setTimeout(() => setPhase(4), 3300),
+      setTimeout(() => setPhase(5), 4800),
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
@@ -51,6 +52,22 @@ export function Scene4() {
         <p className="text-[1.4vw] text-white/55 mt-3 font-medium tracking-wide">
           No upload step. No middleman. Instant.
         </p>
+        <motion.div
+          className="mt-3 flex items-center justify-center gap-4"
+          initial={{ opacity: 0 }}
+          animate={phase >= 1 ? { opacity: 1 } : {}}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          {['android.png', 'ios.png', 'macos.png', 'windows.png', 'linux.png'].map(logo => (
+            <img
+              key={logo}
+              src={`${import.meta.env.BASE_URL}logos/${logo}`}
+              alt={logo.replace('.png', '')}
+              className="h-5 w-5 object-contain opacity-50"
+            />
+          ))}
+          <span className="text-[0.9vw] text-white/35 ml-1 font-medium">Any device. Any network.</span>
+        </motion.div>
       </div>
 
       <div className="relative w-full max-w-6xl mx-auto flex items-center justify-between px-20">
@@ -69,10 +86,34 @@ export function Scene4() {
               <line x1="12" y1="17" x2="12" y2="21" />
             </svg>
           </div>
+          {phase >= 5 && (
+            <motion.div
+              className="absolute inset-0 rounded-xl bg-[#22d3ee]/10 flex items-center justify-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4 }}
+            >
+              <div className="w-10 h-10 rounded-full bg-[#22d3ee] flex items-center justify-center">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0b0d12" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+            </motion.div>
+          )}
         </motion.div>
 
         {/* Bridge */}
         <div className="flex-1 h-32 relative mx-8 flex items-center justify-center">
+          <motion.div
+            className="absolute top-0 left-0 right-0 flex justify-center"
+            initial={{ opacity: 0 }}
+            animate={phase >= 1 ? { opacity: 1 } : {}}
+            transition={{ duration: 0.5 }}
+          >
+            <span className="text-[0.85vw] font-semibold text-[#22d3ee] bg-[#22d3ee]/10 px-3 py-1 rounded-full border border-[#22d3ee]/20">
+              Up to 10 GB per file
+            </span>
+          </motion.div>
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-full h-px bg-gradient-to-r from-transparent via-white/15 to-transparent rounded-full" />
           </div>
@@ -140,6 +181,20 @@ export function Scene4() {
               <line x1="12" y1="18" x2="12.01" y2="18" />
             </svg>
           </div>
+          {phase >= 5 && (
+            <motion.div
+              className="absolute inset-0 rounded-xl bg-[#22d3ee]/10 flex items-center justify-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4 }}
+            >
+              <div className="w-10 h-10 rounded-full bg-[#22d3ee] flex items-center justify-center">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0b0d12" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+            </motion.div>
+          )}
         </motion.div>
       </div>
     </motion.div>

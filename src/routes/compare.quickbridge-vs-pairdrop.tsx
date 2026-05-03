@@ -50,6 +50,10 @@ const SOURCES: { id: string; title: string; url: string; fetched: string }[] =
 
 const FAQ_ITEMS: { q: string; a: string }[] = [
   {
+    q: "What is QuickBridge?",
+    a: "QuickBridge is a browser-based peer-to-peer file transfer tool. It uses a single pairing flow for every scenario: scan a QR code or enter a 6-digit PIN on the other device, and the connection is established regardless of whether both devices share the same Wi-Fi or are on completely different networks. Files travel directly between browsers over an encrypted WebRTC channel with no server storage. No account, no app, and no ads.",
+  },
+  {
     q: "What is PairDrop?",
     a: "PairDrop is an open-source browser-based file sharing app (v1.11.2 at the time of this page) built as a fork of Snapdrop. It adds cross-network transfers to Snapdrop's local-network model, using persistent device pairing (6-digit PIN or QR code) and temporary public rooms (5-letter code or QR). Files travel over WebRTC; the signaling server is not involved in the transfer itself. When two devices cannot establish a direct WebRTC connection across a NAT, PairDrop routes traffic through its own TURN server. PairDrop is self-hostable via Docker or Node.js and has over 10,000 GitHub stars.",
   },

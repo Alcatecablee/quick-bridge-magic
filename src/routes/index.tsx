@@ -150,6 +150,14 @@ const HOME_FAQ_JSONLD = {
   mainEntity: [
     {
       "@type": "Question",
+      name: "What is QuickBridge?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "QuickBridge is a browser-based way to send files, text, links, and clipboard content between your devices. It works without apps, cables, accounts, or upload steps. Just open the page, scan a QR code, and your devices connect directly. Transfers are peer-to-peer, end-to-end encrypted, and never stored on a server. It supports cross-platform sharing between phones, PCs, Macs, Linux, Android, and iPhone, and works in any modern browser. You can send large files up to 10 GB with auto-save enabled, or 2 GB otherwise. It also includes auto-reconnect, TURN fallback for tricky networks, and optional clipboard syncing.",
+      },
+    },
+    {
+      "@type": "Question",
       name: "Where do my files go?",
       acceptedAnswer: {
         "@type": "Answer",
@@ -693,6 +701,9 @@ function Home() {
             {/* QR + actions: stack on mobile, side-by-side on sm+ */}
             <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-5">
               <div className="flex w-full max-w-[220px] shrink-0 flex-col items-center sm:w-[220px] sm:max-w-none">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-primary">
+                  {pairUrl ? "Step 1: Scan with your phone" : "Setting up…"}
+                </p>
                 {pairUrl ? (
                   <QrDisplay text={pairUrl} size={220} pulse={false} />
                 ) : (
@@ -702,7 +713,7 @@ function Home() {
                   </div>
                 )}
                 <p className="mt-2 text-[11px] font-medium text-muted-foreground">
-                  {pairUrl ? "Takes less than 5 seconds" : "Setting up session…"}
+                  {pairUrl ? "Connects in under 5 seconds" : "Almost ready…"}
                 </p>
               </div>
               <div className="flex w-full min-w-0 flex-1 flex-col gap-3">
@@ -1051,6 +1062,10 @@ function Home() {
             <div className="lg:col-span-3">
               <Accordion type="single" collapsible className="w-full">
                 {[
+                  {
+                    q: "What is QuickBridge?",
+                    a: "QuickBridge is a browser-based way to send files, text, links, and clipboard content between your devices. It works without apps, cables, accounts, or upload steps. Just open the page, scan a QR code, and your devices connect directly. Transfers are peer-to-peer, end-to-end encrypted, and never stored on a server. It supports cross-platform sharing between phones, PCs, Macs, Linux, Android, and iPhone, and works in any modern browser. You can send large files up to 10 GB with auto-save enabled, or 2 GB otherwise. It also includes auto-reconnect, TURN fallback for tricky networks, and optional clipboard syncing.",
+                  },
                   {
                     q: "Where do my files go?",
                     a: "Nowhere except the other device. Files travel directly between your two browsers over a WebRTC data channel encrypted with DTLS. No copy is stored on any QuickBridge server.",

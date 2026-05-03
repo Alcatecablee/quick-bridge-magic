@@ -65,6 +65,10 @@ const SOURCES: { id: string; title: string; url: string; fetched: string }[] = [
 
 const FAQ_ITEMS: { q: string; a: string }[] = [
   {
+    q: "What is QuickBridge?",
+    a: "QuickBridge is a browser-based peer-to-peer file transfer tool. Unlike AirDrop, which is restricted to Apple devices in close proximity, QuickBridge pairs any two devices with a modern browser using a QR code or PIN and works whether the devices are on the same Wi-Fi or on completely different networks. Files travel directly between browsers over a DTLS-encrypted WebRTC channel. No Apple account, no proximity requirement, no install.",
+  },
+  {
     q: "What is AirDrop and how does it work?",
     a: "AirDrop is Apple's built-in file-sharing feature for iPhone, iPad, Mac, and Vision Pro. Per Apple's Platform Security guide, it uses Bluetooth Low Energy to discover nearby Apple devices and Apple's own peer-to-peer Wi-Fi protocol (AWDL) to transfer the files directly - no internet connection or router needed. The data channel is encrypted with TLS, and identity is anchored to your iCloud account via a 2048-bit RSA key. Apple's macOS support page lists the working range as 30 feet (10 meters).",
   },

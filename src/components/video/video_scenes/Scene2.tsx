@@ -2,9 +2,9 @@ import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
 const CARDS = [
-  { label: "Email it to yourself", Icon: MailIcon },
-  { label: "Upload to the cloud", Icon: CloudIcon },
-  { label: "Plug in a cable", Icon: CableIcon },
+  { label: "Email it to yourself", sub: "Upload first. Then wait.", Icon: MailIcon },
+  { label: "Upload to the cloud", sub: "Download link. Expiry date. Size caps.", Icon: CloudIcon },
+  { label: "Plug in a cable", sub: "Wrong cable. Wrong port. Wrong OS.", Icon: CableIcon },
 ];
 
 export function Scene2() {
@@ -57,7 +57,10 @@ export function Scene2() {
               <div className="w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center text-white/55 shrink-0">
                 <card.Icon />
               </div>
-              <p className="text-[1.9vw] font-bold text-white leading-tight">{card.label}</p>
+              <div>
+                <p className="text-[1.9vw] font-bold text-white leading-tight">{card.label}</p>
+                <p className="text-[1.1vw] text-white/40 mt-0.5">{card.sub}</p>
+              </div>
             </motion.div>
           ))}
         </div>

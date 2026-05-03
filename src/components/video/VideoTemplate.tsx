@@ -11,8 +11,8 @@ const SCENE_DURATIONS = {
   hook: 3500,
   problem: 4000,
   solution: 5000,
-  transfer: 5000,
-  diff: 3500,
+  transfer: 6500,
+  diff: 4500,
   closer: 4500,
 };
 

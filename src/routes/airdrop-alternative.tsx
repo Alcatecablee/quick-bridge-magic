@@ -35,6 +35,10 @@ const PAGE_OG_IMAGE = "https://quickbridge.app/og-airdrop.png";
 
 const FAQ_ITEMS: { q: string; a: string }[] = [
   {
+    q: "What is QuickBridge?",
+    a: "QuickBridge is a browser-based file transfer tool that works as an AirDrop alternative for every platform AirDrop does not support. Where AirDrop is limited to Apple-to-Apple transfers in the same room, QuickBridge pairs any two devices with a modern browser using a QR code or 6-digit PIN and works across any network. Files travel directly between the two browsers over an encrypted WebRTC channel, so no copy is ever stored on a server. It supports Android, Windows, Linux, ChromeOS, iOS, and macOS with no app install required.",
+  },
+  {
     q: "Is QuickBridge a real AirDrop alternative for Android and Windows?",
     a: "Yes. AirDrop is an Apple-only protocol that works between iPhone, iPad, and Mac. Google's Quick Share added a one-way AirDrop bridge for Pixel 9 and Pixel 10 devices (February 2026), but that only covers Android-to-Apple transfers on specific Pixel hardware. If you have a Windows PC, an Android phone that isn't a Pixel 9/10, or need transfers in the other direction (Apple to Android), AirDrop still cannot help. QuickBridge works between any two devices with a modern browser (Android, Windows, Linux, ChromeOS, iOS, macOS) on any network.",
   },
