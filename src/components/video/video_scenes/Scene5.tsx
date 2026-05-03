@@ -1,11 +1,31 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
-const ITEMS = [
-  { label: "No accounts", Icon: PersonIcon, indent: "" },
-  { label: "No uploads", Icon: UploadIcon, indent: "pl-[10%]" },
-  { label: "Nothing stored", Icon: ServerIcon, indent: "pl-[20%]" },
-  { label: "End-to-end encrypted", Icon: LockIcon, indent: "pl-[30%]", emphasis: true },
+const PHRASES = [
+  {
+    text: 'No accounts.',
+    initial: { x: -280, opacity: 0 },
+    align: 'text-left',
+    color: 'text-white',
+  },
+  {
+    text: 'No uploads.',
+    initial: { x: 280, opacity: 0 },
+    align: 'text-right',
+    color: 'text-white/80',
+  },
+  {
+    text: 'Nothing stored.',
+    initial: { y: -200, opacity: 0 },
+    align: 'text-left pl-[12%]',
+    color: 'text-white/65',
+  },
+  {
+    text: 'End-to-end encrypted.',
+    initial: { y: 200, opacity: 0 },
+    align: 'text-right',
+    color: 'text-[#22d3ee]',
+  },
 ];
 
 export function Scene5() {
@@ -13,90 +33,39 @@ export function Scene5() {
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase(1), 150),
-      setTimeout(() => setPhase(2), 750),
-      setTimeout(() => setPhase(3), 1400),
-      setTimeout(() => setPhase(4), 2100),
+      setTimeout(() => setPhase(1), 200),
+      setTimeout(() => setPhase(2), 1200),
+      setTimeout(() => setPhase(3), 2300),
+      setTimeout(() => setPhase(4), 3500),
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
 
   return (
     <motion.div
-      className="absolute inset-0 bg-[#0b0d12] flex items-center justify-center"
+      className="absolute inset-0 bg-[#0b0d12] flex items-center justify-center overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 0.88, x: 40 }}
       transition={{ duration: 0.3 }}
     >
-      <div className="flex flex-col gap-10 w-full max-w-4xl px-12 relative z-10">
-        {ITEMS.map((item, i) => (
+      <div className="flex flex-col gap-2 w-full px-[6vw] relative z-10">
+        {PHRASES.map((phrase, i) => (
           <motion.div
-            key={item.label}
-            className={`flex items-center gap-8 ${item.indent}`}
-            initial={{ opacity: 0, x: -60, scale: 0.94 }}
-            animate={phase >= i + 1 ? { opacity: 1, x: 0, scale: 1 } : {}}
-            transition={{ type: 'spring', damping: 26, stiffness: 300 }}
+            key={phrase.text}
+            className={`w-full ${phrase.align}`}
+            initial={phrase.initial}
+            animate={phase >= i + 1 ? { x: 0, y: 0, opacity: 1 } : {}}
+            transition={{ type: 'spring', damping: 18, stiffness: 320 }}
           >
-            <div
-              className={`w-16 h-16 rounded-full bg-[#151821] border ${
-                item.emphasis
-                  ? 'border-[#22d3ee]/40 shadow-[0_0_24px_rgba(34,211,238,0.18)]'
-                  : 'border-white/10'
-              } flex items-center justify-center shrink-0`}
+            <span
+              className={`text-[7.5vw] font-black leading-none tracking-tighter ${phrase.color}`}
             >
-              <item.Icon />
-            </div>
-            <h2
-              className={`text-[4vw] font-black ${
-                item.emphasis ? 'text-[#22d3ee]' : 'text-white'
-              } leading-none tracking-tight`}
-            >
-              {item.label}
-            </h2>
+              {phrase.text}
+            </span>
           </motion.div>
         ))}
       </div>
     </motion.div>
-  );
-}
-
-function PersonIcon() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-      <line x1="3" y1="3" x2="21" y2="21" stroke="#ef4444" />
-    </svg>
-  );
-}
-
-function UploadIcon() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <polyline points="17 8 12 3 7 8" />
-      <line x1="12" y1="3" x2="12" y2="15" />
-      <line x1="3" y1="3" x2="21" y2="21" stroke="#ef4444" />
-    </svg>
-  );
-}
-
-function ServerIcon() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <ellipse cx="12" cy="5" rx="9" ry="3" />
-      <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
-      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
-    </svg>
-  );
-}
-
-function LockIcon() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="11" width="18" height="11" rx="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
   );
 }

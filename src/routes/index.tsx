@@ -571,14 +571,14 @@ function Home() {
             highlight, 13.5/15 lead at max-w-3xl). Don't change in isolation. */}
         <section className="mb-7 text-center sm:mb-10">
           <h1 className="text-balance tracking-tight text-foreground font-black text-[32px] sm:text-[40px] md:text-[60px]">
-            The fastest way to move files{" "}
-            <span className="text-muted-foreground">between your devices.</span>
+            Move files between any device,{" "}
+            <span className="text-muted-foreground">on any network.</span>
           </h1>
           <p className="mx-auto mt-3 max-w-3xl text-[13.5px] leading-relaxed text-muted-foreground sm:mt-4 sm:text-[15px]">
             No apps. No cables. No upload step. Nothing stored, nothing running in the background.
           </p>
           <p className="mx-auto mt-2 max-w-md text-balance text-[13px] font-medium text-foreground sm:text-[14px]">
-            Scan the QR with your phone to connect instantly.
+            Works across different networks. Direct when possible, securely relayed when needed.
           </p>
 
           {/* Visual flow: phone → QR → computer (one-glance "what happens if I use this") */}
@@ -907,7 +907,7 @@ function Home() {
               {
                 Art: P2PIllustration,
                 title: "Go device-to-device",
-                body: "Files travel directly between your two browsers. No detour through someone else's data center. Same Wi-Fi or across the world.",
+                body: "Works on the same Wi-Fi, across different networks, or over mobile data. Files travel directly between your two browsers with no data center in between.",
               },
               {
                 Art: NoServerIllustration,
@@ -931,7 +931,7 @@ function Home() {
             />
           </div>
           <p className="mx-auto mt-8 max-w-xl text-balance text-center text-[14.5px] font-medium text-foreground sm:text-[16px]">
-            Open. Scan. Send. The fastest way to move files between your devices.
+            Open. Scan. Send. Any device, any network, no setup required.
           </p>
           <div className="mt-5 flex justify-center">
             <Link
@@ -1032,7 +1032,7 @@ function Home() {
               {
                 Art: ResilientIllustration,
                 title: "Resilient by design",
-                body: "Auto-reconnect with exponential backoff, TURN fallback for strict networks, and live connection quality.",
+                body: "Reconnects automatically when your connection drops. Switches to relay mode if a corporate firewall blocks a direct path. Live status shows exactly what is happening.",
               },
             ].map(({ Art, title, body }) => (
               <Card

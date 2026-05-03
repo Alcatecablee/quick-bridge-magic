@@ -17,10 +17,11 @@ export function Scene6() {
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase(1), 150),  // logo + wordmark
-      setTimeout(() => setPhase(2), 850),  // tagline
-      setTimeout(() => setPhase(3), 1600), // CTA pill + subline
-      setTimeout(() => setPhase(4), 2400), // bottom microcopy
+      setTimeout(() => setPhase(1), 200),  // logo + wordmark
+      setTimeout(() => setPhase(2), 1100), // tagline
+      setTimeout(() => setPhase(3), 2100), // CTA pill + subline
+      setTimeout(() => setPhase(4), 3100), // bottom microcopy
+      setTimeout(() => setPhase(5), 4800), // punchline
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
@@ -119,6 +120,15 @@ export function Scene6() {
         transition={{ duration: 0.8 }}
       >
         Free. Forever. No signup.
+      </motion.p>
+
+      <motion.p
+        className="absolute top-10 text-white/25 text-[0.9vw] italic z-10"
+        initial={{ opacity: 0 }}
+        animate={phase >= 5 ? { opacity: 1 } : {}}
+        transition={{ duration: 1 }}
+      >
+        It's just a website.
       </motion.p>
     </motion.div>
   );

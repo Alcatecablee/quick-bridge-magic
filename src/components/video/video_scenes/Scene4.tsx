@@ -7,10 +7,10 @@ export function Scene4() {
   useEffect(() => {
     const timers = [
       setTimeout(() => setPhase(1), 200),
-      setTimeout(() => setPhase(2), 1000),
-      setTimeout(() => setPhase(3), 2200),
-      setTimeout(() => setPhase(4), 3300),
-      setTimeout(() => setPhase(5), 4800),
+      setTimeout(() => setPhase(2), 1200),
+      setTimeout(() => setPhase(3), 2800),
+      setTimeout(() => setPhase(4), 4300),
+      setTimeout(() => setPhase(5), 6200),
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
@@ -160,8 +160,11 @@ export function Scene4() {
               animate={{ left: "0%", scale: 1.1, opacity: [0, 1, 1, 0], y: 0 }}
               transition={{ duration: 1.2, ease: "easeInOut" }}
             >
-              <div className="px-6 py-3 bg-[#22d3ee] text-black font-bold rounded-full shadow-lg whitespace-nowrap">
-                Meeting notes.txt
+              <div className="flex flex-col items-center">
+                <div className="px-5 py-2.5 bg-[#22d3ee] text-black font-bold rounded-full shadow-lg whitespace-nowrap text-[1.1vw]">
+                  raw_footage.mp4
+                </div>
+                <span className="text-white/40 text-[0.8vw] mt-1 font-mono">2.1 GB</span>
               </div>
             </motion.div>
           )}

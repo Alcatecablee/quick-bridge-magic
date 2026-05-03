@@ -6,20 +6,20 @@ export function Scene1() {
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase(1), 100),
-      setTimeout(() => setPhase(2), 550),
-      setTimeout(() => setPhase(3), 1050),
-      setTimeout(() => setPhase(4), 1800),
+      setTimeout(() => setPhase(1), 120),
+      setTimeout(() => setPhase(2), 900),
+      setTimeout(() => setPhase(3), 1700),
+      setTimeout(() => setPhase(4), 3000),
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
 
   return (
     <motion.div
-      className="absolute inset-0 flex flex-col items-center justify-center bg-[#0b0d12]"
+      className="absolute inset-0 flex items-center justify-center bg-[#0b0d12] overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 1.08, filter: "brightness(0.3)" }}
+      exit={{ opacity: 0, scale: 1.08, filter: 'brightness(0.3)' }}
       transition={{ duration: 0.3 }}
     >
       <div className="absolute inset-0 z-0">
@@ -30,58 +30,56 @@ export function Scene1() {
         />
       </div>
 
-      {/* Brand mark intro */}
-      <motion.img
-        src={`${import.meta.env.BASE_URL}brand/quickbridge-logo.png`}
-        alt="QuickBridge"
-        className="relative z-10 h-16 w-16 mb-8 object-contain"
-        initial={{ opacity: 0, scale: 0.7, y: -16 }}
-        animate={phase >= 1 ? { opacity: 1, scale: 1, y: 0 } : {}}
-        transition={{ type: 'spring', damping: 20, stiffness: 320 }}
-      />
-
-      <div className="relative z-10 text-center px-12" style={{ perspective: '1000px' }}>
-        <h1 className="text-[5.4vw] font-black tracking-tight leading-[1.05] text-white">
-          <motion.span
-            className="inline-block"
-            initial={{ opacity: 0, y: 40, scale: 0.95 }}
-            animate={phase >= 2 ? { opacity: 1, y: 0, scale: 1 } : {}}
-            transition={{ type: 'spring', damping: 24, stiffness: 320 }}
+      <div className="relative z-10 w-full px-[8vw]">
+        <div className="overflow-hidden">
+          <motion.div
+            className="text-[15vw] font-black text-white leading-none tracking-tighter"
+            initial={{ y: '105%' }}
+            animate={phase >= 1 ? { y: '0%' } : {}}
+            transition={{ type: 'spring', damping: 20, stiffness: 380 }}
           >
-            The fastest way to move files
-          </motion.span>
-          <br />
-          <motion.span
-            className="inline-block text-white/55"
-            initial={{ opacity: 0, y: 40, scale: 0.95 }}
-            animate={phase >= 3 ? { opacity: 1, y: 0, scale: 1 } : {}}
-            transition={{ type: 'spring', damping: 24, stiffness: 320 }}
-          >
-            between your devices.
-          </motion.span>
-        </h1>
+            OPEN.
+          </motion.div>
+        </div>
 
-        <motion.p
-          className="mt-8 text-[1.6vw] font-semibold tracking-[0.18em] uppercase text-[#22d3ee]"
-          initial={{ opacity: 0, y: 10, letterSpacing: '0.05em' }}
-          animate={phase >= 4 ? { opacity: 1, y: 0, letterSpacing: '0.18em' } : {}}
-          transition={{ duration: 0.35 }}
+        <div className="overflow-hidden flex justify-end">
+          <motion.div
+            className="text-[15vw] font-black text-white/60 leading-none tracking-tighter"
+            initial={{ y: '105%' }}
+            animate={phase >= 2 ? { y: '0%' } : {}}
+            transition={{ type: 'spring', damping: 20, stiffness: 380 }}
+          >
+            SCAN.
+          </motion.div>
+        </div>
+
+        <div className="overflow-hidden">
+          <motion.div
+            className="text-[15vw] font-black text-[#22d3ee] leading-none tracking-tighter"
+            initial={{ y: '105%' }}
+            animate={phase >= 3 ? { y: '0%' } : {}}
+            transition={{ type: 'spring', damping: 20, stiffness: 380 }}
+          >
+            SEND.
+          </motion.div>
+        </div>
+
+        <motion.div
+          className="flex items-center gap-3 mt-10"
+          initial={{ opacity: 0 }}
+          animate={phase >= 4 ? { opacity: 1 } : {}}
+          transition={{ duration: 0.7 }}
         >
-          Open. Scan. Send.
-        </motion.p>
+          <img
+            src={`${import.meta.env.BASE_URL}brand/quickbridge-logo.png`}
+            alt="QuickBridge"
+            className="h-9 w-9 object-contain opacity-70"
+          />
+          <span className="text-white/30 text-[1.4vw] font-semibold tracking-[0.25em] uppercase">
+            quickbridge.app
+          </span>
+        </motion.div>
       </div>
-
-      {/* Subtle floating accent */}
-      <motion.div
-        className="absolute w-32 h-32 border border-[#22d3ee]/15 rounded-full z-0"
-        animate={{
-          y: [-20, 20, -20],
-          rotate: [0, 180, 360],
-          scale: [1, 1.1, 1]
-        }}
-        transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
-        style={{ top: '18%', left: '12%' }}
-      />
     </motion.div>
   );
 }

@@ -145,8 +145,7 @@ export function SiteFooter() {
 
       <div className="mt-4 flex flex-col items-center justify-between gap-3 border-t border-border pt-6 text-[12px] text-muted-foreground sm:flex-row">
         <p>
-          © {new Date().getFullYear()} QuickBridge · End-to-end via WebRTC. Files
-          never touch a server.
+          © {new Date().getFullYear()} QuickBridge · End-to-end encrypted. Direct when possible, securely relayed when needed.
         </p>
         <div className="flex items-center gap-4">
           <Link

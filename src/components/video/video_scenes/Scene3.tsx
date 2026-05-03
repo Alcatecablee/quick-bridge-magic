@@ -7,10 +7,10 @@ export function Scene3() {
   useEffect(() => {
     const timers = [
       setTimeout(() => setPhase(1), 200),  // QR draws
-      setTimeout(() => setPhase(2), 900),  // browser settles + phone slides in
-      setTimeout(() => setPhase(3), 1700), // scan line active
-      setTimeout(() => setPhase(4), 2600), // burst + connected
-      setTimeout(() => setPhase(5), 4200),
+      setTimeout(() => setPhase(2), 1100), // browser settles + phone slides in
+      setTimeout(() => setPhase(3), 2200), // scan line active
+      setTimeout(() => setPhase(4), 3400), // burst + connected
+      setTimeout(() => setPhase(5), 5000),
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);

@@ -8,12 +8,12 @@ import { Scene5 } from './video_scenes/Scene5';
 import { Scene6 } from './video_scenes/Scene6';
 
 const SCENE_DURATIONS = {
-  hook: 3500,
-  problem: 4000,
-  solution: 5000,
-  transfer: 6500,
-  diff: 4500,
-  closer: 4500,
+  hook: 4500,
+  problem: 5000,
+  solution: 5500,
+  transfer: 7500,
+  diff: 5500,
+  closer: 6000,
 };
 
 export default function VideoTemplate() {

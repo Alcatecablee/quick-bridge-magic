@@ -1,10 +1,31 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
-const CARDS = [
-  { label: "Email it to yourself", sub: "Upload first. Then wait.", Icon: MailIcon },
-  { label: "Upload to the cloud", sub: "Download link. Expiry date. Size caps.", Icon: CloudIcon },
-  { label: "Plug in a cable", sub: "Wrong cable. Wrong port. Wrong OS.", Icon: CableIcon },
+const ERRORS = [
+  {
+    from: 'Email client',
+    status: 'Attachment blocked',
+    message: 'File exceeds 25 MB limit.',
+    detail: 'Your file: 3.7 GB',
+    color: '#ef4444',
+    progress: null as number | null,
+  },
+  {
+    from: 'Cloud storage',
+    status: 'Upload interrupted',
+    message: 'Connection lost at 67%.',
+    detail: 'Retry when signal improves',
+    color: '#f59e0b',
+    progress: 67 as number | null,
+  },
+  {
+    from: 'USB transfer',
+    status: 'Device not recognized',
+    message: 'No compatible driver found.',
+    detail: 'Requires USB-C to USB-A adapter',
+    color: '#64748b',
+    progress: null as number | null,
+  },
 ];
 
 export function Scene2() {
@@ -12,109 +33,64 @@ export function Scene2() {
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase(1), 150),
-      setTimeout(() => setPhase(2), 750),
-      setTimeout(() => setPhase(3), 1350),
-      setTimeout(() => setPhase(4), 2100),
+      setTimeout(() => setPhase(1), 200),
+      setTimeout(() => setPhase(2), 1400),
+      setTimeout(() => setPhase(3), 2700),
+      setTimeout(() => setPhase(4), 3800),
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
 
   return (
     <motion.div
-      className="absolute inset-0 bg-[#0b0d12] flex items-center justify-center overflow-hidden"
-      initial={{ clipPath: "circle(0% at 50% 50%)" }}
-      animate={{ clipPath: "circle(150% at 50% 50%)" }}
-      exit={{ opacity: 0, scale: 0.92, x: -30 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      className="absolute inset-0 bg-[#0b0d12] flex items-center justify-center"
+      initial={{ opacity: 0, x: -80 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 80 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
     >
-      <motion.div
-        className="absolute inset-0"
-        animate={{ scale: [1.08, 1] }}
-        transition={{ duration: 7, ease: "linear" }}
-      >
-        <img
-          src={`${import.meta.env.BASE_URL}images/problem-clutter.png`}
-          className="w-full h-full object-cover opacity-30 grayscale"
-          alt=""
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0b0d12] via-[#0b0d12]/60 to-[#0b0d12]" />
-      </motion.div>
-
-      <div className="relative z-10 w-full max-w-6xl flex justify-between items-center px-20 gap-12">
-        <div className="flex flex-col gap-5 w-1/2">
-          <p className="text-sm font-bold uppercase tracking-[0.22em] text-white/40">
-            The old way
-          </p>
-          {CARDS.map((card, i) => (
-            <motion.div
-              key={card.label}
-              className="bg-[#151821]/85 backdrop-blur-md border border-white/10 px-6 py-5 rounded-2xl flex items-center gap-4"
-              initial={{ opacity: 0, x: -60, scale: 0.95 }}
-              animate={phase >= i + 1 ? { opacity: 1, x: 0, scale: 1 } : {}}
-              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-            >
-              <div className="w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center text-white/55 shrink-0">
-                <card.Icon />
-              </div>
-              <div>
-                <p className="text-[1.9vw] font-bold text-white leading-tight">{card.label}</p>
-                <p className="text-[1.1vw] text-white/40 mt-0.5">{card.sub}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        <div className="w-1/2 flex flex-col justify-center items-end gap-3">
-          <motion.p
-            className="text-[1.4vw] font-medium text-white/55 text-right tracking-wide"
-            initial={{ opacity: 0 }}
-            animate={phase >= 4 ? { opacity: 1 } : {}}
-            transition={{ duration: 0.6 }}
+      <div className="flex flex-col gap-4 w-full max-w-2xl px-12 relative z-10">
+        {ERRORS.map((err, i) => (
+          <motion.div
+            key={err.from}
+            className="w-full bg-[#0e1018] rounded-xl p-5 font-mono"
+            style={{ borderLeftWidth: 3, borderLeftColor: err.color, borderLeftStyle: 'solid' }}
+            initial={{ opacity: 0, x: -60, scale: 0.97 }}
+            animate={phase >= i + 1 ? { opacity: 1, x: 0, scale: 1 } : {}}
+            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
           >
-            Slow. Fiddly. Unnecessary.
-          </motion.p>
-          <motion.h2
-            className="text-[5.5vw] font-black text-[#22d3ee] leading-[0.9] text-right tracking-tight"
-            initial={{ opacity: 0, scale: 0.85 }}
-            animate={phase >= 4 ? { opacity: 1, scale: 1 } : {}}
-            transition={{ type: 'spring', damping: 16, stiffness: 200 }}
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[1.1vw] font-bold" style={{ color: err.color }}>
+                {err.status}
+              </span>
+              <span className="ml-auto text-white/20 text-[0.85vw]">{err.from}</span>
+            </div>
+            <p className="text-[1.25vw] text-white/80">{err.message}</p>
+            {err.progress !== null && (
+              <div className="mt-2 mb-1 h-1.5 bg-white/8 rounded-full overflow-hidden w-40">
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${err.progress}%`, backgroundColor: err.color }}
+                />
+              </div>
+            )}
+            <p className="text-[0.9vw] text-white/25 mt-1">{err.detail}</p>
+          </motion.div>
+        ))}
+
+        {phase >= 4 && (
+          <motion.div
+            className="mt-4 text-left"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45 }}
           >
-            No more.
-          </motion.h2>
-        </div>
+            <span className="text-[4.5vw] font-black text-white/90 tracking-tight">
+              No more.
+            </span>
+          </motion.div>
+        )}
       </div>
     </motion.div>
-  );
-}
-
-function MailIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <polyline points="3 7 12 13 21 7" />
-    </svg>
-  );
-}
-
-function CloudIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
-      <polyline points="9 13 12 10 15 13" />
-      <line x1="12" y1="10" x2="12" y2="17" />
-    </svg>
-  );
-}
-
-function CableIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 12h5" />
-      <path d="M17 12h5" />
-      <rect x="7" y="8" width="10" height="8" rx="2" />
-      <path d="M10 8V5" />
-      <path d="M14 8V5" />
-    </svg>
   );
 }
