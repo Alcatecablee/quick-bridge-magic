@@ -118,6 +118,7 @@ function JoinPage() {
         <Card className="space-y-4 p-5">
           <Input
             ref={inputRef}
+            type="text"
             inputMode="numeric"
             autoComplete="one-time-code"
             pattern="[0-9]*"

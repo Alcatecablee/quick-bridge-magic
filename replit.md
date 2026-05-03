@@ -188,3 +188,20 @@ The site's marketing surface (homepage + `/why-quickbridge`, `/airdrop-alternati
 **Build-time SEO gate:** `quickbridge/scripts/seo-lint.mjs` parses every prerendered HTML file in `dist/client/` and fails the build on title/description length, h1 uniqueness, heading-hierarchy skips, canonical mismatch, missing/invalid JSON-LD, or cross-page title/description duplication. Wired into `postbuild` (runs before `indexnow-submit.mjs`). Standalone: `npm run seo:lint`.
 
 **Source-citation policy:** No competitor fact ships on a compare or use-case page without a real, recently-fetched URL. Each page stores its sources inline. The Wormhole deep-research summary failed verification on day one ("10 GB free, WebTorrent" vs the actual "5 GB cloud, P2P above that") - exactly the failure mode the policy prevents.
+
+## Real product screenshots (2026-05-03)
+
+18 real app screenshots captured across the full session lifecycle (Waiting → Connecting → Paired → Live → Sending → Sent → Connection lost; desktop + mobile) and placed in `quickbridge/public/screenshots/` with URL-safe names.
+
+Integrated across the site:
+
+| Page | Placement | Screenshot |
+|---|---|---|
+| `index.tsx` | After "Why QuickBridge" 3-card grid, before the "Open. Scan. Send." tagline | `live-full.png` — full live session |
+| `why-quickbridge.tsx` | Below the "How it works in 5 seconds" step-cards | `qr-code-mobile.png`, `paired.png`, `sending.png` — 3-col strip matching each step |
+| `airdrop-alternative.tsx` | Below the solution step-cards | `qr-code-mobile.png` (phone) + `sending.png` (desktop) side-by-side |
+| `compare.quickbridge-vs-airdrop.tsx` | After the comparison table, before the verdict | `sent.png` — real 169 MB / 40.6 s transfer proof |
+| `help.tsx` | Below `TransferFlowInfographic` | 4-step strip: `qr-code.png` → `connecting.png` → `paired.png` → `sending.png` |
+| `help.tsx` | After Troubleshooting FAQ accordion | `connection-lost.png` — shows reconnecting screen in context |
+
+Design rules: `rounded-xl border border-border shadow-sm`, `loading="lazy"`, `object-cover object-top` for thumbnails, `w-full` for full-width. Captions via `border-t border-border bg-muted/20` footer strip. Dark screenshots blend naturally with the dark site.

@@ -12,10 +12,10 @@ export function Scene2() {
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase(1), 500),
-      setTimeout(() => setPhase(2), 1700),
-      setTimeout(() => setPhase(3), 2900),
-      setTimeout(() => setPhase(4), 4400),
+      setTimeout(() => setPhase(1), 150),
+      setTimeout(() => setPhase(2), 750),
+      setTimeout(() => setPhase(3), 1350),
+      setTimeout(() => setPhase(4), 2100),
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
@@ -25,8 +25,8 @@ export function Scene2() {
       className="absolute inset-0 bg-[#0b0d12] flex items-center justify-center overflow-hidden"
       initial={{ clipPath: "circle(0% at 50% 50%)" }}
       animate={{ clipPath: "circle(150% at 50% 50%)" }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+      exit={{ opacity: 0, scale: 0.92, x: -30 }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
     >
       <motion.div
         className="absolute inset-0"
@@ -50,9 +50,9 @@ export function Scene2() {
             <motion.div
               key={card.label}
               className="bg-[#151821]/85 backdrop-blur-md border border-white/10 px-6 py-5 rounded-2xl flex items-center gap-4"
-              initial={{ opacity: 0, x: -50 }}
-              animate={phase >= i + 1 ? { opacity: 1, x: 0 } : {}}
-              transition={{ type: 'spring', damping: 25, stiffness: 180 }}
+              initial={{ opacity: 0, x: -60, scale: 0.95 }}
+              animate={phase >= i + 1 ? { opacity: 1, x: 0, scale: 1 } : {}}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
             >
               <div className="w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center text-white/55 shrink-0">
                 <card.Icon />

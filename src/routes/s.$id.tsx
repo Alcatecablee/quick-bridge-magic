@@ -1,8 +1,9 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "@/components/quickbridge/icons";
 import { AppHeader } from "@/components/quickbridge/Wordmark";
 import { SessionSkeleton } from "@/components/quickbridge/SessionSkeleton";
+import { supabase } from "@/integrations/supabase/client";
 
 const Session = lazy(() =>
   import("@/components/quickbridge/Session").then((m) => ({ default: m.Session }))
@@ -21,6 +22,13 @@ export const Route = createFileRoute("/s/$id")({
 
 function GuestSession() {
   const { id } = Route.useParams();
+
+  useEffect(() => {
+    // Fire-and-forget: count this QR scan. Errors are intentionally swallowed
+    // so a missing table or network failure never surfaces to the guest.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).rpc("increment_qr_scan").then(() => {});
+  }, []);
 
   return (
     <div className="relative min-h-screen overflow-hidden">

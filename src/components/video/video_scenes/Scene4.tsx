@@ -6,11 +6,10 @@ export function Scene4() {
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase(1), 500),
-      setTimeout(() => setPhase(2), 2000),
-      setTimeout(() => setPhase(3), 4000),
-      setTimeout(() => setPhase(4), 6000),
-      setTimeout(() => setPhase(5), 9000),
+      setTimeout(() => setPhase(1), 200),
+      setTimeout(() => setPhase(2), 1000),
+      setTimeout(() => setPhase(3), 2200),
+      setTimeout(() => setPhase(4), 3300),
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
@@ -18,27 +17,27 @@ export function Scene4() {
   return (
     <motion.div
       className="absolute inset-0 bg-[#0b0d12] flex items-center justify-center overflow-hidden"
-      initial={{ opacity: 0, scale: 1.05 }}
+      initial={{ opacity: 0, scale: 1.04 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, filter: "blur(10px)" }}
-      transition={{ duration: 0.8 }}
+      exit={{ opacity: 0, filter: "blur(8px)", scale: 0.97 }}
+      transition={{ duration: 0.35 }}
     >
       {/* Background data flow */}
       <div className="absolute inset-0 opacity-20">
-        {Array.from({ length: 18 }).map((_, i) => (
+        {Array.from({ length: 6 }).map((_, i) => (
           <motion.div
             key={i}
             className="absolute h-[1px] bg-[#22d3ee]"
             style={{
-              top: `${(i * 5.5 + 8) % 95}%`,
+              top: `${15 + i * 14}%`,
               left: 0,
-              width: `${20 + (i * 7) % 30}%`
+              width: `${25 + (i * 11) % 30}%`
             }}
             animate={{ x: ['-100vw', '100vw'] }}
             transition={{
-              duration: 2 + (i % 3),
+              duration: 2.5 + (i % 3) * 0.8,
               repeat: Infinity,
-              delay: (i * 0.13) % 2,
+              delay: i * 0.35,
               ease: "linear"
             }}
           />

@@ -8,12 +8,12 @@ import { Scene5 } from './video_scenes/Scene5';
 import { Scene6 } from './video_scenes/Scene6';
 
 const SCENE_DURATIONS = {
-  hook: 6000,
-  problem: 7000,
-  solution: 9000,
-  transfer: 10000,
-  diff: 8000,
-  closer: 10000,
+  hook: 3500,
+  problem: 4000,
+  solution: 5000,
+  transfer: 5000,
+  diff: 3500,
+  closer: 4500,
 };
 
 export default function VideoTemplate() {
@@ -21,17 +21,11 @@ export default function VideoTemplate() {
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-[#0b0d12] text-white" style={{ fontFamily: 'Inter, sans-serif' }}>
-      {/* Persistent Background */}
-      <div className="absolute inset-0">
-        <motion.div 
-          className="absolute w-[80vw] h-[80vw] rounded-full opacity-10 blur-[100px]"
-          style={{ background: 'radial-gradient(circle, #22d3ee, transparent)' }}
-          animate={{ 
-            x: ['-20%', '20%', '-10%'], 
-            y: ['-20%', '10%', '-30%'],
-            scale: [1, 1.2, 0.9]
-          }}
-          transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
+      {/* Persistent Background — static gradient, no animation to avoid GPU blur cost on mobile */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div
+          className="absolute w-[55vw] h-[55vw] rounded-full opacity-[0.08] blur-[70px]"
+          style={{ background: 'radial-gradient(circle, #22d3ee, transparent)', top: '5%', left: '5%' }}
         />
       </div>
 

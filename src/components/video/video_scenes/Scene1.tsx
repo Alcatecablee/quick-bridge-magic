@@ -6,10 +6,10 @@ export function Scene1() {
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase(1), 300),
-      setTimeout(() => setPhase(2), 1200),
-      setTimeout(() => setPhase(3), 2300),
-      setTimeout(() => setPhase(4), 3600),
+      setTimeout(() => setPhase(1), 100),
+      setTimeout(() => setPhase(2), 550),
+      setTimeout(() => setPhase(3), 1050),
+      setTimeout(() => setPhase(4), 1800),
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
@@ -19,8 +19,8 @@ export function Scene1() {
       className="absolute inset-0 flex flex-col items-center justify-center bg-[#0b0d12]"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 1.05, filter: "brightness(0.5)" }}
-      transition={{ duration: 0.8 }}
+      exit={{ opacity: 0, scale: 1.08, filter: "brightness(0.3)" }}
+      transition={{ duration: 0.3 }}
     >
       <div className="absolute inset-0 z-0">
         <img
@@ -35,27 +35,27 @@ export function Scene1() {
         src={`${import.meta.env.BASE_URL}brand/quickbridge-logo.png`}
         alt="QuickBridge"
         className="relative z-10 h-16 w-16 mb-8 object-contain"
-        initial={{ opacity: 0, scale: 0.85, y: -10 }}
+        initial={{ opacity: 0, scale: 0.7, y: -16 }}
         animate={phase >= 1 ? { opacity: 1, scale: 1, y: 0 } : {}}
-        transition={{ type: 'spring', damping: 18, stiffness: 200 }}
+        transition={{ type: 'spring', damping: 20, stiffness: 320 }}
       />
 
       <div className="relative z-10 text-center px-12" style={{ perspective: '1000px' }}>
         <h1 className="text-[5.4vw] font-black tracking-tight leading-[1.05] text-white">
           <motion.span
             className="inline-block"
-            initial={{ opacity: 0, y: 30 }}
-            animate={phase >= 2 ? { opacity: 1, y: 0 } : {}}
-            transition={{ type: 'spring', damping: 22, stiffness: 200 }}
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            animate={phase >= 2 ? { opacity: 1, y: 0, scale: 1 } : {}}
+            transition={{ type: 'spring', damping: 24, stiffness: 320 }}
           >
             The fastest way to move files
           </motion.span>
           <br />
           <motion.span
             className="inline-block text-white/55"
-            initial={{ opacity: 0, y: 30 }}
-            animate={phase >= 3 ? { opacity: 1, y: 0 } : {}}
-            transition={{ type: 'spring', damping: 22, stiffness: 200 }}
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            animate={phase >= 3 ? { opacity: 1, y: 0, scale: 1 } : {}}
+            transition={{ type: 'spring', damping: 24, stiffness: 320 }}
           >
             between your devices.
           </motion.span>
@@ -63,9 +63,9 @@ export function Scene1() {
 
         <motion.p
           className="mt-8 text-[1.6vw] font-semibold tracking-[0.18em] uppercase text-[#22d3ee]"
-          initial={{ opacity: 0, y: 12 }}
-          animate={phase >= 4 ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
+          initial={{ opacity: 0, y: 10, letterSpacing: '0.05em' }}
+          animate={phase >= 4 ? { opacity: 1, y: 0, letterSpacing: '0.18em' } : {}}
+          transition={{ duration: 0.35 }}
         >
           Open. Scan. Send.
         </motion.p>

@@ -6,10 +6,10 @@ export function Scene6() {
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase(1), 400),  // logo + wordmark
-      setTimeout(() => setPhase(2), 1500), // tagline
-      setTimeout(() => setPhase(3), 2600), // CTA pill + subline
-      setTimeout(() => setPhase(4), 3800), // bottom microcopy
+      setTimeout(() => setPhase(1), 150),  // logo + wordmark
+      setTimeout(() => setPhase(2), 850),  // tagline
+      setTimeout(() => setPhase(3), 1600), // CTA pill + subline
+      setTimeout(() => setPhase(4), 2400), // bottom microcopy
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
@@ -20,7 +20,7 @@ export function Scene6() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 1 }}
+      transition={{ duration: 0.4 }}
     >
       {/* Soft brand glow */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#22d3ee]/12 via-[#0b0d12] to-[#0b0d12] opacity-60" />
@@ -37,9 +37,9 @@ export function Scene6() {
       {/* Logo + wordmark, real brand assets */}
       <motion.div
         className="flex items-center gap-5 mb-10 z-10"
-        initial={{ scale: 0.85, opacity: 0, y: 20 }}
+        initial={{ scale: 0.75, opacity: 0, y: 24 }}
         animate={phase >= 1 ? { scale: 1, opacity: 1, y: 0 } : {}}
-        transition={{ type: 'spring', damping: 18, stiffness: 200 }}
+        transition={{ type: 'spring', damping: 20, stiffness: 320 }}
       >
         <img
           src={`${import.meta.env.BASE_URL}brand/quickbridge-logo.png`}
@@ -67,9 +67,9 @@ export function Scene6() {
       {/* CTA pill */}
       <motion.div
         className="mt-10 flex items-center gap-3 bg-[#22d3ee] px-8 py-4 rounded-2xl z-10 shadow-[0_10px_40px_-10px_rgba(34,211,238,0.6)]"
-        initial={{ opacity: 0, scale: 0.9, y: 14 }}
+        initial={{ opacity: 0, scale: 0.88, y: 16 }}
         animate={phase >= 3 ? { opacity: 1, scale: 1, y: 0 } : {}}
-        transition={{ type: 'spring', damping: 18, stiffness: 200 }}
+        transition={{ type: 'spring', damping: 20, stiffness: 320 }}
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0b0d12" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="7" height="7" rx="1" />

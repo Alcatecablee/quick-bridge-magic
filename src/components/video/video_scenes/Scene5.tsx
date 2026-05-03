@@ -12,9 +12,9 @@ export function Scene5() {
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase(1), 500),
-      setTimeout(() => setPhase(2), 1500),
-      setTimeout(() => setPhase(3), 2700),
+      setTimeout(() => setPhase(1), 150),
+      setTimeout(() => setPhase(2), 750),
+      setTimeout(() => setPhase(3), 1400),
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
@@ -24,17 +24,17 @@ export function Scene5() {
       className="absolute inset-0 bg-[#0b0d12] flex items-center justify-center"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      transition={{ duration: 0.8 }}
+      exit={{ opacity: 0, scale: 0.88, x: 40 }}
+      transition={{ duration: 0.3 }}
     >
       <div className="flex flex-col gap-10 w-full max-w-4xl px-12 relative z-10">
         {ITEMS.map((item, i) => (
           <motion.div
             key={item.label}
             className={`flex items-center gap-8 ${item.indent}`}
-            initial={{ opacity: 0, x: -50 }}
-            animate={phase >= i + 1 ? { opacity: 1, x: 0 } : {}}
-            transition={{ type: 'spring', damping: 20 }}
+            initial={{ opacity: 0, x: -60, scale: 0.94 }}
+            animate={phase >= i + 1 ? { opacity: 1, x: 0, scale: 1 } : {}}
+            transition={{ type: 'spring', damping: 26, stiffness: 300 }}
           >
             <div
               className={`w-16 h-16 rounded-full bg-[#151821] border ${

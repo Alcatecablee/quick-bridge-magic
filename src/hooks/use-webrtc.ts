@@ -1315,7 +1315,20 @@ export function useWebRTC(sessionId: string, isInitiator: boolean, deviceName?: 
       }
     });
 
+    // Immediately remove presence when the tab is closed or navigated away so
+    // the other side detects the disconnection within milliseconds rather than
+    // waiting for Supabase's heartbeat timeout (10-30 s). Without this, a
+    // guest closing the tab and immediately re-opening the session URL would
+    // trigger the multi-guest lock (two stale+new entries → bridgeBusy) and
+    // be blocked from reconnecting. pagehide is used instead of beforeunload
+    // because it fires on iOS, back-forward cache entries, and tab close alike.
+    const onPageHide = () => {
+      try { void channel.untrack(); } catch {}
+    };
+    window.addEventListener("pagehide", onPageHide);
+
     return () => {
+      window.removeEventListener("pagehide", onPageHide);
       aborted = true;
       stopHelloRetries();
       if (connectTimerRef.current) {

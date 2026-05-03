@@ -276,6 +276,22 @@ function HelpPage() {
           <div className="mt-6">
             <TransferFlowInfographic />
           </div>
+          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {([
+              { src: "/screenshots/qr-code.png", step: "Step 1", label: "Open QuickBridge — QR is ready" },
+              { src: "/screenshots/connecting.png", step: "Step 2", label: "Other device scans and connects" },
+              { src: "/screenshots/paired.png", step: "Step 3", label: "Paired — verify the emoji code" },
+              { src: "/screenshots/sending.png", step: "Step 4", label: "Drop files to start streaming" },
+            ] as { src: string; step: string; label: string }[]).map(({ src, step, label }) => (
+              <div key={step} className="overflow-hidden rounded-xl border border-border shadow-sm">
+                <img src={src} alt={`${step}: ${label}`} className="w-full object-cover object-top" loading="lazy" />
+                <div className="border-t border-border bg-muted/20 px-3 py-2">
+                  <span className="block text-[10.5px] font-semibold uppercase tracking-wider text-primary">{step}</span>
+                  <span className="mt-0.5 block text-[12px] text-muted-foreground">{label}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </Reveal>
 
         {/* Topic jump grid */}
@@ -361,6 +377,21 @@ function HelpPage() {
             {group.id === "security" && (
               <div className="mt-6">
                 <EncryptionScopeInfographic />
+              </div>
+            )}
+
+            {/* Show the connection-lost screenshot in context of troubleshooting. */}
+            {group.id === "troubleshooting" && (
+              <div className="mt-6 overflow-hidden rounded-xl border border-border shadow-sm">
+                <img
+                  src="/screenshots/connection-lost.png"
+                  alt="QuickBridge connection lost screen — the session shows a reconnecting prompt and holds partial transfers"
+                  className="w-full object-cover object-top"
+                  loading="lazy"
+                />
+                <div className="border-t border-border bg-muted/20 px-4 py-2.5 text-[12.5px] text-muted-foreground">
+                  What the connection lost screen looks like — QuickBridge holds partial transfers and reconnects automatically.
+                </div>
               </div>
             )}
           </Reveal>

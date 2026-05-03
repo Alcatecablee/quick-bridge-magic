@@ -6,11 +6,11 @@ export function Scene3() {
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase(1), 500),  // QR draws
-      setTimeout(() => setPhase(2), 2000), // browser settles + phone slides in
-      setTimeout(() => setPhase(3), 3500), // scan line active
-      setTimeout(() => setPhase(4), 5000), // burst + connected
-      setTimeout(() => setPhase(5), 8000),
+      setTimeout(() => setPhase(1), 200),  // QR draws
+      setTimeout(() => setPhase(2), 900),  // browser settles + phone slides in
+      setTimeout(() => setPhase(3), 1700), // scan line active
+      setTimeout(() => setPhase(4), 2600), // burst + connected
+      setTimeout(() => setPhase(5), 4200),
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
@@ -18,10 +18,10 @@ export function Scene3() {
   return (
     <motion.div
       className="absolute inset-0 bg-[#0b0d12] flex items-center justify-center overflow-hidden"
-      initial={{ opacity: 0, x: 100 }}
+      initial={{ opacity: 0, x: 80 }}
       animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, y: -50 }}
-      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+      exit={{ opacity: 0, y: -40, scale: 0.96 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
     >
       <div className="relative w-full h-full flex items-center justify-center" style={{ perspective: '1200px' }}>
         {/* Browser mockup */}
@@ -29,7 +29,7 @@ export function Scene3() {
           className="w-[60vw] h-[40vw] bg-[#151821] rounded-xl border border-white/10 shadow-2xl flex flex-col overflow-hidden relative"
           initial={{ rotateY: 15, rotateX: 5, z: -200 }}
           animate={phase >= 2 ? { rotateY: 0, rotateX: 0, z: 0, scale: 0.9 } : {}}
-          transition={{ duration: 1.5, ease: "easeInOut" }}
+          transition={{ duration: 0.7, ease: "easeInOut" }}
         >
           <div className="h-10 bg-black/40 flex items-center px-4 gap-2">
             <div className="w-3 h-3 rounded-full bg-red-500/50" />
@@ -57,8 +57,13 @@ export function Scene3() {
               No app. No account. No upload.
             </p>
 
-            {/* Fake QR (deterministic pattern with finder squares) */}
-            <div className="w-48 h-48 bg-white rounded-lg p-3 relative z-10 grid grid-cols-9 grid-rows-9 gap-[2px]">
+            {/* Fake QR — animate container once, not 81 individual cells */}
+            <motion.div
+              className="w-48 h-48 bg-white rounded-lg p-3 relative z-10 grid grid-cols-9 grid-rows-9 gap-[2px]"
+              initial={{ opacity: 0, scale: 0.88 }}
+              animate={phase >= 1 ? { opacity: 1, scale: 1 } : {}}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            >
               {Array.from({ length: 81 }).map((_, i) => {
                 const row = Math.floor(i / 9);
                 const col = i % 9;
@@ -73,16 +78,13 @@ export function Scene3() {
                 const dataActive = !isFinder && (i * 7 + 3) % 5 < 2;
                 const filled = isFinder ? !isFinderInner : dataActive;
                 return (
-                  <motion.div
+                  <div
                     key={i}
                     className={`${filled ? 'bg-black' : 'bg-white'} rounded-[1px]`}
-                    initial={{ opacity: 0, scale: 0 }}
-                    animate={phase >= 1 ? { opacity: 1, scale: 1 } : {}}
-                    transition={{ duration: 0.18, delay: i * 0.012 }}
                   />
                 );
               })}
-            </div>
+            </motion.div>
 
             {phase >= 4 && (
               <motion.div
@@ -103,7 +105,7 @@ export function Scene3() {
             phase >= 4 ? { y: "5vh", x: "15vw", rotateZ: 0, rotateY: -10, scale: 1.1 } :
             phase >= 2 ? { y: "10vh", x: "10vw", rotateZ: 5, rotateY: -15 } : {}
           }
-          transition={{ type: "spring", damping: 20, stiffness: 100 }}
+          transition={{ type: "spring", damping: 22, stiffness: 160 }}
         >
           <div className="absolute inset-0 border-2 border-[#22d3ee]/50 m-4 rounded-xl flex items-center justify-center overflow-hidden">
             <motion.div

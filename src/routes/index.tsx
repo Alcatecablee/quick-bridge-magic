@@ -235,6 +235,7 @@ function Home() {
   const [installed, setInstalled] = useState(false);
   const [resumeTarget, setResumeTarget] = useState<ActiveSession | null>(null);
   const [browserSupported, setBrowserSupported] = useState(true);
+  const [scanCount, setScanCount] = useState<number | null>(null);
   const navigate = useNavigate();
 
   // Feature detect WebRTC + crypto.subtle on first client render.
@@ -243,6 +244,19 @@ function Home() {
       typeof RTCPeerConnection !== "undefined" &&
       typeof window.crypto?.subtle !== "undefined";
     setBrowserSupported(supported);
+  }, []);
+
+  // Fetch QR scan count for social proof. Errors are swallowed silently so a
+  // missing table (pre-migration) never breaks the homepage.
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any)
+      .from("qr_scans")
+      .select("total")
+      .single()
+      .then(({ data }: { data: { total: number } | null }) => {
+        if (data?.total) setScanCount(data.total);
+      });
   }, []);
 
   // On mount, surface a "Resume bridge" banner if we have a recent active
@@ -343,6 +357,28 @@ function Home() {
     return onInstallAvailabilityChange((v) => setCanInstall(v));
   }, []);
 
+  // Defer video iframe mount until the section is near the viewport.
+  // This prevents the entire Framer Motion video bundle from loading on
+  // initial page paint — critical for mobile first-load performance.
+  useEffect(() => {
+    const el = videoSectionRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      setVideoReady(true);
+      return;
+    }
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVideoReady(true);
+          obs.disconnect();
+        }
+      },
+      { rootMargin: "300px" }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   const handleInstall = async () => {
     const r = await promptInstall();
     if (r === "accepted") toast.success("Installed");
@@ -398,6 +434,8 @@ function Home() {
 
   // Passive lobby detector - see /session/$id for the real WebRTC handshake.
   const redirectedRef = useRef(false);
+  const videoSectionRef = useRef<HTMLDivElement>(null);
+  const [videoReady, setVideoReady] = useState(false);
   useEffect(() => {
     if (!sessionId) return;
     redirectedRef.current = false;
@@ -562,6 +600,36 @@ function Home() {
             </div>
           </div>
         </section>
+
+        {/* Social proof strip */}
+        <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+          {[
+            { value: "Zero", label: "accounts needed", sub: "No sign-up, ever" },
+            { value: "10 GB", label: "max file size", sub: "With auto-save on" },
+            { value: "< 5 s", label: "to connect", sub: "Scan → paired" },
+            { value: "10", label: "platforms", sub: "Any modern browser" },
+          ].map(({ value, label, sub }) => (
+            <div
+              key={label}
+              className="flex flex-col gap-0.5 rounded-xl border border-border bg-card/50 px-4 py-3.5 text-center"
+            >
+              <span className="text-[22px] font-black leading-none tracking-tight text-foreground sm:text-[26px]">
+                {value}
+              </span>
+              <span className="mt-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-foreground/80">
+                {label}
+              </span>
+              <span className="text-[10.5px] text-muted-foreground">{sub}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* QR scan counter - only renders once the table exists and has data */}
+        {scanCount !== null && (
+          <p className="mb-8 -mt-4 text-center text-[12px] text-muted-foreground">
+            <span className="font-semibold text-foreground">{scanCount.toLocaleString()}</span> QR codes scanned so far
+          </p>
+        )}
 
         {/* Cards */}
         <section className="mb-8 grid gap-4 sm:gap-5 lg:grid-cols-5">
@@ -761,15 +829,17 @@ function Home() {
               Three steps. No setup. No accounts.
             </h2>
           </div>
-          <div className="mt-8 overflow-hidden rounded-2xl border border-border shadow-lg">
-            <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-              <iframe
-                src="/video"
-                className="absolute inset-0 h-full w-full"
-                style={{ border: "none" }}
-                title="How QuickBridge works"
-                allow="autoplay"
-              />
+          <div ref={videoSectionRef} className="mt-8 overflow-hidden rounded-2xl border border-border shadow-lg">
+            <div className="relative w-full bg-[#0b0d12]" style={{ paddingBottom: "56.25%" }}>
+              {videoReady && (
+                <iframe
+                  src="/video"
+                  className="absolute inset-0 h-full w-full"
+                  style={{ border: "none" }}
+                  title="How QuickBridge works"
+                  allow="autoplay"
+                />
+              )}
             </div>
           </div>
         </Reveal>
@@ -814,6 +884,14 @@ function Home() {
                 <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted-foreground">{body}</p>
               </Card>
             ))}
+          </div>
+          <div className="mt-8 overflow-hidden rounded-2xl border border-border shadow-lg">
+            <img
+              src="/screenshots/live-full.png"
+              alt="QuickBridge live session — a file transfer in progress between two devices"
+              className="w-full"
+              loading="lazy"
+            />
           </div>
           <p className="mx-auto mt-8 max-w-xl text-balance text-center text-[14.5px] font-medium text-foreground sm:text-[16px]">
             Open. Scan. Send. The fastest way to move files between your devices.
