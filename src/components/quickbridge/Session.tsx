@@ -693,10 +693,15 @@ export function Session({ sessionId, isInitiator }: Props) {
               description: "We'll send as soon as the link is back.",
             });
           }
-          // Wake the bridge if reconnect already gave up or stalled. The
-          // existing visibility-change handler covers the picker-close case
-          // but if it lost the race we still want a kick now.
-          if (status === "disconnected" || status === "stalled") {
+          // Wake the bridge if reconnect already gave up, stalled, or is
+          // still waiting on a backoff timer. On Android Chrome the
+          // visibilitychange event does not reliably fire when returning
+          // from the system file picker (it's an overlay, not a true tab
+          // switch), so we can't count on that handler to cancel the
+          // pending delay. Kicking manualReconnect() here directly
+          // cancels any pending backoff and starts an immediate attempt,
+          // regardless of whether visibilitychange fires.
+          if (status === "disconnected" || status === "stalled" || status === "reconnecting") {
             manualReconnect();
           }
           return;

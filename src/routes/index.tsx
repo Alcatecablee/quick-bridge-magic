@@ -611,12 +611,25 @@ function Home() {
           ].map(({ value, label, sub }) => (
             <div
               key={label}
-              className="flex flex-col gap-0.5 rounded-xl border border-border bg-card/50 px-4 py-3.5 text-center"
+              className="relative flex flex-col gap-0.5 overflow-hidden rounded-xl border border-primary/25 bg-card px-4 py-4 text-center"
+              style={{ boxShadow: "0 0 20px -4px color-mix(in oklch, var(--primary) 22%, transparent)" }}
             >
-              <span className="text-[22px] font-black leading-none tracking-tight text-foreground sm:text-[26px]">
+              <div
+                className="pointer-events-none absolute inset-x-0 top-0 h-px"
+                style={{ background: "linear-gradient(90deg, transparent, var(--primary), transparent)", opacity: 0.55 }}
+              />
+              <span
+                className="text-[26px] font-black leading-none tracking-tight sm:text-[30px]"
+                style={{
+                  background: "linear-gradient(135deg, var(--primary) 0%, oklch(0.85 0.09 245) 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}
+              >
                 {value}
               </span>
-              <span className="mt-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-foreground/80">
+              <span className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-foreground/90">
                 {label}
               </span>
               <span className="text-[10.5px] text-muted-foreground">{sub}</span>
@@ -626,9 +639,22 @@ function Home() {
 
         {/* QR scan counter - only renders once the table exists and has data */}
         {scanCount !== null && (
-          <p className="mb-8 -mt-4 text-center text-[12px] text-muted-foreground">
-            <span className="font-semibold text-foreground">{scanCount.toLocaleString()}</span> QR codes scanned so far
-          </p>
+          <div className="mb-8 -mt-3 flex justify-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-card px-4 py-1.5">
+              <span
+                className="text-[15px] font-black tabular-nums leading-none"
+                style={{
+                  background: "linear-gradient(135deg, var(--primary) 0%, oklch(0.85 0.09 245) 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}
+              >
+                {scanCount.toLocaleString()}
+              </span>
+              <span className="text-[12px] text-muted-foreground">QR codes scanned so far</span>
+            </div>
+          </div>
         )}
 
         {/* Cards */}

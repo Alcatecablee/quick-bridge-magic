@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { StorageKeys, readJSON, writeJSON, removeKey } from "./storage";
 
 export type HistoryItem =
@@ -25,10 +25,6 @@ const MAX_ITEMS = 30;
 export function useHistory(sessionId: string) {
   const key = StorageKeys.history(sessionId);
   const [items, setItems] = useState<HistoryItem[]>(() => readJSON<HistoryItem[]>(key, []));
-
-  useEffect(() => {
-    setItems(readJSON<HistoryItem[]>(key, []));
-  }, [key]);
 
   const persist = useCallback(
     (next: HistoryItem[]) => {
