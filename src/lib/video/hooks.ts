@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 
 declare global {
   interface Window {
@@ -9,7 +9,7 @@ declare global {
 
 export function useVideoPlayer({ durations }: { durations: Record<string, number> }) {
   const [currentScene, setCurrentScene] = useState(0);
-  const sceneKeys = Object.keys(durations);
+  const sceneKeys = useMemo(() => Object.keys(durations), [durations]);
   const recordedOnce = useRef(false);
 
   useEffect(() => {

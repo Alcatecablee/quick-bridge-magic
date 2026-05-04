@@ -50,6 +50,7 @@ Before writing ANY code or creating ANY file, you MUST complete this checklist:
 - ❌ TODO comments or placeholder code
 - ❌ Mocking WebRTC or Supabase Realtime in production paths
 - ❌ Breaking the P2P signaling flow to ship a UI change
+- ❌ Em dashes (— U+2014) or en dashes (– U+2013) anywhere: alt text, captions, labels, UI strings, OG tags, JSON-LD, comments, or docs. Use a colon or plain phrasing instead.
 
 ## ✅ CORRECT PATTERNS (This is what good looks like)
 

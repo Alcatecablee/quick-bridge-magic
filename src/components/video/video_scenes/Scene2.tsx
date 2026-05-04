@@ -1,31 +1,10 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
-const ERRORS = [
-  {
-    from: 'Email client',
-    status: 'Attachment blocked',
-    message: 'File exceeds 25 MB limit.',
-    detail: 'Your file: 3.7 GB',
-    color: '#ef4444',
-    progress: null as number | null,
-  },
-  {
-    from: 'Cloud storage',
-    status: 'Upload interrupted',
-    message: 'Connection lost at 67%.',
-    detail: 'Retry when signal improves',
-    color: '#f59e0b',
-    progress: 67 as number | null,
-  },
-  {
-    from: 'USB transfer',
-    status: 'Device not recognized',
-    message: 'No compatible driver found.',
-    detail: 'Requires USB-C to USB-A adapter',
-    color: '#64748b',
-    progress: null as number | null,
-  },
+const METHODS = [
+  { word: 'EMAIL.', align: 'left' as const },
+  { word: 'CLOUD.', align: 'right' as const },
+  { word: 'USB.', align: 'left' as const },
 ];
 
 export function Scene2() {
@@ -34,62 +13,85 @@ export function Scene2() {
   useEffect(() => {
     const timers = [
       setTimeout(() => setPhase(1), 200),
-      setTimeout(() => setPhase(2), 1400),
-      setTimeout(() => setPhase(3), 2700),
-      setTimeout(() => setPhase(4), 3800),
+      setTimeout(() => setPhase(2), 800),
+      setTimeout(() => setPhase(3), 1300),
+      setTimeout(() => setPhase(4), 1900),
+      setTimeout(() => setPhase(5), 2400),
+      setTimeout(() => setPhase(6), 3000),
+      setTimeout(() => setPhase(7), 3600),
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
 
   return (
     <motion.div
-      className="absolute inset-0 bg-[#0b0d12] flex items-center justify-center"
+      className="absolute inset-0 bg-[#0b0d12] flex items-center justify-center overflow-hidden"
       initial={{ opacity: 0, x: -80 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 80 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
     >
-      <div className="flex flex-col gap-4 w-full max-w-2xl px-12 relative z-10">
-        {ERRORS.map((err, i) => (
-          <motion.div
-            key={err.from}
-            className="w-full bg-[#0e1018] rounded-xl p-5 font-mono"
-            style={{ borderLeftWidth: 3, borderLeftColor: err.color, borderLeftStyle: 'solid' }}
-            initial={{ opacity: 0, x: -60, scale: 0.97 }}
-            animate={phase >= i + 1 ? { opacity: 1, x: 0, scale: 1 } : {}}
-            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[1.1vw] font-bold" style={{ color: err.color }}>
-                {err.status}
-              </span>
-              <span className="ml-auto text-white/20 text-[0.85vw]">{err.from}</span>
+      <div className="w-full px-[8vw]">
+        {METHODS.map((m, i) => {
+          const visible = phase >= i * 2 + 1;
+          const crossed = phase >= i * 2 + 2;
+          return (
+            <div
+              key={m.word}
+              className="overflow-hidden"
+              style={{ textAlign: m.align }}
+            >
+              <motion.div
+                className="relative inline-block leading-none tracking-tighter font-black"
+                style={{
+                  fontSize: '13vw',
+                  color: crossed ? 'rgba(255,255,255,0.28)' : '#fff',
+                  transition: 'color 0.2s ease',
+                }}
+                initial={{ y: '110%' }}
+                animate={visible ? { y: '0%' } : { y: '110%' }}
+                transition={{ type: 'spring', damping: 22, stiffness: 360 }}
+              >
+                {m.word}
+                {crossed && (
+                  <motion.div
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      right: 0,
+                      top: '50%',
+                      height: '0.11em',
+                      background: '#ef4444',
+                      transformOrigin: 'left center',
+                    }}
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                  />
+                )}
+              </motion.div>
             </div>
-            <p className="text-[1.25vw] text-white/80">{err.message}</p>
-            {err.progress !== null && (
-              <div className="mt-2 mb-1 h-1.5 bg-white/8 rounded-full overflow-hidden w-40">
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: `${err.progress}%`, backgroundColor: err.color }}
-                />
-              </div>
-            )}
-            <p className="text-[0.9vw] text-white/25 mt-1">{err.detail}</p>
-          </motion.div>
-        ))}
+          );
+        })}
 
-        {phase >= 4 && (
-          <motion.div
-            className="mt-4 text-left"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45 }}
-          >
-            <span className="text-[4.5vw] font-black text-white/90 tracking-tight">
-              No more.
-            </span>
-          </motion.div>
-        )}
+        <AnimatePresence>
+          {phase >= 7 && (
+            <motion.div
+              className="mt-6 overflow-hidden"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div
+                className="font-black leading-none tracking-tighter"
+                style={{ fontSize: '9vw', color: '#22d3ee' }}
+              >
+                NOT ANYMORE.
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </motion.div>
   );
