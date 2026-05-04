@@ -18,6 +18,18 @@ import { Route as AirdropAlternativeRouteImport } from './routes/airdrop-alterna
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SessionIdRouteImport } from './routes/session.$id'
 import { Route as SIdRouteImport } from './routes/s.$id'
+import { Route as HowToShareFilesSameWifiRouteImport } from './routes/how-to.share-files-same-wifi'
+import { Route as HowToSendPhotosPhoneToPcRouteImport } from './routes/how-to.send-photos-phone-to-pc'
+import { Route as HowToSendPdfPhoneToPcRouteImport } from './routes/how-to.send-pdf-phone-to-pc'
+import { Route as HowToSendLargeFilesPhoneToPcRouteImport } from './routes/how-to.send-large-files-phone-to-pc'
+import { Route as HowToSendFilesWithoutWhatsappRouteImport } from './routes/how-to.send-files-without-whatsapp'
+import { Route as HowToSendFilesWindowsToIphoneRouteImport } from './routes/how-to.send-files-windows-to-iphone'
+import { Route as HowToSendFilesWindowsToAndroidRouteImport } from './routes/how-to.send-files-windows-to-android'
+import { Route as HowToSendFilesPhoneToPcFreeRouteImport } from './routes/how-to.send-files-phone-to-pc-free'
+import { Route as HowToSendFilesIphoneToWindowsRouteImport } from './routes/how-to.send-files-iphone-to-windows'
+import { Route as HowToSendFilesIphoneToMacRouteImport } from './routes/how-to.send-files-iphone-to-mac'
+import { Route as HowToSendFilesAndroidToWindowsRouteImport } from './routes/how-to.send-files-android-to-windows'
+import { Route as HowToSendFilesAndroidToMacRouteImport } from './routes/how-to.send-files-android-to-mac'
 import { Route as CompareQuickbridgeVsWormholeRouteImport } from './routes/compare.quickbridge-vs-wormhole'
 import { Route as CompareQuickbridgeVsWetransferRouteImport } from './routes/compare.quickbridge-vs-wetransfer'
 import { Route as CompareQuickbridgeVsSnapdropRouteImport } from './routes/compare.quickbridge-vs-snapdrop'
@@ -69,6 +81,76 @@ const SIdRoute = SIdRouteImport.update({
   path: '/s/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HowToShareFilesSameWifiRoute = HowToShareFilesSameWifiRouteImport.update({
+  id: '/how-to/share-files-same-wifi',
+  path: '/how-to/share-files-same-wifi',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HowToSendPhotosPhoneToPcRoute =
+  HowToSendPhotosPhoneToPcRouteImport.update({
+    id: '/how-to/send-photos-phone-to-pc',
+    path: '/how-to/send-photos-phone-to-pc',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const HowToSendPdfPhoneToPcRoute = HowToSendPdfPhoneToPcRouteImport.update({
+  id: '/how-to/send-pdf-phone-to-pc',
+  path: '/how-to/send-pdf-phone-to-pc',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HowToSendLargeFilesPhoneToPcRoute =
+  HowToSendLargeFilesPhoneToPcRouteImport.update({
+    id: '/how-to/send-large-files-phone-to-pc',
+    path: '/how-to/send-large-files-phone-to-pc',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const HowToSendFilesWithoutWhatsappRoute =
+  HowToSendFilesWithoutWhatsappRouteImport.update({
+    id: '/how-to/send-files-without-whatsapp',
+    path: '/how-to/send-files-without-whatsapp',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const HowToSendFilesWindowsToIphoneRoute =
+  HowToSendFilesWindowsToIphoneRouteImport.update({
+    id: '/how-to/send-files-windows-to-iphone',
+    path: '/how-to/send-files-windows-to-iphone',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const HowToSendFilesWindowsToAndroidRoute =
+  HowToSendFilesWindowsToAndroidRouteImport.update({
+    id: '/how-to/send-files-windows-to-android',
+    path: '/how-to/send-files-windows-to-android',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const HowToSendFilesPhoneToPcFreeRoute =
+  HowToSendFilesPhoneToPcFreeRouteImport.update({
+    id: '/how-to/send-files-phone-to-pc-free',
+    path: '/how-to/send-files-phone-to-pc-free',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const HowToSendFilesIphoneToWindowsRoute =
+  HowToSendFilesIphoneToWindowsRouteImport.update({
+    id: '/how-to/send-files-iphone-to-windows',
+    path: '/how-to/send-files-iphone-to-windows',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const HowToSendFilesIphoneToMacRoute =
+  HowToSendFilesIphoneToMacRouteImport.update({
+    id: '/how-to/send-files-iphone-to-mac',
+    path: '/how-to/send-files-iphone-to-mac',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const HowToSendFilesAndroidToWindowsRoute =
+  HowToSendFilesAndroidToWindowsRouteImport.update({
+    id: '/how-to/send-files-android-to-windows',
+    path: '/how-to/send-files-android-to-windows',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const HowToSendFilesAndroidToMacRoute =
+  HowToSendFilesAndroidToMacRouteImport.update({
+    id: '/how-to/send-files-android-to-mac',
+    path: '/how-to/send-files-android-to-mac',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const CompareQuickbridgeVsWormholeRoute =
   CompareQuickbridgeVsWormholeRouteImport.update({
     id: '/compare/quickbridge-vs-wormhole',
@@ -113,6 +195,18 @@ export interface FileRoutesByFullPath {
   '/compare/quickbridge-vs-snapdrop': typeof CompareQuickbridgeVsSnapdropRoute
   '/compare/quickbridge-vs-wetransfer': typeof CompareQuickbridgeVsWetransferRoute
   '/compare/quickbridge-vs-wormhole': typeof CompareQuickbridgeVsWormholeRoute
+  '/how-to/send-files-android-to-mac': typeof HowToSendFilesAndroidToMacRoute
+  '/how-to/send-files-android-to-windows': typeof HowToSendFilesAndroidToWindowsRoute
+  '/how-to/send-files-iphone-to-mac': typeof HowToSendFilesIphoneToMacRoute
+  '/how-to/send-files-iphone-to-windows': typeof HowToSendFilesIphoneToWindowsRoute
+  '/how-to/send-files-phone-to-pc-free': typeof HowToSendFilesPhoneToPcFreeRoute
+  '/how-to/send-files-windows-to-android': typeof HowToSendFilesWindowsToAndroidRoute
+  '/how-to/send-files-windows-to-iphone': typeof HowToSendFilesWindowsToIphoneRoute
+  '/how-to/send-files-without-whatsapp': typeof HowToSendFilesWithoutWhatsappRoute
+  '/how-to/send-large-files-phone-to-pc': typeof HowToSendLargeFilesPhoneToPcRoute
+  '/how-to/send-pdf-phone-to-pc': typeof HowToSendPdfPhoneToPcRoute
+  '/how-to/send-photos-phone-to-pc': typeof HowToSendPhotosPhoneToPcRoute
+  '/how-to/share-files-same-wifi': typeof HowToShareFilesSameWifiRoute
   '/s/$id': typeof SIdRoute
   '/session/$id': typeof SessionIdRoute
 }
@@ -129,6 +223,18 @@ export interface FileRoutesByTo {
   '/compare/quickbridge-vs-snapdrop': typeof CompareQuickbridgeVsSnapdropRoute
   '/compare/quickbridge-vs-wetransfer': typeof CompareQuickbridgeVsWetransferRoute
   '/compare/quickbridge-vs-wormhole': typeof CompareQuickbridgeVsWormholeRoute
+  '/how-to/send-files-android-to-mac': typeof HowToSendFilesAndroidToMacRoute
+  '/how-to/send-files-android-to-windows': typeof HowToSendFilesAndroidToWindowsRoute
+  '/how-to/send-files-iphone-to-mac': typeof HowToSendFilesIphoneToMacRoute
+  '/how-to/send-files-iphone-to-windows': typeof HowToSendFilesIphoneToWindowsRoute
+  '/how-to/send-files-phone-to-pc-free': typeof HowToSendFilesPhoneToPcFreeRoute
+  '/how-to/send-files-windows-to-android': typeof HowToSendFilesWindowsToAndroidRoute
+  '/how-to/send-files-windows-to-iphone': typeof HowToSendFilesWindowsToIphoneRoute
+  '/how-to/send-files-without-whatsapp': typeof HowToSendFilesWithoutWhatsappRoute
+  '/how-to/send-large-files-phone-to-pc': typeof HowToSendLargeFilesPhoneToPcRoute
+  '/how-to/send-pdf-phone-to-pc': typeof HowToSendPdfPhoneToPcRoute
+  '/how-to/send-photos-phone-to-pc': typeof HowToSendPhotosPhoneToPcRoute
+  '/how-to/share-files-same-wifi': typeof HowToShareFilesSameWifiRoute
   '/s/$id': typeof SIdRoute
   '/session/$id': typeof SessionIdRoute
 }
@@ -146,6 +252,18 @@ export interface FileRoutesById {
   '/compare/quickbridge-vs-snapdrop': typeof CompareQuickbridgeVsSnapdropRoute
   '/compare/quickbridge-vs-wetransfer': typeof CompareQuickbridgeVsWetransferRoute
   '/compare/quickbridge-vs-wormhole': typeof CompareQuickbridgeVsWormholeRoute
+  '/how-to/send-files-android-to-mac': typeof HowToSendFilesAndroidToMacRoute
+  '/how-to/send-files-android-to-windows': typeof HowToSendFilesAndroidToWindowsRoute
+  '/how-to/send-files-iphone-to-mac': typeof HowToSendFilesIphoneToMacRoute
+  '/how-to/send-files-iphone-to-windows': typeof HowToSendFilesIphoneToWindowsRoute
+  '/how-to/send-files-phone-to-pc-free': typeof HowToSendFilesPhoneToPcFreeRoute
+  '/how-to/send-files-windows-to-android': typeof HowToSendFilesWindowsToAndroidRoute
+  '/how-to/send-files-windows-to-iphone': typeof HowToSendFilesWindowsToIphoneRoute
+  '/how-to/send-files-without-whatsapp': typeof HowToSendFilesWithoutWhatsappRoute
+  '/how-to/send-large-files-phone-to-pc': typeof HowToSendLargeFilesPhoneToPcRoute
+  '/how-to/send-pdf-phone-to-pc': typeof HowToSendPdfPhoneToPcRoute
+  '/how-to/send-photos-phone-to-pc': typeof HowToSendPhotosPhoneToPcRoute
+  '/how-to/share-files-same-wifi': typeof HowToShareFilesSameWifiRoute
   '/s/$id': typeof SIdRoute
   '/session/$id': typeof SessionIdRoute
 }
@@ -164,6 +282,18 @@ export interface FileRouteTypes {
     | '/compare/quickbridge-vs-snapdrop'
     | '/compare/quickbridge-vs-wetransfer'
     | '/compare/quickbridge-vs-wormhole'
+    | '/how-to/send-files-android-to-mac'
+    | '/how-to/send-files-android-to-windows'
+    | '/how-to/send-files-iphone-to-mac'
+    | '/how-to/send-files-iphone-to-windows'
+    | '/how-to/send-files-phone-to-pc-free'
+    | '/how-to/send-files-windows-to-android'
+    | '/how-to/send-files-windows-to-iphone'
+    | '/how-to/send-files-without-whatsapp'
+    | '/how-to/send-large-files-phone-to-pc'
+    | '/how-to/send-pdf-phone-to-pc'
+    | '/how-to/send-photos-phone-to-pc'
+    | '/how-to/share-files-same-wifi'
     | '/s/$id'
     | '/session/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -180,6 +310,18 @@ export interface FileRouteTypes {
     | '/compare/quickbridge-vs-snapdrop'
     | '/compare/quickbridge-vs-wetransfer'
     | '/compare/quickbridge-vs-wormhole'
+    | '/how-to/send-files-android-to-mac'
+    | '/how-to/send-files-android-to-windows'
+    | '/how-to/send-files-iphone-to-mac'
+    | '/how-to/send-files-iphone-to-windows'
+    | '/how-to/send-files-phone-to-pc-free'
+    | '/how-to/send-files-windows-to-android'
+    | '/how-to/send-files-windows-to-iphone'
+    | '/how-to/send-files-without-whatsapp'
+    | '/how-to/send-large-files-phone-to-pc'
+    | '/how-to/send-pdf-phone-to-pc'
+    | '/how-to/send-photos-phone-to-pc'
+    | '/how-to/share-files-same-wifi'
     | '/s/$id'
     | '/session/$id'
   id:
@@ -196,6 +338,18 @@ export interface FileRouteTypes {
     | '/compare/quickbridge-vs-snapdrop'
     | '/compare/quickbridge-vs-wetransfer'
     | '/compare/quickbridge-vs-wormhole'
+    | '/how-to/send-files-android-to-mac'
+    | '/how-to/send-files-android-to-windows'
+    | '/how-to/send-files-iphone-to-mac'
+    | '/how-to/send-files-iphone-to-windows'
+    | '/how-to/send-files-phone-to-pc-free'
+    | '/how-to/send-files-windows-to-android'
+    | '/how-to/send-files-windows-to-iphone'
+    | '/how-to/send-files-without-whatsapp'
+    | '/how-to/send-large-files-phone-to-pc'
+    | '/how-to/send-pdf-phone-to-pc'
+    | '/how-to/send-photos-phone-to-pc'
+    | '/how-to/share-files-same-wifi'
     | '/s/$id'
     | '/session/$id'
   fileRoutesById: FileRoutesById
@@ -213,6 +367,18 @@ export interface RootRouteChildren {
   CompareQuickbridgeVsSnapdropRoute: typeof CompareQuickbridgeVsSnapdropRoute
   CompareQuickbridgeVsWetransferRoute: typeof CompareQuickbridgeVsWetransferRoute
   CompareQuickbridgeVsWormholeRoute: typeof CompareQuickbridgeVsWormholeRoute
+  HowToSendFilesAndroidToMacRoute: typeof HowToSendFilesAndroidToMacRoute
+  HowToSendFilesAndroidToWindowsRoute: typeof HowToSendFilesAndroidToWindowsRoute
+  HowToSendFilesIphoneToMacRoute: typeof HowToSendFilesIphoneToMacRoute
+  HowToSendFilesIphoneToWindowsRoute: typeof HowToSendFilesIphoneToWindowsRoute
+  HowToSendFilesPhoneToPcFreeRoute: typeof HowToSendFilesPhoneToPcFreeRoute
+  HowToSendFilesWindowsToAndroidRoute: typeof HowToSendFilesWindowsToAndroidRoute
+  HowToSendFilesWindowsToIphoneRoute: typeof HowToSendFilesWindowsToIphoneRoute
+  HowToSendFilesWithoutWhatsappRoute: typeof HowToSendFilesWithoutWhatsappRoute
+  HowToSendLargeFilesPhoneToPcRoute: typeof HowToSendLargeFilesPhoneToPcRoute
+  HowToSendPdfPhoneToPcRoute: typeof HowToSendPdfPhoneToPcRoute
+  HowToSendPhotosPhoneToPcRoute: typeof HowToSendPhotosPhoneToPcRoute
+  HowToShareFilesSameWifiRoute: typeof HowToShareFilesSameWifiRoute
   SIdRoute: typeof SIdRoute
   SessionIdRoute: typeof SessionIdRoute
 }
@@ -282,6 +448,90 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/how-to/share-files-same-wifi': {
+      id: '/how-to/share-files-same-wifi'
+      path: '/how-to/share-files-same-wifi'
+      fullPath: '/how-to/share-files-same-wifi'
+      preLoaderRoute: typeof HowToShareFilesSameWifiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-to/send-photos-phone-to-pc': {
+      id: '/how-to/send-photos-phone-to-pc'
+      path: '/how-to/send-photos-phone-to-pc'
+      fullPath: '/how-to/send-photos-phone-to-pc'
+      preLoaderRoute: typeof HowToSendPhotosPhoneToPcRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-to/send-pdf-phone-to-pc': {
+      id: '/how-to/send-pdf-phone-to-pc'
+      path: '/how-to/send-pdf-phone-to-pc'
+      fullPath: '/how-to/send-pdf-phone-to-pc'
+      preLoaderRoute: typeof HowToSendPdfPhoneToPcRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-to/send-large-files-phone-to-pc': {
+      id: '/how-to/send-large-files-phone-to-pc'
+      path: '/how-to/send-large-files-phone-to-pc'
+      fullPath: '/how-to/send-large-files-phone-to-pc'
+      preLoaderRoute: typeof HowToSendLargeFilesPhoneToPcRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-to/send-files-without-whatsapp': {
+      id: '/how-to/send-files-without-whatsapp'
+      path: '/how-to/send-files-without-whatsapp'
+      fullPath: '/how-to/send-files-without-whatsapp'
+      preLoaderRoute: typeof HowToSendFilesWithoutWhatsappRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-to/send-files-windows-to-iphone': {
+      id: '/how-to/send-files-windows-to-iphone'
+      path: '/how-to/send-files-windows-to-iphone'
+      fullPath: '/how-to/send-files-windows-to-iphone'
+      preLoaderRoute: typeof HowToSendFilesWindowsToIphoneRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-to/send-files-windows-to-android': {
+      id: '/how-to/send-files-windows-to-android'
+      path: '/how-to/send-files-windows-to-android'
+      fullPath: '/how-to/send-files-windows-to-android'
+      preLoaderRoute: typeof HowToSendFilesWindowsToAndroidRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-to/send-files-phone-to-pc-free': {
+      id: '/how-to/send-files-phone-to-pc-free'
+      path: '/how-to/send-files-phone-to-pc-free'
+      fullPath: '/how-to/send-files-phone-to-pc-free'
+      preLoaderRoute: typeof HowToSendFilesPhoneToPcFreeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-to/send-files-iphone-to-windows': {
+      id: '/how-to/send-files-iphone-to-windows'
+      path: '/how-to/send-files-iphone-to-windows'
+      fullPath: '/how-to/send-files-iphone-to-windows'
+      preLoaderRoute: typeof HowToSendFilesIphoneToWindowsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-to/send-files-iphone-to-mac': {
+      id: '/how-to/send-files-iphone-to-mac'
+      path: '/how-to/send-files-iphone-to-mac'
+      fullPath: '/how-to/send-files-iphone-to-mac'
+      preLoaderRoute: typeof HowToSendFilesIphoneToMacRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-to/send-files-android-to-windows': {
+      id: '/how-to/send-files-android-to-windows'
+      path: '/how-to/send-files-android-to-windows'
+      fullPath: '/how-to/send-files-android-to-windows'
+      preLoaderRoute: typeof HowToSendFilesAndroidToWindowsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-to/send-files-android-to-mac': {
+      id: '/how-to/send-files-android-to-mac'
+      path: '/how-to/send-files-android-to-mac'
+      fullPath: '/how-to/send-files-android-to-mac'
+      preLoaderRoute: typeof HowToSendFilesAndroidToMacRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/compare/quickbridge-vs-wormhole': {
       id: '/compare/quickbridge-vs-wormhole'
       path: '/compare/quickbridge-vs-wormhole'
@@ -333,6 +583,18 @@ const rootRouteChildren: RootRouteChildren = {
   CompareQuickbridgeVsSnapdropRoute: CompareQuickbridgeVsSnapdropRoute,
   CompareQuickbridgeVsWetransferRoute: CompareQuickbridgeVsWetransferRoute,
   CompareQuickbridgeVsWormholeRoute: CompareQuickbridgeVsWormholeRoute,
+  HowToSendFilesAndroidToMacRoute: HowToSendFilesAndroidToMacRoute,
+  HowToSendFilesAndroidToWindowsRoute: HowToSendFilesAndroidToWindowsRoute,
+  HowToSendFilesIphoneToMacRoute: HowToSendFilesIphoneToMacRoute,
+  HowToSendFilesIphoneToWindowsRoute: HowToSendFilesIphoneToWindowsRoute,
+  HowToSendFilesPhoneToPcFreeRoute: HowToSendFilesPhoneToPcFreeRoute,
+  HowToSendFilesWindowsToAndroidRoute: HowToSendFilesWindowsToAndroidRoute,
+  HowToSendFilesWindowsToIphoneRoute: HowToSendFilesWindowsToIphoneRoute,
+  HowToSendFilesWithoutWhatsappRoute: HowToSendFilesWithoutWhatsappRoute,
+  HowToSendLargeFilesPhoneToPcRoute: HowToSendLargeFilesPhoneToPcRoute,
+  HowToSendPdfPhoneToPcRoute: HowToSendPdfPhoneToPcRoute,
+  HowToSendPhotosPhoneToPcRoute: HowToSendPhotosPhoneToPcRoute,
+  HowToShareFilesSameWifiRoute: HowToShareFilesSameWifiRoute,
   SIdRoute: SIdRoute,
   SessionIdRoute: SessionIdRoute,
 }

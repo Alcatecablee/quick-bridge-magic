@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/sheet";
 import {
   COMPARE_ROUTES,
+  HOW_TO_ROUTES,
   PRIMARY_ROUTES,
   USE_CASE_ROUTES,
   visible,
@@ -31,6 +32,7 @@ import {
 export function SiteNav() {
   const compares = visible(COMPARE_ROUTES);
   const useCases = visible(USE_CASE_ROUTES);
+  const howTos = visible(HOW_TO_ROUTES);
   const primary = visible(PRIMARY_ROUTES);
 
   return (
@@ -40,12 +42,13 @@ export function SiteNav() {
         {primary.map((r) => (
           <NavLink key={r.href} route={r} />
         ))}
+        {howTos.length > 0 && <NavDropdown label="How-to" routes={howTos} />}
         {compares.length > 0 && <NavDropdown label="Compare" routes={compares} />}
         {useCases.length > 0 && <NavDropdown label="Use cases" routes={useCases} />}
       </nav>
 
       {/* Mobile hamburger */}
-      <MobileNav primary={primary} compares={compares} useCases={useCases} />
+      <MobileNav primary={primary} howTos={howTos} compares={compares} useCases={useCases} />
     </div>
   );
 }
@@ -93,10 +96,12 @@ function NavDropdown({ label, routes }: { label: string; routes: SiteRoute[] }) 
 
 function MobileNav({
   primary,
+  howTos,
   compares,
   useCases,
 }: {
   primary: SiteRoute[];
+  howTos: SiteRoute[];
   compares: SiteRoute[];
   useCases: SiteRoute[];
 }) {
@@ -125,6 +130,9 @@ function MobileNav({
             { href: "/", label: "Home", teaser: "Start a transfer.", inNav: true },
             ...primary,
           ]} onNavigate={close} />
+          {howTos.length > 0 && (
+            <MobileGroup title="How-to guides" routes={howTos} onNavigate={close} />
+          )}
           {compares.length > 0 && (
             <MobileGroup title="Compare" routes={compares} onNavigate={close} />
           )}

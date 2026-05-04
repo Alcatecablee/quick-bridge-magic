@@ -82,6 +82,136 @@
     </image:image>
   </url>
   <url>
+    <loc>https://quickbridge.app/how-to/send-files-iphone-to-windows</loc>
+    <lastmod>2026-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://quickbridge.app/og-image.png</image:loc>
+      <image:title>How to send files from iPhone to Windows PC without a cable</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://quickbridge.app/how-to/send-files-android-to-windows</loc>
+    <lastmod>2026-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://quickbridge.app/og-image.png</image:loc>
+      <image:title>How to send files from Android to Windows PC without a cable</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://quickbridge.app/how-to/send-files-android-to-mac</loc>
+    <lastmod>2026-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://quickbridge.app/og-image.png</image:loc>
+      <image:title>How to send files from Android to Mac without Android File Transfer</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://quickbridge.app/how-to/send-files-iphone-to-mac</loc>
+    <lastmod>2026-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://quickbridge.app/og-image.png</image:loc>
+      <image:title>How to send files from iPhone to Mac when AirDrop won't cooperate</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://quickbridge.app/how-to/send-files-windows-to-android</loc>
+    <lastmod>2026-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://quickbridge.app/og-image.png</image:loc>
+      <image:title>How to send files from Windows PC to Android phone wirelessly</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://quickbridge.app/how-to/send-files-windows-to-iphone</loc>
+    <lastmod>2026-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://quickbridge.app/og-image.png</image:loc>
+      <image:title>How to send files from Windows PC to iPhone without iTunes</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://quickbridge.app/how-to/send-photos-phone-to-pc</loc>
+    <lastmod>2026-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://quickbridge.app/og-image.png</image:loc>
+      <image:title>How to send photos from phone to PC without a USB cable</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://quickbridge.app/how-to/send-pdf-phone-to-pc</loc>
+    <lastmod>2026-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://quickbridge.app/og-image.png</image:loc>
+      <image:title>How to send a PDF from phone to PC or laptop wirelessly</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://quickbridge.app/how-to/send-large-files-phone-to-pc</loc>
+    <lastmod>2026-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://quickbridge.app/og-image.png</image:loc>
+      <image:title>How to send large files from phone to PC up to 10 GB</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://quickbridge.app/how-to/share-files-same-wifi</loc>
+    <lastmod>2026-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://quickbridge.app/og-image.png</image:loc>
+      <image:title>How to share files between devices on the same Wi-Fi network</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://quickbridge.app/how-to/send-files-without-whatsapp</loc>
+    <lastmod>2026-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://quickbridge.app/og-image.png</image:loc>
+      <image:title>How to send files without WhatsApp compression or size limits</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://quickbridge.app/how-to/send-files-phone-to-pc-free</loc>
+    <lastmod>2026-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://quickbridge.app/og-image.png</image:loc>
+      <image:title>How to send files from phone to PC for free with no sign-up</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://quickbridge.app/help</loc>
+    <lastmod>2026-04-30</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+    <image:image>
+      <image:loc>https://quickbridge.app/og-image.png</image:loc>
+      <image:title>QuickBridge help and troubleshooting guide</image:title>
+    </image:image>
+  </url>
+  <url>
     <loc>https://quickbridge.app/join</loc>
     <lastmod>2026-04-30</lastmod>
     <changefreq>monthly</changefreq>

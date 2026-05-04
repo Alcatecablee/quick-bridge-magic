@@ -1,6 +1,7 @@
 import { ArrowRight } from "./icons";
 import {
   COMPARE_ROUTES,
+  HOW_TO_ROUTES,
   USE_CASE_ROUTES,
   visible,
   type SiteRoute,
@@ -33,9 +34,11 @@ export function RelatedPages({
 }: RelatedPagesProps) {
   const pool =
     routes ??
-    [...visible(COMPARE_ROUTES), ...visible(USE_CASE_ROUTES)].filter(
-      (r) => r.href !== currentHref,
-    );
+    [
+      ...visible(COMPARE_ROUTES),
+      ...visible(USE_CASE_ROUTES),
+      ...visible(HOW_TO_ROUTES),
+    ].filter((r) => r.href !== currentHref);
   const items = pool.slice(0, limit);
 
   if (items.length === 0) return null;

@@ -147,11 +147,92 @@ export const USE_CASE_ROUTES: SiteRoute[] = [
   },
 ];
 
+/**
+ * /how-to/* pages - device-pair how-to guides targeting long-tail keyword queries.
+ * Each page covers a specific device combination or constraint that has verified
+ * search demand from keyword research (May 2026).
+ */
+export const HOW_TO_ROUTES: SiteRoute[] = [
+  {
+    href: "/how-to/send-files-iphone-to-windows",
+    label: "iPhone to Windows",
+    teaser: "Transfer photos and files from iPhone to a Windows PC without iTunes or iCloud.",
+    inNav: true,
+  },
+  {
+    href: "/how-to/send-files-android-to-windows",
+    label: "Android to Windows",
+    teaser: "Send files from any Android phone to a Windows PC without a USB cable.",
+    inNav: true,
+  },
+  {
+    href: "/how-to/send-files-android-to-mac",
+    label: "Android to Mac",
+    teaser: "Transfer files from Android to Mac without Android File Transfer.",
+    inNav: true,
+  },
+  {
+    href: "/how-to/send-files-iphone-to-mac",
+    label: "iPhone to Mac",
+    teaser: "Send files from iPhone to Mac when AirDrop won't cooperate.",
+    inNav: true,
+  },
+  {
+    href: "/how-to/send-files-windows-to-android",
+    label: "Windows to Android",
+    teaser: "Push files from a Windows PC to your Android phone wirelessly.",
+    inNav: true,
+  },
+  {
+    href: "/how-to/send-files-windows-to-iphone",
+    label: "Windows to iPhone",
+    teaser: "Send files from a Windows PC to an iPhone without iTunes.",
+    inNav: true,
+  },
+  {
+    href: "/how-to/send-photos-phone-to-pc",
+    label: "Photos phone to PC",
+    teaser: "Transfer photos from any phone to a PC without email or cloud upload.",
+    inNav: true,
+  },
+  {
+    href: "/how-to/send-pdf-phone-to-pc",
+    label: "PDF phone to laptop",
+    teaser: "Send a PDF from your phone to your laptop without email or WhatsApp.",
+    inNav: true,
+  },
+  {
+    href: "/how-to/send-large-files-phone-to-pc",
+    label: "Large files phone to PC",
+    teaser: "Transfer videos and large archives from phone to PC without uploading.",
+    inNav: true,
+  },
+  {
+    href: "/how-to/share-files-same-wifi",
+    label: "Same Wi-Fi transfer",
+    teaser: "Share files between phone and PC at local network speed, no cloud involved.",
+    inNav: true,
+  },
+  {
+    href: "/how-to/send-files-without-whatsapp",
+    label: "Without WhatsApp",
+    teaser: "Transfer files and links from phone to PC without a messaging app.",
+    inNav: true,
+  },
+  {
+    href: "/how-to/send-files-phone-to-pc-free",
+    label: "Free file transfer",
+    teaser: "Send files from phone to PC for free, no subscription, no account.",
+    inNav: true,
+  },
+];
+
 /** All routes flattened - useful for sitemap or audit scripts. */
 export const ALL_MARKETING_ROUTES: SiteRoute[] = [
   ...PRIMARY_ROUTES,
   ...COMPARE_ROUTES,
   ...USE_CASE_ROUTES,
+  ...HOW_TO_ROUTES,
 ];
 
 /** Convenience: filter only routes that should appear in nav/footer/related. */
