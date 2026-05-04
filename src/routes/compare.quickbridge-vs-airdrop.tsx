@@ -293,12 +293,12 @@ function CompareAirdropPage() {
           <div className="overflow-hidden rounded-2xl border border-border shadow-sm">
             <img
               src="/screenshots/sent.png"
-              alt="QuickBridge completed transfer — 169 MB sent in 40.6 seconds, no cloud upload"
+              alt="QuickBridge completed transfer: 169 MB sent in 40.6 seconds, no cloud upload"
               className="w-full object-cover object-top"
               loading="lazy"
             />
             <div className="border-t border-border bg-muted/20 px-5 py-3 text-[12.5px] text-muted-foreground">
-              Real QuickBridge transfer — 169 MB sent in 40.6 s, no upload to any server.
+              Real QuickBridge transfer: 169 MB sent in 40.6 s, no upload to any server.
             </div>
           </div>
         </Reveal>

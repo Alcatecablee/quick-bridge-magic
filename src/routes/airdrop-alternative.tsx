@@ -257,23 +257,23 @@ function AirdropAlternativePage() {
             <div className="overflow-hidden rounded-xl border border-border shadow-sm">
               <img
                 src="/screenshots/qr-code-mobile.png"
-                alt="QuickBridge on Android — the QR code screen ready to pair with any computer"
+                alt="QuickBridge on Android: the QR code screen ready to pair with any computer"
                 className="w-full object-cover object-top"
                 loading="lazy"
               />
               <p className="border-t border-border bg-muted/20 px-4 py-2.5 text-[12px] text-muted-foreground">
-                Android phone — open the site and point the camera at your computer's QR
+                Android phone: open the site and point the camera at your computer's QR
               </p>
             </div>
             <div className="overflow-hidden rounded-xl border border-border shadow-sm">
               <img
                 src="/screenshots/sending.png"
-                alt="QuickBridge desktop session — file transfer streaming from phone to Windows PC"
+                alt="QuickBridge desktop session: file transfer streaming from phone to Windows PC"
                 className="w-full object-cover object-top"
                 loading="lazy"
               />
               <p className="border-t border-border bg-muted/20 px-4 py-2.5 text-[12px] text-muted-foreground">
-                Windows PC — paired with the phone, files streaming directly
+                Windows PC: paired with the phone, files streaming directly
               </p>
             </div>
           </div>

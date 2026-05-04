@@ -925,7 +925,7 @@ function Home() {
           <div className="mt-8 overflow-hidden rounded-2xl border border-border shadow-lg">
             <img
               src="/screenshots/live-full.png"
-              alt="QuickBridge live session — a file transfer in progress between two devices"
+              alt="QuickBridge live session: a file transfer in progress between two devices"
               className="w-full"
               loading="lazy"
             />

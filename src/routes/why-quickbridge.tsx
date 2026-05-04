@@ -297,9 +297,9 @@ function WhyQuickBridgePage() {
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             {([
-              { src: "/screenshots/qr-code-mobile.png", alt: "QuickBridge QR code on Android — open the site and a live QR is ready instantly", step: "Step 01" },
-              { src: "/screenshots/paired.png", alt: "QuickBridge paired — devices connected and emoji verification code visible", step: "Step 02" },
-              { src: "/screenshots/sending.png", alt: "QuickBridge file transfer in progress — streaming directly between devices", step: "Step 03" },
+              { src: "/screenshots/qr-code-mobile.png", alt: "QuickBridge QR code on Android: open the site and a live QR is ready instantly", step: "Step 01" },
+              { src: "/screenshots/paired.png", alt: "QuickBridge paired: devices connected and emoji verification code visible", step: "Step 02" },
+              { src: "/screenshots/sending.png", alt: "QuickBridge file transfer in progress: streaming directly between devices", step: "Step 03" },
             ] as { src: string; alt: string; step: string }[]).map(({ src, alt, step }) => (
               <div key={step} className="overflow-hidden rounded-xl border border-border shadow-sm">
                 <img src={src} alt={alt} className="w-full object-cover object-top" loading="lazy" />
