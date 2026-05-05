@@ -46,8 +46,16 @@ async function readAllEntries(dir: FileSystemEntryLike): Promise<FileSystemEntry
   return out;
 }
 
-async function walk(entry: FileSystemEntryLike, prefix: string, out: File[]): Promise<void> {
-  if (out.length > MAX_ENTRIES) return;
+async function walk(
+  entry: FileSystemEntryLike,
+  prefix: string,
+  out: File[],
+  state: { capped: boolean },
+): Promise<void> {
+  if (out.length >= MAX_ENTRIES) {
+    state.capped = true;
+    return;
+  }
   if (entry.isFile) {
     try {
       const f = await entryToFile(entry);
@@ -66,13 +74,25 @@ async function walk(entry: FileSystemEntryLike, prefix: string, out: File[]): Pr
     const children = await readAllEntries(entry);
     const nextPrefix = `${prefix}${entry.name}/`;
     for (const child of children) {
-      await walk(child, nextPrefix, out);
+      await walk(child, nextPrefix, out, state);
     }
   }
 }
 
-export async function expandDataTransfer(dt: DataTransfer): Promise<File[]> {
+export interface ExpandResult {
+  files: File[];
+  // True when the entry count hit the MAX_ENTRIES safety cap and some files
+  // were silently omitted. The caller should surface a warning to the user.
+  capped: boolean;
+  // True when items were present in the DataTransfer but no usable files
+  // could be extracted (e.g. the user dropped an empty folder). Lets the
+  // caller distinguish a real empty drop from a no-op event.
+  hadItems: boolean;
+}
+
+export async function expandDataTransfer(dt: DataTransfer): Promise<ExpandResult> {
   const out: File[] = [];
+  const state = { capped: false };
   const items = dt.items;
   if (items && items.length > 0) {
     const entries: FileSystemEntryLike[] = [];
@@ -90,15 +110,17 @@ export async function expandDataTransfer(dt: DataTransfer): Promise<File[]> {
         if (f) looseFiles.push(f);
       }
     }
-    for (const e of entries) await walk(e, "", out);
+    for (const e of entries) await walk(e, "", out, state);
     if (out.length === 0 && looseFiles.length === 0) {
       // Some browsers return only files, no entries.
-      return Array.from(dt.files);
+      const flat = Array.from(dt.files);
+      return { files: flat, capped: false, hadItems: flat.length > 0 || entries.length > 0 };
     }
     out.push(...looseFiles);
-    return out;
+    return { files: out, capped: state.capped, hadItems: true };
   }
-  return Array.from(dt.files);
+  const flat = Array.from(dt.files);
+  return { files: flat, capped: false, hadItems: flat.length > 0 };
 }
 
 // For a paste event: returns any files (image/png from screenshots, plus any
@@ -106,13 +128,19 @@ export async function expandDataTransfer(dt: DataTransfer): Promise<File[]> {
 export interface PasteResult {
   files: File[];
   text: string | null;
+  // True when the clipboard had at least one item, even if it wasn't a
+  // file or plain-text. Lets the caller show a "nothing to send" hint
+  // rather than silently ignoring the paste gesture.
+  hadContent: boolean;
 }
 
 export async function readPaste(e: ClipboardEvent): Promise<PasteResult> {
   const dt = e.clipboardData;
-  if (!dt) return { files: [], text: null };
+  if (!dt) return { files: [], text: null, hadContent: false };
   const files: File[] = [];
+  let itemCount = 0;
   if (dt.items && dt.items.length > 0) {
+    itemCount = dt.items.length;
     for (let i = 0; i < dt.items.length; i++) {
       const item = dt.items[i];
       if (item.kind === "file") {
@@ -121,6 +149,7 @@ export async function readPaste(e: ClipboardEvent): Promise<PasteResult> {
       }
     }
   } else if (dt.files && dt.files.length > 0) {
+    itemCount = dt.files.length;
     files.push(...Array.from(dt.files));
   }
   let text: string | null = null;
@@ -128,5 +157,6 @@ export async function readPaste(e: ClipboardEvent): Promise<PasteResult> {
     const t = dt.getData("text/plain");
     if (t) text = t;
   } catch {}
-  return { files, text };
+  const hadContent = itemCount > 0 || text !== null;
+  return { files, text, hadContent };
 }

@@ -49,7 +49,7 @@ import { SasBadge } from "./SasBadge";
 import { formatBytes } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { deviceLabel, type DeviceKind } from "@/lib/device";
-import { playConnectSound, playMessageSound, playReceiveSound, unlockAudio } from "@/lib/sound";
+import { playConnectSound, playMessageSound, playReceiveSound, playSendSound, suspendAudio, unlockAudio } from "@/lib/sound";
 import { useHistory, type HistoryItem } from "@/lib/history";
 import { ensureNotificationPermission, notify } from "@/lib/notifications";
 import { expandDataTransfer, readPaste } from "@/lib/dropzone";
@@ -339,9 +339,18 @@ export function Session({ sessionId, isInitiator }: Props) {
 
   // Host-not-found dead-state: progressive wording so the wait doesn't feel
   // abrupt on slow networks.
-  //   0-3s : default "Waiting for the host…" header
-  //   3-6s : eyebrow flips to "Still trying…"
-  //   6s+  : full dead-end card with Retry / Go home
+  //   0-6s  : default "Waiting for the host…" header
+  //   6-30s : eyebrow flips to "Still trying…"
+  //   30s+  : full dead-end card with Retry / Go home
+  //
+  // The generous window is intentional: on the first reconnect after both
+  // devices return to the home page, the host's device must receive the
+  // guest's hello, navigate from the home/lobby page to /session/$id, and
+  // re-subscribe to Supabase with the "host" presence key before the guest
+  // can detect it. That transition + Supabase round-trip typically takes
+  // 2–6 s, but can be longer on slower connections. Showing "host not
+  // found" at 6 s almost guarantees a false-positive dead-end on those
+  // networks; 30 s gives the host ample time to be ready.
   const [hostMissing, setHostMissing] = useState(false);
   const [stillTrying, setStillTrying] = useState(false);
   useEffect(() => {
@@ -351,8 +360,8 @@ export function Session({ sessionId, isInitiator }: Props) {
       setStillTrying(false);
       return;
     }
-    const tStill = window.setTimeout(() => setStillTrying(true), 3000);
-    const tMissing = window.setTimeout(() => setHostMissing(true), 6000);
+    const tStill = window.setTimeout(() => setStillTrying(true), 6000);
+    const tMissing = window.setTimeout(() => setHostMissing(true), 30000);
     return () => {
       window.clearTimeout(tStill);
       window.clearTimeout(tMissing);
@@ -371,6 +380,10 @@ export function Session({ sessionId, isInitiator }: Props) {
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
       if (status === "connected" || status === "connecting") return;
+      // Stamp before calling so the handleFiles guard (which fires shortly
+      // after on the same return-from-picker event) sees the recent timestamp
+      // and skips its own manualReconnect() call.
+      lastManualReconnectRef.current = Date.now();
       manualReconnect();
     };
     document.addEventListener("visibilitychange", onVisible);
@@ -406,11 +419,23 @@ export function Session({ sessionId, isInitiator }: Props) {
     };
   }, [status]);
 
+  // Guard against calling manualReconnect() twice in rapid succession when both
+  // the visibilitychange handler and handleFiles fire within the same event-loop
+  // window (common on Android Chrome when returning from the file picker).
+  // visibilitychange fires first (calls manualReconnect → teardown → startOffer),
+  // then onChange fires and handleFiles runs with a stale "reconnecting" status
+  // closure and calls manualReconnect() again — tearing down the brand-new PC
+  // mid-negotiation and causing the offer to fail. A 1 s debounce prevents the
+  // second call from firing while the first offer is still completing.
+  const lastManualReconnectRef = useRef<number>(0);
+
   const endBridge = useCallback(() => {
     clearActiveSession();
     if (isInitiator) removeKey(StorageKeys.hostSessionId);
     pendingFilesRef.current = [];
     setPendingCount(0);
+    // Release OS audio focus so mobile devices can sleep/lock normally.
+    suspendAudio();
     toast("Bridge ended", { description: "The connection has been closed." });
     navigate({ to: "/" });
   }, [isInitiator, navigate]);
@@ -451,7 +476,6 @@ export function Session({ sessionId, isInitiator }: Props) {
   // Increments each time we transition into "connected" - drives a one-shot burst animation.
   const [connectBurst, setConnectBurst] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const lastIncomingRef = useRef(0);
   const lastMessageIdRef = useRef<string | null>(null);
   const stalledNotifiedRef = useRef(false);
   const prevStatusRef = useRef(status);
@@ -498,43 +522,48 @@ export function Session({ sessionId, isInitiator }: Props) {
     return () => clearInterval(id);
   }, []);
 
-  // Notify on incoming files & log to history
+  // Notify on incoming files & log to history.
+  // ID-based detection (not count-based) so that:
+  //   a) releasing a done row doesn't make the next completion miss its toast, and
+  //   b) errored files (done=true, error set) never fire the success toast/sound.
   useEffect(() => {
-    const doneCount = incomingFiles.filter((f) => f.done).length;
-    if (doneCount > lastIncomingRef.current) {
-      lastIncomingRef.current = doneCount;
+    let newSuccessCount = 0;
+    for (const f of incomingFiles) {
+      if (!f.done || seenReceivedRef.current.has(f.id)) continue;
+      seenReceivedRef.current.add(f.id);
+      if (f.error) continue; // failed transfer — skip toast, sound, and history
+      newSuccessCount++;
+      history.add({
+        kind: "file",
+        direction: "received",
+        id: `r:${f.id}`,
+        name: f.name,
+        size: f.size,
+        type: f.type,
+        ts: f.completedAt ?? Date.now(),
+      });
+      notify(
+        "File received",
+        f.savedToDisk
+          ? `${f.name} · saved to ${saveDirectory?.label ?? "your folder"}`
+          : `${f.name} · ${formatBytes(f.size)}`,
+        `recv:${f.id}`,
+      );
+    }
+    if (newSuccessCount > 0) {
       toast.success("File received");
       playReceiveSound();
       if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.([60, 40, 80]);
     }
-    for (const f of incomingFiles) {
-      if (f.done && !seenReceivedRef.current.has(f.id)) {
-        seenReceivedRef.current.add(f.id);
-        history.add({
-          kind: "file",
-          direction: "received",
-          id: `r:${f.id}`,
-          name: f.name,
-          size: f.size,
-          type: f.type,
-          ts: f.completedAt ?? Date.now(),
-        });
-        notify(
-          "File received",
-          f.savedToDisk
-            ? `${f.name} · saved to ${saveDirectory?.label ?? "your folder"}`
-            : `${f.name} · ${formatBytes(f.size)}`,
-          `recv:${f.id}`,
-        );
-      }
-    }
   }, [incomingFiles, history, saveDirectory]);
 
-  // Log sent files & track source availability
+  // Log sent files, play send sound, and track source availability
   useEffect(() => {
+    let newSuccessCount = 0;
     for (const f of outgoingFiles) {
       if (f.done && !seenSentRef.current.has(f.id)) {
         seenSentRef.current.add(f.id);
+        if (!f.error) newSuccessCount++;
         history.add({
           kind: "file",
           direction: "sent",
@@ -548,6 +577,7 @@ export function Session({ sessionId, isInitiator }: Props) {
         notify("File sent", `${f.name} · ${formatBytes(f.size)}`, `sent:${f.id}`);
       }
     }
+    if (newSuccessCount > 0) playSendSound();
   }, [outgoingFiles, history]);
 
   // Log messages (both directions)
@@ -683,7 +713,21 @@ export function Session({ sessionId, isInitiator }: Props) {
         if (recoverable && arr.length > 0) {
           const key = (f: File) => `${f.name}|${f.size}|${f.lastModified}`;
           const have = new Set(pendingFilesRef.current.map(key));
-          const adds = arr.filter((f) => !have.has(key(f)));
+          // Reject files that already exceed the current cap so the user
+          // gets immediate feedback rather than waiting through the entire
+          // reconnect cycle only to see a size error at drain time.
+          const adds: File[] = [];
+          for (const f of arr) {
+            if (have.has(key(f))) continue; // already queued
+            if (f.size > effectiveMaxBytes) {
+              const description = peerStreamingToDisk
+                ? `Files over ${effectiveMaxLabel} aren't supported yet.`
+                : `Files over ${effectiveMaxLabel} need the receiver to enable auto-save first (up to ${STREAMED_MAX_FILE_LABEL}).`;
+              toast.error(`${f.name} is too large`, { description });
+              continue;
+            }
+            adds.push(f);
+          }
           if (adds.length > 0) {
             pendingFilesRef.current.push(...adds);
             setPendingCount(pendingFilesRef.current.length);
@@ -701,8 +745,17 @@ export function Session({ sessionId, isInitiator }: Props) {
           // pending delay. Kicking manualReconnect() here directly
           // cancels any pending backoff and starts an immediate attempt,
           // regardless of whether visibilitychange fires.
+          //
+          // Debounce: if the visibilitychange handler already called
+          // manualReconnect() in the same event-loop window (which is
+          // the normal path on Android Chrome), skip the second call.
+          // Two rapid manualReconnect() calls tear down the brand-new PC
+          // mid-negotiation, causing the offer to fail completely.
           if (status === "disconnected" || status === "stalled" || status === "reconnecting") {
-            manualReconnect();
+            if (Date.now() - lastManualReconnectRef.current > 1000) {
+              lastManualReconnectRef.current = Date.now();
+              manualReconnect();
+            }
           }
           return;
         }
@@ -803,7 +856,7 @@ export function Session({ sessionId, isInitiator }: Props) {
       const tag = target?.tagName?.toLowerCase();
       if (tag === "input" || tag === "textarea" || target?.isContentEditable) return;
       if (!e.clipboardData) return;
-      const { files, text: pastedText } = await readPaste(e);
+      const { files, text: pastedText, hadContent } = await readPaste(e);
       if (files.length > 0) {
         e.preventDefault();
         await handleFiles(files);
@@ -814,6 +867,16 @@ export function Session({ sessionId, isInitiator }: Props) {
         if (sendText(pastedText, "clipboard")) {
           toast.success("Pasted clipboard sent");
         }
+        return;
+      }
+      // The user pressed Cmd/Ctrl+V but the clipboard contained something
+      // we can't send (e.g. a rich-text table, HTML, or a browser-internal
+      // type). Let them know instead of silently ignoring the gesture.
+      if (hadContent) {
+        e.preventDefault();
+        toast("Nothing to send", {
+          description: "That clipboard content can't be transferred. Try copying plain text or an image.",
+        });
       }
     };
     document.addEventListener("paste", onPaste);
@@ -1194,7 +1257,16 @@ export function Session({ sessionId, isInitiator }: Props) {
             <Button onClick={() => { setHostMissing(false); window.location.reload(); }} className="h-10">
               <RotateCw className="mr-2 h-4 w-4" /> Retry
             </Button>
-            <Button onClick={endBridge} variant="outline" className="h-10">
+            {/* Navigate home without firing "Bridge ended" — no bridge ever existed */}
+            <Button
+              onClick={() => {
+                clearActiveSession();
+                suspendAudio();
+                navigate({ to: "/" });
+              }}
+              variant="outline"
+              className="h-10"
+            >
               Go home
             </Button>
           </div>
@@ -1447,9 +1519,20 @@ export function Session({ sessionId, isInitiator }: Props) {
           setDragOver(false);
           // Expand folders recursively when supported; otherwise fall back to
           // the flat FileList the browser already gives us.
-          void expandDataTransfer(e.dataTransfer).then((files) => {
-            const list = files.length ? files : Array.from(e.dataTransfer.files);
-            if (list.length) handleFiles(list);
+          void expandDataTransfer(e.dataTransfer).then(({ files, capped, hadItems }) => {
+            if (capped) {
+              toast.warning("Folder too large", {
+                description: `Only the first 5,000 files were added. The rest were skipped.`,
+              });
+            }
+            if (files.length > 0) {
+              void handleFiles(files);
+            } else if (hadItems) {
+              // Items were present (e.g. empty folders) but produced no files.
+              toast("Nothing to send", {
+                description: "The dropped item contained no files.",
+              });
+            }
           });
         }}
         className={cn(
@@ -1483,6 +1566,11 @@ export function Session({ sessionId, isInitiator }: Props) {
           type="file"
           multiple
           className="hidden"
+          // Reset the value before every open so re-selecting the same file
+          // always fires onChange. Without this, picking photo.jpg → queuing
+          // it → discarding the queue → re-picking photo.jpg is silently
+          // ignored by the browser because the input value hasn't changed.
+          onClick={(e) => { (e.currentTarget as HTMLInputElement).value = ""; }}
           onChange={(e) => e.target.files && handleFiles(e.target.files)}
         />
         <Button size="sm" variant="secondary" onClick={handleChooseFiles} className="h-11 w-full sm:h-8 sm:w-auto">
@@ -1562,14 +1650,17 @@ export function Session({ sessionId, isInitiator }: Props) {
       {outgoingFiles.length > 0 && (() => {
         const allDone = outgoingFiles.every((f) => f.done);
         const anyInFlight = outgoingFiles.some((f) => !f.done && !f.error);
-        const headerLabel = allDone ? "Sent" : anyInFlight ? "Sending" : "Sending";
+        const headerLabel = allDone ? "Sent" : anyInFlight ? "Sending" : "Failed";
         const headerClass = allDone ? "text-success" : "";
         return (
         <Card className="space-y-3 p-4">
           <h3 className={`text-sm font-semibold ${headerClass}`}>{headerLabel}</h3>
           {outgoingFiles.map((f) => {
             const elapsed = Math.max(0.001, ((f.completedAt ?? Date.now()) - f.startedAt) / 1000);
-            const rate = f.sentBytes / elapsed;
+            // Use bytes sent in THIS attempt only (not cumulative from the file
+            // start) so rate doesn't spike to astronomical values right after a
+            // resume where elapsed ≈ 0 but sentBytes is already large.
+            const rate = (f.sentBytes - f.resumeFromBytes) / elapsed;
             const remaining = Math.max(0, f.size - f.sentBytes);
             const eta = rate > 0 ? remaining / rate : Infinity;
             const pct = f.size ? (f.sentBytes / f.size) * 100 : 0;
@@ -1841,7 +1932,7 @@ export function Session({ sessionId, isInitiator }: Props) {
                     variant="ghost"
                     className="h-6 px-2"
                     onClick={() => {
-                      navigator.clipboard.writeText(m.content);
+                      navigator.clipboard.writeText(m.content).catch(() => {});
                       toast.success("Copied");
                     }}
                   >
@@ -2022,7 +2113,7 @@ function HistoryRow({
             variant="ghost"
             className="h-7 px-2 text-[11px]"
             onClick={() => {
-              navigator.clipboard.writeText(item.content);
+              navigator.clipboard.writeText(item.content).catch(() => {});
               toast.success("Copied");
             }}
             title="Copy to clipboard"

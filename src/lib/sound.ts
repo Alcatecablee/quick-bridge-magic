@@ -15,6 +15,12 @@ export function unlockAudio(): void {
   if (c && c.state === "suspended") c.resume().catch(() => {});
 }
 
+// Call when the session ends (or the user navigates away) so the AudioContext
+// releases its OS audio focus and does not prevent mobile sleep/media lock.
+export function suspendAudio(): void {
+  if (ctx && ctx.state === "running") ctx.suspend().catch(() => {});
+}
+
 interface Tone {
   freq: number;
   duration: number;
@@ -28,10 +34,14 @@ function play(tones: Tone[]): void {
   if (!c) return;
   if (c.state === "suspended") c.resume().catch(() => {});
   const now = c.currentTime;
+  // Compute when the last tone finishes so we can auto-suspend the context
+  // once the sounds are done.
+  let maxEnd = now;
   for (const t of tones) {
     const osc = c.createOscillator();
     const g = c.createGain();
     const start = now + (t.delay ?? 0);
+    const end = start + t.duration + 0.02;
     const peak = t.gain ?? 0.06;
     osc.type = t.type ?? "sine";
     osc.frequency.value = t.freq;
@@ -40,8 +50,15 @@ function play(tones: Tone[]): void {
     g.gain.exponentialRampToValueAtTime(0.0001, start + t.duration);
     osc.connect(g).connect(c.destination);
     osc.start(start);
-    osc.stop(start + t.duration + 0.02);
+    osc.stop(end);
+    if (end > maxEnd) maxEnd = end;
   }
+  // Suspend after all tones finish so we hold OS audio resources only while
+  // actually playing. The context resumes automatically on the next play call.
+  const delay = Math.ceil((maxEnd - now) * 1000) + 100;
+  setTimeout(() => {
+    if (ctx && ctx.state === "running") ctx.suspend().catch(() => {});
+  }, delay);
 }
 
 export function playReceiveSound(): void {
@@ -59,5 +76,15 @@ export function playConnectSound(): void {
   play([
     { freq: 523.25, duration: 0.09, gain: 0.05 },
     { freq: 783.99, duration: 0.12, gain: 0.05, delay: 0.08 },
+  ]);
+}
+
+// Descending counterpart to playReceiveSound — plays on the sender's side
+// when a file transfer completes successfully. Two falling tones mirror the
+// receiver's ascending pair so both sides hear a distinct "done" cue.
+export function playSendSound(): void {
+  play([
+    { freq: 1046.5, duration: 0.09, gain: 0.06 },
+    { freq: 783.99, duration: 0.12, gain: 0.05, delay: 0.07 },
   ]);
 }

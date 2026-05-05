@@ -50,6 +50,11 @@ export interface OutgoingFile {
   size: number;
   type: string;
   sentBytes: number;
+  // Byte offset this attempt started from (0 for fresh sends, >0 for resumes).
+  // The UI uses this so rate = (sentBytes - resumeFromBytes) / elapsed instead
+  // of sentBytes / elapsed, which would spike to astronomical values right after
+  // a resume because elapsed is near zero but sentBytes is already large.
+  resumeFromBytes: number;
   done: boolean;
   error?: string;
   retryable?: boolean;
@@ -270,6 +275,9 @@ export function useWebRTC(sessionId: string, isInitiator: boolean, deviceName?: 
   // Promise resolvers parked by sendFileInternal while it waits for a
   // file-resume-ack reply from the receiver. Keyed by file id.
   const resumeAckResolversRef = useRef<Record<string, (offset: number) => void>>({});
+  // setTimeout handles for the per-resume-attempt timeout above. Tracked so
+  // the cleanup function can cancel them on unmount and avoid a stale setState.
+  const resumeAckTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   // Snapshot of outgoingFiles state, kept in a ref so resumeTransfer() can
   // read the latest sentBytes without forcing the callback to re-create on
   // every state change.
@@ -1127,9 +1135,13 @@ export function useWebRTC(sessionId: string, isInitiator: boolean, deviceName?: 
     channelRef.current = channel;
 
     // Bounded hello retry - guest re-announces until the host's presence is
-    // observed. 12 attempts × 1 s gives a generous 12 s window to cover the
-    // host's home→session navigation, hydration re-renders, and Supabase
-    // channel re-subscriptions.
+    // observed. 30 attempts × 1 s gives a 30 s window that matches the
+    // hostMissing dead-end timer on the UI side. The host's device may need
+    // to receive the guest's signal, navigate from the home/lobby page to
+    // /session/$id, re-subscribe to Supabase, and propagate "host" presence
+    // back -- a chain that can take 2-6 s on normal connections but longer
+    // on slower ones. Running retries until the hostMissing dead-end appears
+    // ensures the host always has an active signal to react to.
     const startHelloRetries = () => {
       if (isInitiator) return;
       if (helloTimer) return;
@@ -1138,7 +1150,7 @@ export function useWebRTC(sessionId: string, isInitiator: boolean, deviceName?: 
         helloTimer = null;
         if (aborted) return;
         if (peerPresentRef.current) return;
-        if (attempts >= 12) return;
+        if (attempts >= 30) return;
         attempts += 1;
         sendSignal({ type: "hello" });
         helloTimer = setTimeout(tick, 1000);
@@ -1358,6 +1370,11 @@ export function useWebRTC(sessionId: string, isInitiator: boolean, deviceName?: 
       pendingCandidatesRef.current = [];
       reconnectAttemptRef.current = 0;
       peerPresentRef.current = false;
+      // Cancel any pending resume-ack timeouts so they don't call setState
+      // on an unmounted component or surface misleading errors.
+      for (const t of Object.values(resumeAckTimersRef.current)) clearTimeout(t);
+      resumeAckTimersRef.current = {};
+      resumeAckResolversRef.current = {};
     };
   }, [
     sessionId,
@@ -1439,6 +1456,11 @@ export function useWebRTC(sessionId: string, isInitiator: boolean, deviceName?: 
           // Preserve the existing progress bar position on resume so the
           // UI doesn't snap back to 0% before the ack adjusts it.
           sentBytes: safeStart,
+          // Track where this attempt started from so the UI can compute
+          // rate as (sentBytes - resumeFromBytes) / elapsed rather than
+          // sentBytes / elapsed, which spikes astronomically right after a
+          // resume because elapsed is near zero but sentBytes is large.
+          resumeFromBytes: safeStart,
           done: false,
           startedAt: Date.now(),
           error: undefined,
@@ -1462,10 +1484,13 @@ export function useWebRTC(sessionId: string, isInitiator: boolean, deviceName?: 
           ackPromise = new Promise<number>((resolve, reject) => {
             const timer = setTimeout(() => {
               delete resumeAckResolversRef.current[id];
+              delete resumeAckTimersRef.current[id];
               reject(new Error("Receiver did not acknowledge resume"));
             }, RESUME_ACK_TIMEOUT_MS);
+            resumeAckTimersRef.current[id] = timer;
             resumeAckResolversRef.current[id] = (off) => {
               clearTimeout(timer);
+              delete resumeAckTimersRef.current[id];
               delete resumeAckResolversRef.current[id];
               resolve(off);
             };
@@ -1539,12 +1564,21 @@ export function useWebRTC(sessionId: string, isInitiator: boolean, deviceName?: 
               }
               const slice = value.subarray(chunkOffset, Math.min(chunkOffset + CHUNK_SIZE, value.byteLength));
               while (channel.readyState === "open" && channel.bufferedAmount > 8 * 1024 * 1024) {
+                // Escape on close/error as well: if the channel closes while we
+                // are parked here, "bufferedamountlow" will never fire and the
+                // send-queue promise chain would hang permanently. Resolving on
+                // close lets the outer "readyState !== open" guard throw and
+                // surface a clean retryable error instead.
                 await new Promise<void>((resolve) => {
-                  const onLow = () => {
-                    channel.removeEventListener("bufferedamountlow", onLow);
+                  const cleanup = () => {
+                    channel.removeEventListener("bufferedamountlow", cleanup);
+                    channel.removeEventListener("close", cleanup);
+                    channel.removeEventListener("error", cleanup);
                     resolve();
                   };
-                  channel.addEventListener("bufferedamountlow", onLow);
+                  channel.addEventListener("bufferedamountlow", cleanup);
+                  channel.addEventListener("close", cleanup);
+                  channel.addEventListener("error", cleanup);
                 });
               }
               if (channel.readyState !== "open") throw new Error("Channel closed");
@@ -1768,11 +1802,11 @@ export function useWebRTC(sessionId: string, isInitiator: boolean, deviceName?: 
   }, []);
 
   const incomingList = useMemo(
-    () => Object.values(incomingFiles).sort((a, b) => a.id.localeCompare(b.id)),
+    () => Object.values(incomingFiles).sort((a, b) => a.startedAt - b.startedAt),
     [incomingFiles],
   );
   const outgoingList = useMemo(
-    () => Object.values(outgoingFiles).sort((a, b) => a.id.localeCompare(b.id)),
+    () => Object.values(outgoingFiles).sort((a, b) => a.startedAt - b.startedAt),
     [outgoingFiles],
   );
 

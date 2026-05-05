@@ -57,7 +57,7 @@ export function Scene3() {
               No app. No account. No upload.
             </p>
 
-            {/* Fake QR — animate container once, not 81 individual cells */}
+            {/* Fake QR: animate container once, not 81 individual cells */}
             <motion.div
               className="w-48 h-48 bg-white rounded-lg p-3 relative z-10 grid grid-cols-9 grid-rows-9 gap-[2px]"
               initial={{ opacity: 0, scale: 0.88 }}

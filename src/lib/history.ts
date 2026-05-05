@@ -24,7 +24,18 @@ const MAX_ITEMS = 30;
 
 export function useHistory(sessionId: string) {
   const key = StorageKeys.history(sessionId);
-  const [items, setItems] = useState<HistoryItem[]>(() => readJSON<HistoryItem[]>(key, []));
+  const [items, setItems] = useState<HistoryItem[]>(() => {
+    const loaded = readJSON<HistoryItem[]>(key, []);
+    // sourceAvailable is only meaningful while the originating File object
+    // exists in memory. It does not survive a page refresh, so we clear it
+    // on load to prevent the history UI from showing a "Send again" button
+    // for files whose in-memory reference is already gone.
+    return loaded.map((item) =>
+      item.kind === "file" && item.direction === "sent" && item.sourceAvailable
+        ? { ...item, sourceAvailable: false }
+        : item,
+    );
+  });
 
   const persist = useCallback(
     (next: HistoryItem[]) => {

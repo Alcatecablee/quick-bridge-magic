@@ -199,6 +199,16 @@ export interface OpenedWritable {
 // embedded in the file name (e.g. "folder/sub/file.txt") so dropped folders
 // land on disk with their structure preserved. Names are sanitized to avoid
 // directory traversal.
+//
+// Collision handling: if a file with the same name already exists, we append
+// a counter suffix ("report (2).pdf") rather than silently clobbering it.
+// This prevents a second transfer of the same filename from truncating the
+// first file's on-disk bytes.
+//
+// Cleanup tracking: we track each intermediate directory we CREATE (not ones
+// that already existed) so the cleanup closure can remove them in reverse
+// order after a cancellation, preventing empty subdirectories from piling up
+// in the user's save folder.
 export async function createWritableForName(
   dir: DirectoryHandleLike,
   name: string,
@@ -209,25 +219,67 @@ export async function createWritableForName(
     .filter((s) => s.length > 0 && s !== "." && s !== "..");
   if (safeSegments.length === 0) safeSegments.push("file");
 
+  // Track (parent, name) pairs for directories we create so cleanup can
+  // remove them in reverse order (deepest first). Directories that already
+  // existed are skipped so we don't accidentally remove the user's own folders.
+  const createdDirEntries: Array<{ parent: DirectoryHandleLike; name: string }> = [];
+
   let cursor = dir;
   for (let i = 0; i < safeSegments.length - 1; i++) {
     const seg = safeSegments[i];
     if (!cursor.getDirectoryHandle) throw new Error("getDirectoryHandle unsupported");
+    const parentBeforeStep = cursor;
+    // Probe whether this directory segment already exists.
+    let existed = false;
+    try {
+      await parentBeforeStep.getDirectoryHandle?.(seg);
+      existed = true;
+    } catch {}
     const sub = await cursor.getDirectoryHandle(seg, { create: true });
+    if (!existed) createdDirEntries.push({ parent: parentBeforeStep, name: seg });
     cursor = sub;
   }
-  const fileName = safeSegments[safeSegments.length - 1];
+
+  // Avoid clobbering an existing file: probe the directory for the target
+  // name and, if it already exists, append a counter suffix. Cap at 99
+  // iterations to bound the loop; beyond that we accept the TOCTOU risk.
+  const rawFileName = safeSegments[safeSegments.length - 1];
+  const dotIdx = rawFileName.lastIndexOf(".");
+  const base = dotIdx > 0 ? rawFileName.slice(0, dotIdx) : rawFileName;
+  const ext = dotIdx > 0 ? rawFileName.slice(dotIdx) : "";
+  let fileName = rawFileName;
+  for (let counter = 1; counter <= 99; counter++) {
+    let exists = false;
+    try {
+      await cursor.getFileHandle(fileName);
+      exists = true;
+    } catch {}
+    if (!exists) break;
+    fileName = `${base} (${counter})${ext}`;
+  }
+
   const handle = await cursor.getFileHandle(fileName, { create: true });
   const writable = await (handle as unknown as {
     createWritable: (opts?: {
       keepExistingData?: boolean;
     }) => Promise<FileSystemWritableFileStream>;
   }).createWritable({ keepExistingData: false });
-  const parent = cursor;
+
+  const leafParent = cursor;
+  const leafName = fileName;
+  const finalSegments = [...safeSegments.slice(0, -1), fileName];
+
   const cleanup = async () => {
-    try {
-      await parent.removeEntry?.(fileName);
-    } catch {}
+    // Remove the leaf file first.
+    try { await leafParent.removeEntry?.(leafName); } catch {}
+    // Remove intermediate directories we created, deepest first. We use the
+    // default non-recursive remove so a directory that already has other files
+    // (placed there by a concurrent transfer or the user) is left intact.
+    for (let i = createdDirEntries.length - 1; i >= 0; i--) {
+      const { parent: p, name: n } = createdDirEntries[i];
+      try { await p.removeEntry?.(n); } catch {}
+    }
   };
-  return { writable, finalName: safeSegments.join("/"), cleanup };
+
+  return { writable, finalName: finalSegments.join("/"), cleanup };
 }

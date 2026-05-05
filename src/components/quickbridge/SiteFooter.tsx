@@ -116,7 +116,7 @@ export function SiteFooter() {
         </div>
       </div>
 
-      <div className="mt-10 flex flex-wrap items-center justify-center gap-4 border-t border-border pt-6 opacity-50">
+      <div className="mt-10 flex items-center justify-center border-t border-border pt-6 opacity-50">
         <a
           href="https://www.producthunt.com/products/quickbridge?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-quickbridge"
           target="_blank"
@@ -127,18 +127,6 @@ export function SiteFooter() {
             width="250"
             height="54"
             src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1138210&theme=dark&t=1777841949536"
-          />
-        </a>
-        <a
-          href="https://startupfa.me/s/quickbridge?utm_source=quickbridge.app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img
-            src="https://startupfa.me/badges/featured/dark-small-rounded.webp"
-            alt="QuickBridge - Featured on Startup Fame"
-            width="240"
-            height="37"
           />
         </a>
       </div>

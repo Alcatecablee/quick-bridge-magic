@@ -367,7 +367,7 @@ function Home() {
 
   // Defer video iframe mount until the section is near the viewport.
   // This prevents the entire Framer Motion video bundle from loading on
-  // initial page paint — critical for mobile first-load performance.
+  // initial page paint, critical for mobile first-load performance.
   useEffect(() => {
     const el = videoSectionRef.current;
     if (!el || typeof IntersectionObserver === "undefined") {
@@ -595,9 +595,14 @@ function Home() {
             <FlowConnector className="h-3 w-10 shrink-0 text-muted-foreground/60 sm:h-4 sm:w-14" animDelay="0s" />
             <div className="flex flex-1 flex-col items-center gap-2">
               <ScanIllustration className="h-9 w-9 text-primary sm:h-11 sm:w-11" />
-              <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px]">
-                Scan QR
-              </span>
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px]">
+                  Scan QR
+                </span>
+                <span className="text-[9px] tracking-[0.05em] text-muted-foreground/55">
+                  or link or PIN
+                </span>
+              </div>
             </div>
             <FlowConnector className="h-3 w-10 shrink-0 text-muted-foreground/60 sm:h-4 sm:w-14" animDelay="0.35s" />
             <div className="flex flex-1 flex-col items-center gap-2">
@@ -607,6 +612,9 @@ function Home() {
               </span>
             </div>
           </div>
+          <p className="mx-auto mt-3 max-w-sm text-center text-[11.5px] text-muted-foreground/60">
+            Both devices need the page open at the same time. No storage, no waiting rooms.
+          </p>
         </section>
 
         {/* Social proof strip */}
@@ -673,7 +681,7 @@ function Home() {
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-semibold">Pair this device</p>
-                <p className="text-[12px] text-muted-foreground">Scan or share the link</p>
+                <p className="text-[12px] text-muted-foreground">Scan the QR, share a link, or share a PIN</p>
               </div>
               <div className="flex items-center gap-2">
                 <span className="rounded-md border border-border bg-muted/40 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -702,7 +710,7 @@ function Home() {
             <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-5">
               <div className="flex w-full max-w-[220px] shrink-0 flex-col items-center sm:w-[220px] sm:max-w-none">
                 <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-primary">
-                  {pairUrl ? "Step 1: Scan with your phone" : "Setting up…"}
+                  {pairUrl ? "Scan to connect" : "Setting up…"}
                 </p>
                 {pairUrl ? (
                   <QrDisplay text={pairUrl} size={220} pulse={false} />

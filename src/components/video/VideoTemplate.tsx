@@ -21,7 +21,7 @@ export default function VideoTemplate() {
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-[#0b0d12] text-white" style={{ fontFamily: 'Inter, sans-serif' }}>
-      {/* Persistent Background — static gradient, no animation to avoid GPU blur cost on mobile */}
+      {/* Persistent Background: static gradient, no animation to avoid GPU blur cost on mobile */}
       <div className="absolute inset-0 pointer-events-none">
         <div
           className="absolute w-[55vw] h-[55vw] rounded-full opacity-[0.08] blur-[70px]"
