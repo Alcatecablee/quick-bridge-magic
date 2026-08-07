@@ -43,7 +43,7 @@ export function HeroSection({ onScrollToQR }: HeroSectionProps) {
 
   return (
     <section className="mx-auto max-w-5xl text-center">
-      <motion.h1 className="text-balance tracking-tight text-foreground font-black text-[32px] sm:text-[40px] md:text-[60px]">
+      <motion.h1 className="text-balance tracking-[-0.035em] text-foreground font-black text-[36px] leading-[1.04] sm:text-[46px] md:text-[68px]">
         <span className="block overflow-hidden pb-[0.1em]">
           <motion.span
             variants={line1Variants}
