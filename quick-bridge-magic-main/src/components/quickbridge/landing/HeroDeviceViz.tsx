@@ -79,9 +79,9 @@ export function HeroDeviceViz() {
   const imageLabel = `Phone and computer connected through a QuickBridge hub. ${currentActivity}.`;
 
   return (
-    <figure className="mx-auto mt-2 w-full max-w-[820px]">
+    <figure className="mx-auto mt-1 w-full max-w-[680px]">
       <div
-        className="qb-hero-system relative aspect-[1024/1024] w-full max-w-[680px] overflow-hidden rounded-[24px] sm:rounded-[30px]"
+        className="qb-hero-system relative aspect-[1024/1024] w-full max-w-[560px] overflow-hidden rounded-[24px] sm:rounded-[30px]"
         role="img"
         aria-label={imageLabel}
       >
