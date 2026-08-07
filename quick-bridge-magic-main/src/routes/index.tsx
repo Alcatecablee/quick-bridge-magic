@@ -689,7 +689,7 @@ function Home() {
         {/* Continuity: sticky scroll storytelling section.
             Five one-click interactions cycle as the user scrolls.
             On reduced-motion, falls back to a simple vertical list. */}
-        <section className="mt-24 sm:mt-32">
+        <section className="mt-16 sm:mt-24">
           <StickyScrollSection />
         </section>
 

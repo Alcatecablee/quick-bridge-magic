@@ -89,6 +89,8 @@ export function HeroDeviceViz() {
           src="/images/quickbridge-living-system.png"
           alt="A phone and computer connected through a QuickBridge QR hub"
           className="absolute inset-0 h-full w-full object-contain"
+          loading="eager"
+          decoding="async"
           fetchPriority="high"
           draggable={false}
         />
