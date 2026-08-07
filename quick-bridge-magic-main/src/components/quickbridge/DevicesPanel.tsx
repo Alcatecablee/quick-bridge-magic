@@ -18,7 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useTrustedNodes } from "@/hooks/use-trusted-nodes";
 import { usePresence } from "@/hooks/use-presence";
-import { Smartphone, Tablet, Monitor, Loader2 } from "./icons";
+import { Smartphone, Tablet, Monitor, Loader2, ChevronDown } from "./icons";
 import { Button } from "@/components/ui/button";
 import type { DeviceKind } from "@/lib/device";
 import type { NodeIdentity } from "@/lib/node-identity";
@@ -33,6 +33,9 @@ interface Props {
   nickname: string;
   /** This device's kind, detected once on mount by the homepage. */
   deviceKind: DeviceKind;
+  /** Toggles the pairing card for adding another device. */
+  pairingOpen: boolean;
+  onTogglePairing: () => void;
 }
 
 function DeviceIcon({ kind }: { kind: DeviceKind }) {
@@ -77,7 +80,13 @@ function CapabilityHint({ caps }: { caps: Capability[] }) {
   );
 }
 
-export function DevicesPanel({ identity, nickname, deviceKind }: Props) {
+export function DevicesPanel({
+  identity,
+  nickname,
+  deviceKind,
+  pairingOpen,
+  onTogglePairing,
+}: Props) {
   const { nodes, loading } = useTrustedNodes();
   const navigate = useNavigate();
   // Tracks which node is currently being connected to. Prevents double-tap
@@ -344,6 +353,21 @@ export function DevicesPanel({ identity, nickname, deviceKind }: Props) {
           );
         })}
       </div>
+      <button
+        type="button"
+        onClick={onTogglePairing}
+        className="-mx-5 -mb-5 mt-4 flex w-[calc(100%+2.5rem)] items-center justify-between border-t border-border/60 px-5 py-3 text-left transition-colors hover:bg-card/60 sm:-mx-6 sm:-mb-6 sm:w-[calc(100%+3rem)] sm:px-6"
+        aria-expanded={pairingOpen}
+      >
+        <span className="text-[12.5px] font-medium text-muted-foreground">
+          {pairingOpen ? "Hide pairing" : "+ Add another device"}
+        </span>
+        <ChevronDown
+          className={`h-3.5 w-3.5 text-muted-foreground/60 transition-transform duration-200 ${
+            pairingOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
     </section>
   );
 }

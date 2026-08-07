@@ -656,33 +656,17 @@ function Home() {
               identity={localIdentity}
               nickname={readString(StorageKeys.deviceName) ?? ""}
               deviceKind={myDeviceKind}
+              pairingOpen={pairingOpen}
+              onTogglePairing={() => {
+                const opening = !pairingOpen;
+                setPairingOpen(opening);
+                if (opening && typeof document !== "undefined") {
+                  setTimeout(() => {
+                    document.getElementById("qr")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }, 80);
+                }
+              }}
             />
-            {/* "Add another device" toggle: collapses the pairing card for
-                returning users so QR setup doesn't dominate a page that is
-                now primarily about acting on existing trusted relationships. */}
-            {hasTrustedDevices && (
-              <button
-                type="button"
-                onClick={() => {
-                  const opening = !pairingOpen;
-                  setPairingOpen(opening);
-                  if (opening && typeof document !== "undefined") {
-                    setTimeout(() => {
-                      document.getElementById("qr")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }, 80);
-                  }
-                }}
-                className="mt-3 flex w-full items-center justify-between rounded-lg border border-border/60 bg-card/30 px-4 py-2.5 text-left transition-colors hover:bg-card/60"
-                aria-expanded={pairingOpen}
-              >
-                <span className="text-[12.5px] font-medium text-muted-foreground">
-                  {pairingOpen ? "Hide pairing" : "+ Add another device"}
-                </span>
-                <ChevronDown
-                  className={`h-3.5 w-3.5 text-muted-foreground/60 transition-transform duration-200 ${pairingOpen ? "rotate-180" : ""}`}
-                />
-              </button>
-            )}
           </Reveal>
         )}
 
