@@ -1,5 +1,4 @@
 import {
-  QrCode,
   Wifi,
   Link2,
   Share2,
@@ -12,7 +11,6 @@ import {
 } from "./icons";
 
 const ICONS = [
-  QrCode,
   Wifi,
   Link2,
   Share2,
