@@ -131,7 +131,7 @@ function StickyImpl() {
       >
         <div className="flex h-full flex-col justify-center px-4 py-12 sm:px-8">
           {/* Section label at top */}
-          <div className="mb-10">
+          <div className="mb-8 sm:mb-10">
             <SectionLabel />
           </div>
 
@@ -144,21 +144,28 @@ function StickyImpl() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.5, ease: EASE }}
-                  className="flex flex-col gap-4"
+                  transition={{ duration: 0.62, ease: EASE }}
+                  className="flex flex-col gap-5"
                 >
                   {/* Step indicator */}
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
                       {INTERACTIONS[activeIndex].label}
                     </p>
-                    <div className="flex gap-1.5">
+                    <div
+                      className="flex items-center gap-1.5"
+                      role="progressbar"
+                      aria-label={`Chapter 2, step ${activeIndex + 1} of ${INTERACTIONS.length}`}
+                      aria-valuemin={1}
+                      aria-valuemax={INTERACTIONS.length}
+                      aria-valuenow={activeIndex + 1}
+                    >
                       {INTERACTIONS.map((_, i) => (
                         <div
                           key={i}
-                          className="h-1 rounded-full transition-all duration-300"
+                          className="h-1 rounded-full transition-all duration-500"
                           style={{
-                            width: i === activeIndex ? 20 : 6,
+                            width: i === activeIndex ? 24 : 7,
                             background:
                               i === activeIndex
                                 ? "oklch(0.7 0.13 245)"
@@ -167,13 +174,16 @@ function StickyImpl() {
                         />
                       ))}
                     </div>
+                    <span className="font-mono text-[10px] tabular-nums text-muted-foreground/50">
+                      {String(activeIndex + 1).padStart(2, "0")} / {String(INTERACTIONS.length).padStart(2, "0")}
+                    </span>
                   </div>
 
-                  <h2 className="text-[36px] font-black leading-tight tracking-tight text-foreground sm:text-[44px]">
+                  <h2 className="max-w-lg text-[36px] font-black leading-[1.02] tracking-tight text-foreground sm:text-[48px]">
                     {INTERACTIONS[activeIndex].heading}
                   </h2>
 
-                  <p className="max-w-sm text-[15px] leading-relaxed text-muted-foreground">
+                  <p className="max-w-md text-[15px] leading-[1.7] text-muted-foreground">
                     {INTERACTIONS[activeIndex].description}
                   </p>
 
@@ -193,8 +203,8 @@ function StickyImpl() {
                   initial={{ opacity: 0, scale: 0.96 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 1.02 }}
-                  transition={{ duration: 0.5, ease: EASE }}
-                  className="flex h-64 w-full max-w-sm items-center justify-center rounded-2xl bg-black/40 ring-1 ring-white/5"
+                  transition={{ duration: 0.62, ease: EASE }}
+                  className="qb-chapter2-scene flex h-64 w-full max-w-sm items-center justify-center rounded-[26px] sm:h-[18rem]"
                 >
                   <InteractionScene index={activeIndex} />
                 </motion.div>
@@ -231,11 +241,17 @@ function StickyImpl() {
 
 function SectionLabel() {
   return (
-    <div>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-        Chapter 2 · After the first connection
-      </p>
-      <p className="mt-0.5 text-[13.5px] text-muted-foreground/60">
+    <div className="qb-chapter2-header max-w-2xl border-b border-border/50 pb-4">
+      <div className="flex items-center gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+          Chapter 2
+        </p>
+        <span className="h-px w-8 bg-primary/35" aria-hidden="true" />
+        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          After the first connection
+        </p>
+      </div>
+      <p className="mt-2 max-w-xl text-[13.5px] leading-relaxed text-muted-foreground/65">
         Trust your devices once. Every action after that takes one click.
       </p>
     </div>
@@ -250,20 +266,20 @@ function DeviceRow({
   toLabel: string;
 }) {
   return (
-    <div className="flex items-center gap-2 pt-1">
-      <span className="rounded-md border border-border/60 bg-elevated px-2 py-0.5 text-[11px] font-medium text-foreground/70">
+    <div className="flex items-center gap-2 pt-1.5">
+      <span className="rounded-md border border-border/70 bg-elevated px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-foreground/65">
         {fromLabel}
       </span>
-      <svg width="18" height="8" viewBox="0 0 18 8" fill="none" aria-hidden="true">
+      <svg width="22" height="8" viewBox="0 0 22 8" fill="none" aria-hidden="true">
         <path
-          d="M1 4 H14 M11 1 L17 4 L11 7"
+          d="M1 4 H18 M15 1 L21 4 L15 7"
           stroke="oklch(0.7 0.13 245 / 0.5)"
           strokeWidth="1.2"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
       </svg>
-      <span className="rounded-md border border-border/60 bg-elevated px-2 py-0.5 text-[11px] font-medium text-foreground/70">
+      <span className="rounded-md border border-border/70 bg-elevated px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-foreground/65">
         {toLabel}
       </span>
     </div>
