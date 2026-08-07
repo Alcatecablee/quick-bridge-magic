@@ -5,20 +5,10 @@ import {
   Share2,
   Smartphone,
   FileText,
-  ShieldCheck,
-  Zap,
-  Globe,
-  Lock,
-  Infinity as InfinityIcon,
   MessageSquare,
   ArrowLeftRight,
   Download,
   Upload,
-  Radio,
-  Layers,
-  Binary,
-  Cpu,
-  Antenna,
 } from "./icons";
 
 const ICONS = [
@@ -28,20 +18,10 @@ const ICONS = [
   Share2,
   Smartphone,
   FileText,
-  ShieldCheck,
-  Zap,
-  Globe,
-  Lock,
-  InfinityIcon,
   MessageSquare,
   ArrowLeftRight,
   Download,
   Upload,
-  Radio,
-  Layers,
-  Binary,
-  Cpu,
-  Antenna,
 ];
 
 interface IconCell {
@@ -65,8 +45,8 @@ function buildGrid(): IconCell[] {
   const rand = seededRandom(42);
   const cells: IconCell[] = [];
 
-  const iconCount = 180;
-  const minDistance = 3.8;
+  const iconCount = 100;
+  const minDistance = 7;
 
   for (let i = 0; i < iconCount; i++) {
     let x = 0;
