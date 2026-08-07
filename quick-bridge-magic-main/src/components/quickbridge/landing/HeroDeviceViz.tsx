@@ -130,15 +130,15 @@ export function HeroDeviceViz() {
             </filter>
           </defs>
 
-          <path
-            d="M 205 255 C 300 232 382 245 462 255 M 562 255 C 625 232 672 246 701 244"
+           <path
+             d="M 265 281 C 330 260 420 268 462 281 M 562 281 C 620 266 680 270 728 281"
             stroke="oklch(0.82 0.13 195 / 0.28)"
             strokeWidth="2"
             strokeLinecap="round"
             className="qb-hero-system-route-glow"
           />
           <path
-            d="M 205 255 C 300 232 382 245 462 255 M 562 255 C 625 232 672 246 701 244"
+             d="M 265 281 C 330 260 420 268 462 281 M 562 281 C 620 266 680 270 728 281"
             stroke="oklch(0.82 0.13 195 / 0.58)"
             strokeWidth="1"
             strokeLinecap="round"
@@ -153,10 +153,10 @@ export function HeroDeviceViz() {
                 r="4"
                 fill="oklch(0.9 0.1 190)"
                 filter="url(#qb-system-packet-glow)"
-                initial={{ cx: 205, cy: 255, opacity: 0 }}
+                 initial={{ cx: 265, cy: 281, opacity: 0 }}
                 animate={{
-                  cx: [205, 282, 374, 462, 512, 562, 632, 684, 701],
-                  cy: [255, 242, 238, 255, 255, 255, 241, 238, 244],
+                   cx: [265, 330, 405, 462, 512, 562, 620, 680, 728],
+                   cy: [281, 268, 266, 281, 281, 281, 266, 270, 281],
                   opacity: [0, 1, 1, 1, 1, 1, 1, 0.9, 0],
                 }}
                 transition={{
@@ -169,10 +169,10 @@ export function HeroDeviceViz() {
                 key={`packet-echo-${packetId}`}
                 r="2"
                 fill="oklch(0.84 0.13 190 / 0.7)"
-                initial={{ cx: 205, cy: 255, opacity: 0 }}
+                 initial={{ cx: 265, cy: 281, opacity: 0 }}
                 animate={{
-                  cx: [205, 282, 374, 462, 512, 562, 632, 684, 701],
-                  cy: [255, 242, 238, 255, 255, 255, 241, 238, 244],
+                   cx: [265, 330, 405, 462, 512, 562, 620, 680, 728],
+                   cy: [281, 268, 266, 281, 281, 281, 266, 270, 281],
                   opacity: [0, 0.65, 0.65, 0.65, 0.65, 0.65, 0.45, 0.2, 0],
                 }}
                 transition={{
@@ -187,7 +187,7 @@ export function HeroDeviceViz() {
 
           <motion.circle
             cx="512"
-            cy="255"
+             cy="281"
             r="51"
             fill="none"
             stroke="oklch(0.84 0.13 190 / 0.55)"
@@ -199,16 +199,16 @@ export function HeroDeviceViz() {
               scale: packetActive ? [0.92, 1.08, 0.92] : 1,
             }}
             transition={{ duration: packetActive ? 0.7 : 0.2, ease: EASE_SETTLE }}
-            style={{ transformOrigin: "512px 255px" }}
+             style={{ transformOrigin: "512px 281px" }}
           />
 
           {phonePulse && (
             <rect
-              x="94"
-              y="119"
-              width="122"
-              height="265"
-              rx="29"
+               x="108"
+               y="91"
+               width="160"
+               height="391"
+               rx="34"
               fill="none"
               stroke="oklch(0.84 0.13 190 / 0.9)"
               strokeWidth="3"
@@ -217,11 +217,11 @@ export function HeroDeviceViz() {
           )}
           {computerPulse && (
             <rect
-              x="698"
-              y="119"
-              width="230"
-              height="232"
-              rx="18"
+               x="632"
+               y="75"
+               width="338"
+               height="402"
+               rx="24"
               fill="none"
               stroke="oklch(0.84 0.13 190 / 0.9)"
               strokeWidth="3"
