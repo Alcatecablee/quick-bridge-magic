@@ -43,7 +43,7 @@ export function HeroSection({ onScrollToQR }: HeroSectionProps) {
 
   return (
     <section className="mx-auto max-w-5xl text-center">
-      <motion.h1 className="font-black tracking-tight text-[44px] leading-[1.1] sm:text-[58px] md:text-[72px]">
+      <motion.h1 className="text-balance tracking-tight text-foreground font-black text-[32px] sm:text-[40px] md:text-[60px]">
         <span className="block overflow-hidden pb-[0.1em]">
           <motion.span
             variants={line1Variants}
@@ -60,7 +60,7 @@ export function HeroSection({ onScrollToQR }: HeroSectionProps) {
             variants={line2Variants}
             initial={init}
             animate="visible"
-            className="block text-foreground"
+            className="block text-muted-foreground"
           >
             Make every device
           </motion.span>
@@ -71,7 +71,7 @@ export function HeroSection({ onScrollToQR }: HeroSectionProps) {
             variants={line3Variants}
             initial={init}
             animate="visible"
-            className="block text-foreground"
+            className="block text-muted-foreground"
           >
             feel like the same computer.
           </motion.span>
@@ -82,7 +82,7 @@ export function HeroSection({ onScrollToQR }: HeroSectionProps) {
         variants={subtitleVariants}
         initial={init}
         animate="visible"
-        className="mx-auto mt-8 max-w-2xl text-[17px] font-medium leading-relaxed text-muted-foreground sm:text-[21px]"
+        className="mx-auto mt-3 max-w-3xl text-[13.5px] leading-relaxed text-muted-foreground sm:mt-4 sm:text-[15px]"
       >
         Files. Tabs. Clipboard. Photos. One click.
       </motion.p>
