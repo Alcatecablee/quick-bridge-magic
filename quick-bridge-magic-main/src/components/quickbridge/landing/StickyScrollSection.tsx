@@ -152,28 +152,6 @@ function StickyImpl() {
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
                       {INTERACTIONS[activeIndex].label}
                     </p>
-                    <div
-                      className="flex items-center gap-1.5"
-                      role="progressbar"
-                      aria-label={`Chapter 2, step ${activeIndex + 1} of ${INTERACTIONS.length}`}
-                      aria-valuemin={1}
-                      aria-valuemax={INTERACTIONS.length}
-                      aria-valuenow={activeIndex + 1}
-                    >
-                      {INTERACTIONS.map((_, i) => (
-                        <div
-                          key={i}
-                          className="h-1 rounded-full transition-all duration-500"
-                          style={{
-                            width: i === activeIndex ? 24 : 7,
-                            background:
-                              i === activeIndex
-                                ? "oklch(0.7 0.13 245)"
-                                : "oklch(0.7 0.13 245 / 0.2)",
-                          }}
-                        />
-                      ))}
-                    </div>
                     <span className="font-mono text-[10px] tabular-nums text-muted-foreground/50">
                       {String(activeIndex + 1).padStart(2, "0")} / {String(INTERACTIONS.length).padStart(2, "0")}
                     </span>
@@ -267,19 +245,19 @@ function DeviceRow({
 }) {
   return (
     <div className="flex items-center gap-2 pt-1.5">
-      <span className="rounded-md border border-border/70 bg-elevated px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-foreground/65">
+      <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-foreground/65">
         {fromLabel}
       </span>
       <svg width="22" height="8" viewBox="0 0 22 8" fill="none" aria-hidden="true">
         <path
           d="M1 4 H18 M15 1 L21 4 L15 7"
-          stroke="oklch(0.7 0.13 245 / 0.5)"
+          stroke="currentColor"
           strokeWidth="1.2"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
       </svg>
-      <span className="rounded-md border border-border/70 bg-elevated px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-foreground/65">
+      <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-foreground/65">
         {toLabel}
       </span>
     </div>

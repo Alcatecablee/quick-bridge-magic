@@ -657,7 +657,7 @@ function Home() {
               nickname={readString(StorageKeys.deviceName) ?? ""}
               deviceKind={myDeviceKind}
             />
-            {/* "Add another device" toggle — collapses the pairing card for
+            {/* "Add another device" toggle: collapses the pairing card for
                 returning users so QR setup doesn't dominate a page that is
                 now primarily about acting on existing trusted relationships. */}
             {hasTrustedDevices && (

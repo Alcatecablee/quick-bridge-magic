@@ -51,7 +51,7 @@ export function FaqSection() {
         </p>
       </div>
       <div className="lg:col-span-3">
-        <div className="flex flex-col rounded-2xl border border-border/70 bg-card/25 px-5 divide-y divide-border/70 sm:px-7">
+        <div className="flex flex-col rounded-xl border border-border/70 bg-card/25 px-5 divide-y divide-border/70 sm:px-7">
           {faqs.map((item, i) => {
             const isOpen = openIndex === i;
             const questionId = `faq-question-${i}`;

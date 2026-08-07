@@ -38,7 +38,7 @@ export function WorkflowComparison() {
 
       <div className="mt-10 flex flex-col gap-5 sm:mt-14 sm:gap-6">
         {/* ---- OLD WAY ---- */}
-        <div className="rounded-2xl border border-border/70 bg-card/30 p-5 sm:p-8">
+        <div className="rounded-xl border border-border/70 bg-card/30 p-5 sm:p-8">
           <p className="mb-6 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground/60 text-center">
             The old way
           </p>
@@ -75,7 +75,7 @@ export function WorkflowComparison() {
         </div>
 
         {/* ---- QUICKBRIDGE ---- */}
-        <div className="rounded-2xl border border-primary/25 bg-primary/[0.045] p-5 shadow-lg shadow-primary/[0.04] sm:p-8">
+        <div className="rounded-xl border border-border/70 bg-card/30 p-5 sm:p-8">
           <p className="mb-6 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary text-center">
             QuickBridge
           </p>
@@ -86,11 +86,10 @@ export function WorkflowComparison() {
             className="flex items-center justify-center gap-4 sm:gap-8"
           >
             <div className="font-mono text-[16px] font-medium text-foreground">Phone</div>
-            <div className="relative flex h-px w-32 items-center bg-primary/40 sm:w-64">
+            <div className="relative flex h-px w-32 items-center bg-border sm:w-64">
               {!prefersReduced && (
                 <motion.div
-                  className="absolute left-0 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-primary"
-                  style={{ boxShadow: "0 0 10px oklch(0.7 0.13 245 / 0.8)" }}
+                  className="absolute left-0 top-1/2 h-1 w-1 -translate-y-1/2 bg-foreground"
                   animate={{ left: ["0%", "100%"] }}
                   transition={{ duration: 0.3, ease: "easeOut", repeat: Infinity, repeatDelay: 1.5 }}
                 />

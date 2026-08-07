@@ -17,7 +17,7 @@ export function SecuritySection() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-border/70 bg-card/30 p-5 sm:p-8">
+      <div className="rounded-xl border border-border/70 bg-card/30 p-5 sm:p-8">
       {/* ── Visual Flow: Your file -> Encrypted -> Direct -> Gone ── */}
       <div className="flex flex-col items-center justify-center py-8 sm:py-10">
         <div className="grid w-full max-w-2xl grid-cols-2 justify-items-center gap-y-3 font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground sm:flex sm:items-center sm:justify-between sm:gap-y-0 sm:text-[12px]">
