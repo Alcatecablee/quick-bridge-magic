@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cd quick-bridge-magic-main && npm install --include=dev && npm run build",
+  "buildCommand": "cd quick-bridge-magic-main && npm install --include=dev --package-lock=false --registry=https://registry.npmjs.org && npm run build",
   "outputDirectory": "quick-bridge-magic-main/dist/client",
   "installCommand": "echo done",
   "framework": null,
