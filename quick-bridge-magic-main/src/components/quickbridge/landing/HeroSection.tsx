@@ -15,33 +15,29 @@ export function HeroSection({ onScrollToQR }: HeroSectionProps) {
 
   // Clip-reveal variant factory.
   const mkLine = (delay: number) => ({
-    hidden: prefersReduced
-      ? { opacity: 1, y: 0 }
-      : { opacity: 0, y: "110%" },
+    hidden: prefersReduced ? { opacity: 1, y: 0 } : { opacity: 0, y: "110%" },
     visible: {
       opacity: 1,
       y: "0%",
-      transition: { duration: 0.9, delay, ease: EASE },
+      transition: { duration: 0.62, delay, ease: EASE },
     },
   });
 
   const mkFade = (delay: number) => ({
-    hidden: prefersReduced
-      ? { opacity: 1, y: 0 }
-      : { opacity: 0, y: 14 },
+    hidden: prefersReduced ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 },
     visible: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.75, delay, ease: EASE },
+      transition: { duration: 0.58, delay, ease: EASE },
     },
   });
 
-  const line1Variants = mkLine(0.1);
-  const line2Variants = mkLine(0.85);
-  const line3Variants = mkLine(1.55);
-  const subtitleVariants = mkFade(2.15);
-  const vizVariants = mkFade(2.45);
-  const ctaVariants = mkFade(2.7);
+  const line1Variants = mkLine(0.04);
+  const line2Variants = mkLine(0.14);
+  const line3Variants = mkLine(0.24);
+  const subtitleVariants = mkFade(0.38);
+  const ctaVariants = mkFade(0.5);
+  const vizVariants = mkFade(0.58);
 
   const init = prefersReduced ? "visible" : "hidden";
 
@@ -100,7 +96,10 @@ export function HeroSection({ onScrollToQR }: HeroSectionProps) {
           onClick={onScrollToQR}
           className="mt-5 inline-flex min-h-11 items-center rounded-full px-4 py-2 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
-          Start a bridge <span aria-hidden="true" className="ml-1">↓</span>
+          Start a bridge{" "}
+          <span aria-hidden="true" className="ml-1">
+            ↓
+          </span>
         </motion.button>
       )}
 

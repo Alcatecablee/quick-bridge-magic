@@ -209,14 +209,22 @@
   50% { opacity: 1; }
 }
 
+@keyframes qb-hero-system-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -5px, 0); }
+}
+
 @keyframes qb-hero-system-route-glow {
-  0%, 100% { opacity: 0.04; }
-  50% { opacity: 0.2; }
+  0%, 100% { opacity: 0.06; }
+  48% { opacity: 0.12; }
+  62% { opacity: 0.28; }
+  76% { opacity: 0.08; }
 }
 
 @keyframes qb-hero-system-route {
-  0%, 100% { stroke-dashoffset: 0; opacity: 0.4; }
-  50% { stroke-dashoffset: -18; opacity: 0.9; }
+  0%, 18% { stroke-dashoffset: 0; opacity: 0.36; }
+  46%, 70% { stroke-dashoffset: -18; opacity: 0.82; }
+  100% { stroke-dashoffset: -36; opacity: 0.36; }
 }
 
 @keyframes qb-hero-system-phone-reaction {
@@ -234,9 +242,11 @@
   isolation: isolate;
   background: #151718;
   border: 1px solid oklch(0.9 0.02 250 / 0.1);
+  animation: qb-hero-system-float 8s ease-in-out infinite;
   box-shadow:
     0 26px 70px oklch(0 0 0 / 0.3),
     0 2px 8px oklch(0 0 0 / 0.22);
+  will-change: transform;
 }
 
 .qb-hero-system::after {
@@ -342,6 +352,7 @@
   .dl-arrow-anim,
   .phone-line-anim,
   .qb-logo-shimmy,
+   .qb-hero-system,
   .qb-hero-system-route-glow,
   .qb-hero-system-route,
   .qb-hero-system-hub-ring,
