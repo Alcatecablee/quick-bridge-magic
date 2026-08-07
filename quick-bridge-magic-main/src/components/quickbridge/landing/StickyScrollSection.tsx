@@ -91,7 +91,7 @@ function ReducedMotionFallback() {
         {INTERACTIONS.map((item) => (
           <div
             key={item.label}
-            className="rounded-xl border border-border bg-card/30 px-6 py-6"
+            className="rounded-xl bg-card/30 px-6 py-6"
           >
             <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
               {item.label}
@@ -209,20 +209,26 @@ function StickyImpl() {
           </div>
 
           {/* Scroll hint (fades out once user starts scrolling) */}
-          <motion.div
-            className="absolute bottom-6 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1"
-            animate={{ opacity: activeIndex === 0 ? 0.4 : 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            <div className="h-8 w-5 rounded-full border border-border/50 flex items-start justify-center p-1">
+          <AnimatePresence initial={false}>
+            {activeIndex === 0 && (
               <motion.div
-                className="h-1.5 w-1 rounded-full bg-muted-foreground"
-                animate={{ y: [0, 8, 0] }}
-                transition={{ repeat: Infinity, duration: 1.4, ease: "easeInOut" }}
-              />
-            </div>
-            <span className="text-[10px] text-muted-foreground/40">scroll</span>
-          </motion.div>
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.4 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.4 }}
+                className="absolute bottom-6 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1"
+              >
+                <div className="flex h-8 w-5 items-start justify-center rounded-full border border-border/50 p-1">
+                  <motion.div
+                    className="h-1.5 w-1 rounded-full bg-muted-foreground"
+                    animate={{ y: [0, 8, 0] }}
+                    transition={{ repeat: Infinity, duration: 1.4, ease: "easeInOut" }}
+                  />
+                </div>
+                <span className="text-[10px] text-muted-foreground/40">scroll</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>
@@ -290,13 +296,6 @@ function InteractionScene({ index }: { index: number }) {
       return null;
   }
 }
-
-const scenePath =
-  "M 80 80 C 130 80, 190 80, 240 80" as const;
-
-const scenePathStyle = {
-  offsetPath: `path('${scenePath}')`,
-} as never;
 
 /* ---- Individual scenes ---- */
 

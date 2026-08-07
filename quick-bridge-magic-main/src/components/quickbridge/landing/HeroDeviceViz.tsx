@@ -218,18 +218,19 @@ export function HeroDeviceViz() {
         </motion.g>
       </svg>
 
-      {/* Activity chip cycles through Continuity actions. */}
-      <div className="mt-1 flex h-5 items-center justify-center">
-        <span
-          className="text-[11px] italic transition-opacity duration-300"
-          style={{
-            opacity: activityVisible ? 0.4 : 0,
-            color: "oklch(0.66 0.012 255)",
-          }}
-        >
-          {ACTIVITY_MESSAGES[activityIndex]}
-        </span>
-      </div>
+      {!prefersReduced && (
+        <div className="mt-1 flex h-5 items-center justify-center">
+          <span
+            className="text-[11px] italic transition-opacity duration-300"
+            style={{
+              opacity: activityVisible ? 0.4 : 0,
+              color: "oklch(0.66 0.012 255)",
+            }}
+          >
+            {ACTIVITY_MESSAGES[activityIndex]}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

@@ -253,7 +253,7 @@ export function DevicesPanel({ identity, nickname, deviceKind }: Props) {
 
   return (
     <section className="relative mx-auto max-w-sm rounded-2xl bg-white/[0.02] p-5 shadow-2xl ring-1 ring-white/10 backdrop-blur-xl">
-      <div className="absolute inset-0 -z-10 rounded-2xl bg-gradient-to-b from-white/[0.04] to-transparent pointer-events-none" />
+      <div className="pointer-events-none absolute inset-0 -z-10 rounded-2xl bg-gradient-to-b from-white/[0.06] to-transparent" />
       <div className="mb-4 flex items-center justify-between px-1">
         <p className="text-[13px] font-medium tracking-wide text-foreground/90">Your Devices</p>
         <Link

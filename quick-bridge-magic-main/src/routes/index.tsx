@@ -25,22 +25,6 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-const chromeLogo = "/logos/chrome.png";
-const safariLogo = "/logos/safari.png";
-const firefoxLogo = "/logos/firefox.png";
-const edgeLogo = "/logos/edge.png";
-const braveLogo = "/logos/brave.png";
-const iosLogo = "/logos/ios.png";
-const androidLogo = "/logos/android.png";
-const macosLogo = "/logos/macos.png";
-const windowsLogo = "/logos/windows.png";
-const linuxLogo = "/logos/linux.png";
 import { QrDisplay } from "@/components/quickbridge/QrDisplay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QrScanner } from "@/components/quickbridge/QrScanner";
@@ -51,13 +35,6 @@ import { DevicesPanel } from "@/components/quickbridge/DevicesPanel";
 import { useTrustedNodes } from "@/hooks/use-trusted-nodes";
 import { getOrCreateNodeIdentity, type NodeIdentity } from "@/lib/node-identity";
 import { detectDeviceKind, type DeviceKind } from "@/lib/device";
-import {
-  PhoneIllustration,
-  ScanIllustration,
-  DesktopIllustration,
-  FlowConnector,
-} from "@/components/quickbridge/FlowIllustrations";
-
 import { Reveal } from "@/components/quickbridge/Reveal";
 import { HeroSection } from "@/components/quickbridge/landing/HeroSection";
 import { StickyScrollSection } from "@/components/quickbridge/landing/StickyScrollSection";
@@ -76,7 +53,6 @@ import {
 } from "@/lib/storage";
 import { supabase } from "@/integrations/supabase/client";
 import { formatPin, pinChannelName, pinFromSessionId } from "@/lib/pin";
-import { isStandalone, onInstallAvailabilityChange, promptInstall } from "@/lib/pwa";
 
 const HOME_TITLE =
   "QuickBridge 2026: Send Files and Make Your Devices Work Together, Free";
@@ -289,8 +265,6 @@ function Home() {
   const [waitingPing, setWaitingPing] = useState(false);
   const [canShare, setCanShare] = useState(false);
   const [pin, setPin] = useState<string>("");
-  const [canInstall, setCanInstall] = useState(false);
-  const [installed, setInstalled] = useState(false);
   const [resumeTarget, setResumeTarget] = useState<ActiveSession | null>(null);
   const [browserSupported, setBrowserSupported] = useState(true);
   // Phase 2: local node identity for the DevicesPanel (loaded async from IDB).
@@ -308,7 +282,6 @@ function Home() {
   useEffect(() => {
     if (!trustedLoading && trustedNodes.length === 0) setPairingOpen(true);
   }, [trustedLoading, trustedNodes.length]);
-  const [scanCount, setScanCount] = useState<number | null>(null);
   // Tracks whether the lobby Supabase channel failed permanently after retries.
   const [lobbyError, setLobbyError] = useState(false);
   // Incrementing this triggers the lobby useEffect to re-subscribe from scratch.
@@ -347,19 +320,6 @@ function Home() {
         }
       });
   }, [browserSupported]);
-
-  // Fetch QR scan count for social proof. Errors are swallowed silently so a
-  // missing table (pre-migration) never breaks the homepage.
-  useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase as any)
-      .from("qr_scans")
-      .select("total")
-      .single()
-      .then(({ data }: { data: { total: number } | null }) => {
-        if (data?.total) setScanCount(data.total);
-      });
-  }, []);
 
   // On mount, surface a "Resume bridge" banner if we have a recent active
   // session marker (heartbeat written by the Session page every 5s). 60s
@@ -452,45 +412,6 @@ function Home() {
     };
   }, [pin, sessionId]);
 
-  // PWA install button visibility
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    setInstalled(isStandalone());
-    return onInstallAvailabilityChange((v) => setCanInstall(v));
-  }, []);
-
-  // Defer video iframe mount until the section is near the viewport.
-  // This prevents the entire Framer Motion video bundle from loading on
-  // initial page paint, critical for mobile first-load performance.
-  useEffect(() => {
-    const el = videoSectionRef.current;
-    if (!el || typeof IntersectionObserver === "undefined") {
-      setVideoReady(true);
-      return;
-    }
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVideoReady(true);
-          obs.disconnect();
-        }
-      },
-      { rootMargin: "800px" }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
-  const handleInstall = async () => {
-    const r = await promptInstall();
-    if (r === "accepted") toast.success("Installed");
-    else if (r === "unavailable") {
-      toast("Install from your browser menu", {
-        description: "On iOS Safari: Share → Add to Home Screen.",
-      });
-    }
-  };
-
   const copyPin = async () => {
     if (!pin) return;
     try {
@@ -536,8 +457,6 @@ function Home() {
 
   // Passive lobby detector - see /session/$id for the real WebRTC handshake.
   const redirectedRef = useRef(false);
-  const videoSectionRef = useRef<HTMLDivElement>(null);
-  const [videoReady, setVideoReady] = useState(false);
   useEffect(() => {
     if (!sessionId) return;
     console.log(`[QB] Lobby: subscribing to qb:${sessionId}`);
@@ -1041,62 +960,3 @@ function Home() {
   );
 }
 
-
-const ACTIVITY_MESSAGES = [
-  "Sent tab to Desktop",
-  "Pasted on Laptop",
-  "Moved photo to Phone",
-  "Continued reading on Desktop",
-] as const;
-
-/** Ambient one-liner that cycles through Continuity actions so visitors
- *  understand the product without reading another paragraph. */
-function ActivityChip() {
-  const [index, setIndex] = useState(0);
-  const [visible, setVisible] = useState(true);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setVisible(false);
-      const t = setTimeout(() => {
-        setIndex((i) => (i + 1) % ACTIVITY_MESSAGES.length);
-        setVisible(true);
-      }, 350);
-      return () => clearTimeout(t);
-    }, 2800);
-    return () => clearInterval(id);
-  }, []);
-
-  return (
-    <div className="mx-auto mt-2.5 flex h-5 items-center justify-center">
-      <span
-        className={`text-[11px] italic text-muted-foreground/40 transition-opacity duration-300 ${visible ? "opacity-100" : "opacity-0"}`}
-      >
-        {ACTIVITY_MESSAGES[index]}
-      </span>
-    </div>
-  );
-}
-
-function StickyScanCta({ hasTrustedDevices }: { hasTrustedDevices: boolean }) {
-  const [show, setShow] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const onScroll = () => setShow(window.scrollY > 480);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-  if (!show) return null;
-  return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-3 z-40 flex justify-center px-3 sm:hidden">
-      <button
-        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-        className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-border bg-card/95 px-4 py-2.5 text-[13px] font-medium text-foreground shadow-lg backdrop-blur"
-      >
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-        {hasTrustedDevices ? "Your devices are ready" : "Scan QR to connect instantly"}
-      </button>
-    </div>
-  );
-}

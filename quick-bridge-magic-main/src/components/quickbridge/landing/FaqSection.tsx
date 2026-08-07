@@ -54,21 +54,34 @@ export function FaqSection() {
         <div className="flex flex-col border-y border-border divide-y divide-border">
           {faqs.map((item, i) => {
             const isOpen = openIndex === i;
+            const questionId = `faq-question-${i}`;
+            const answerId = `faq-answer-${i}`;
             return (
               <div key={item.q} className="py-1">
                 <button
                   type="button"
                   onClick={() => setOpenIndex(isOpen ? null : i)}
                   className="flex w-full items-center justify-between py-4 text-left focus:outline-none"
+                  id={questionId}
                   aria-expanded={isOpen}
+                  aria-controls={answerId}
                 >
                   <span className="text-[14.5px] font-medium text-foreground transition-colors hover:text-foreground/80">
                     {item.q}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className="ml-4 shrink-0 text-lg leading-none text-muted-foreground/70"
+                  >
+                    {isOpen ? "−" : "+"}
                   </span>
                 </button>
                 <AnimatePresence>
                   {isOpen && (
                     <motion.div
+                      id={answerId}
+                      role="region"
+                      aria-labelledby={questionId}
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}

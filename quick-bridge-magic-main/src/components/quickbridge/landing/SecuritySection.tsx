@@ -7,10 +7,10 @@ export function SecuritySection() {
     <div className="mx-auto max-w-4xl px-4 sm:px-6">
       {/* ── Visual Flow: Your file -> Encrypted -> Direct -> Gone ── */}
       <div className="flex flex-col items-center justify-center py-16">
-        <div className="flex w-full max-w-2xl items-center justify-between font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground sm:text-[12px]">
+        <div className="grid w-full max-w-2xl grid-cols-2 justify-items-center gap-y-3 font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground sm:flex sm:items-center sm:justify-between sm:gap-y-0 sm:text-[12px]">
           <span>Your file</span>
-          <span className="hidden sm:inline">Encrypted</span>
-          <span className="hidden sm:inline">Direct</span>
+          <span>Encrypted</span>
+          <span>Direct</span>
           <span>Gone</span>
         </div>
 

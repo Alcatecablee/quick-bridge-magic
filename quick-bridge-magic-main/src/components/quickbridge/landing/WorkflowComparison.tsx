@@ -21,7 +21,7 @@ export function WorkflowComparison() {
     hidden: { width: "0%" },
     visible: {
       width: "100%",
-      transition: { duration: 2.5, ease: "linear" },
+      transition: { duration: 2.5, ease: "linear" as const },
     },
   };
 
@@ -42,8 +42,7 @@ export function WorkflowComparison() {
           <motion.div
             variants={slowFlowVariants}
             initial={prefersReduced ? "visible" : "hidden"}
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
+            animate="visible"
             className="flex flex-col items-center justify-between gap-6 sm:flex-row sm:gap-2"
           >
             <motion.div variants={slowItemVariants} className="font-mono text-[13px] text-muted-foreground">Phone</motion.div>
@@ -79,8 +78,7 @@ export function WorkflowComparison() {
           </p>
           <motion.div
             initial={prefersReduced ? { opacity: 1 } : { opacity: 0, y: 10 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.5 }}
             className="flex items-center justify-center gap-4 sm:gap-8"
           >
@@ -88,7 +86,8 @@ export function WorkflowComparison() {
             <div className="relative flex h-px w-32 items-center bg-primary/40 sm:w-64">
               {!prefersReduced && (
                 <motion.div
-                  className="absolute left-0 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-primary shadow-[0_0_10px_rgba(var(--primary),0.8)]"
+                  className="absolute left-0 top-1/2 h-1 w-1 -translate-y-1/2 rounded-full bg-primary"
+                  style={{ boxShadow: "0 0 10px oklch(0.7 0.13 245 / 0.8)" }}
                   animate={{ left: ["0%", "100%"] }}
                   transition={{ duration: 0.3, ease: "easeOut", repeat: Infinity, repeatDelay: 1.5 }}
                 />
