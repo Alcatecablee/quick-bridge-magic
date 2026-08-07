@@ -203,6 +203,93 @@
   50%       { opacity: 0.7; }
 }
 
+/* Homepage living system diagram */
+@keyframes qb-hero-system-breathe {
+  0%, 100% { opacity: 0.94; }
+  50% { opacity: 1; }
+}
+
+@keyframes qb-hero-system-route-glow {
+  0%, 100% { opacity: 0.04; }
+  50% { opacity: 0.2; }
+}
+
+@keyframes qb-hero-system-route {
+  0%, 100% { stroke-dashoffset: 0; opacity: 0.4; }
+  50% { stroke-dashoffset: -18; opacity: 0.9; }
+}
+
+@keyframes qb-hero-system-status-dot {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.12); opacity: 1; }
+}
+
+@keyframes qb-hero-system-phone-reaction {
+  0% { opacity: 0.1; transform: translateY(0); }
+  45% { opacity: 0.9; transform: translateY(-2px); }
+  100% { opacity: 0.1; transform: translateY(0); }
+}
+
+@keyframes qb-hero-system-computer-reaction {
+  0%, 100% { opacity: 0.1; }
+  35%, 65% { opacity: 0.95; }
+}
+
+.qb-hero-system {
+  isolation: isolate;
+  box-shadow: 0 24px 80px oklch(0 0 0 / 0.24);
+}
+
+.qb-hero-system::after {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  content: "";
+  border: 1px solid oklch(0.9 0.02 250 / 0.08);
+  border-radius: inherit;
+}
+
+.qb-hero-system > img {
+  z-index: 0;
+  user-select: none;
+}
+
+.qb-hero-system > svg {
+  z-index: 2;
+  pointer-events: none;
+}
+
+.qb-hero-system-route-glow {
+  animation: qb-hero-system-route-glow 4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.qb-hero-system-route {
+  animation: qb-hero-system-route 4.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.qb-hero-system-hub-ring {
+  animation: qb-hero-system-breathe 4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.qb-hero-system-status {
+  animation: qb-hero-system-breathe 8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.qb-hero-system-status-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: qb-hero-system-status-dot 4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.qb-hero-system-phone-reaction {
+  animation: qb-hero-system-phone-reaction 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.qb-hero-system-computer-reaction {
+  animation: qb-hero-system-computer-reaction 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 /* ─── Brand mark "bee-wing buzz" ──────────────────────────────────────────── */
 /* High-frequency multi-axis jitter + glow on the QuickBridge icon so the    */
 /* arrow reads like wings in motion. Gated behind data-bridge="active" on    */
@@ -263,5 +350,12 @@
   .scan-line-anim,
   .dl-arrow-anim,
   .phone-line-anim,
-  .qb-logo-shimmy { animation: none !important; }
+  .qb-logo-shimmy,
+  .qb-hero-system-route-glow,
+  .qb-hero-system-route,
+  .qb-hero-system-hub-ring,
+  .qb-hero-system-status,
+  .qb-hero-system-status-dot,
+  .qb-hero-system-phone-reaction,
+  .qb-hero-system-computer-reaction { animation: none !important; }
 }

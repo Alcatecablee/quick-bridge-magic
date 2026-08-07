@@ -1,370 +1,266 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 
-const EASE_SPRING: [number, number, number, number] = [0.16, 1, 0.3, 1];
+const EASE_SETTLE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+const PACKET_DURATION_MS = 1_450;
+const PACKET_DELAYS_MS = [1_600, 2_300, 1_800, 2_900] as const;
 
 const ACTIVITY_MESSAGES = [
-  "Connected",
+  "✓ Connected",
   "Pasted on Laptop",
-  "Sent tab to Desktop",
-  "Moved photo to Phone",
-  "Reading on Desktop",
+  "Tab opened",
+  "Photo received",
+  "Clipboard synced",
 ] as const;
 
+type TimerHandle = ReturnType<typeof setTimeout>;
+
 /**
- * Animated hero visualization: phone and computer connected via a live
- * channel, with a cycling status badge showing Continuity actions.
+ * A presentation layer for the homepage system diagram.
  *
- * Memory-safe cleanup: all timers (startDelay, interval, flipTimer) are
- * tracked in refs and cancelled in the single useEffect cleanup.
- * The offsetPath CSS motion-path dot is replaced with a simpler keyframe
- * animation to avoid cross-browser quirks with CSS offset-path.
+ * The image is only a visual reference. This component does not create a
+ * session, inspect a peer, or send data. Pairing and transfer behavior remains
+ * in the session route and WebRTC hook.
  */
 export function HeroDeviceViz() {
   const prefersReduced = useReducedMotion();
   const [activityIndex, setActivityIndex] = useState(0);
-  const [activityVisible, setActivityVisible] = useState(true);
-
-  // Refs track every timer so we can clean them all up on unmount.
-  const startDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const activityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const flipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [packetId, setPacketId] = useState(0);
+  const [packetActive, setPacketActive] = useState(false);
+  const [phonePulse, setPhonePulse] = useState(false);
+  const [computerPulse, setComputerPulse] = useState(false);
+  const timersRef = useRef<Set<TimerHandle>>(new Set());
 
   useEffect(() => {
+    const timers = timersRef.current;
+    timers.forEach((timer) => clearTimeout(timer));
+    timers.clear();
+    setPacketActive(false);
+    setPhonePulse(false);
+    setComputerPulse(false);
+
     if (prefersReduced) return;
 
-    // Keep every delayed update cancellable so a hidden or unmounted hero
-    // cannot leave an activity timer behind.
     let alive = true;
+    let delayIndex = 0;
 
-    const scheduleActivity = (delay: number) => {
-      activityTimerRef.current = setTimeout(() => {
-        if (!alive) return;
-        setActivityVisible(false);
-
-        flipTimerRef.current = setTimeout(() => {
-          if (!alive) return;
-          setActivityIndex((i) => (i + 1) % ACTIVITY_MESSAGES.length);
-          setActivityVisible(true);
-          scheduleActivity(1800 + Math.round(Math.random() * 1200));
-        }, 320);
+    const schedule = (callback: () => void, delay: number) => {
+      const timer = setTimeout(() => {
+        timers.delete(timer);
+        if (alive) callback();
       }, delay);
+      timers.add(timer);
     };
 
-    startDelayRef.current = setTimeout(() => {
+    const launchPacket = () => {
       if (!alive) return;
-      scheduleActivity(2400);
-    }, 1000);
+
+      setPacketId((current) => current + 1);
+      setPacketActive(true);
+      setPhonePulse(true);
+
+      schedule(() => {
+        setPhonePulse(false);
+      }, 180);
+
+      schedule(() => {
+        if (!alive) return;
+
+        setPacketActive(false);
+        setComputerPulse(true);
+        setActivityIndex((current) => (current + 1) % ACTIVITY_MESSAGES.length);
+
+        schedule(() => {
+          setComputerPulse(false);
+        }, 160);
+
+        const nextDelay = PACKET_DELAYS_MS[delayIndex % PACKET_DELAYS_MS.length];
+        delayIndex += 1;
+        schedule(launchPacket, nextDelay);
+      }, PACKET_DURATION_MS);
+    };
+
+    schedule(launchPacket, 1_250);
 
     return () => {
       alive = false;
-      if (startDelayRef.current !== null) {
-        clearTimeout(startDelayRef.current);
-        startDelayRef.current = null;
-      }
-      if (activityTimerRef.current !== null) {
-        clearTimeout(activityTimerRef.current);
-        activityTimerRef.current = null;
-      }
-      if (flipTimerRef.current !== null) {
-        clearTimeout(flipTimerRef.current);
-        flipTimerRef.current = null;
-      }
+      timers.forEach((timer) => clearTimeout(timer));
+      timers.clear();
     };
   }, [prefersReduced]);
 
+  const currentActivity = ACTIVITY_MESSAGES[activityIndex];
+  const imageLabel = `Phone and computer connected through a QuickBridge hub. ${currentActivity}.`;
+
   return (
-    <div
-      className="mx-auto mt-2"
-      style={{ maxWidth: 480, height: 160 }}
-      aria-label={`Phone and computer connected via QuickBridge. ${ACTIVITY_MESSAGES[activityIndex]}.`}
-      role="img"
-    >
-      <svg
-        viewBox="0 0 480 160"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-full"
-        style={{ overflow: "visible" }}
+    <figure className="mx-auto mt-2 w-full max-w-[780px]">
+      <div
+        className="qb-hero-system relative aspect-[16/9] w-full overflow-hidden rounded-[28px]"
+        role="img"
+        aria-label={imageLabel}
       >
-        <defs>
-          <filter id="qb-device-shadow" x="-30%" y="-30%" width="160%" height="180%">
-            <feDropShadow
-              dx="0"
-              dy="6"
-              stdDeviation="9"
-              floodColor="oklch(0 0 0)"
-              floodOpacity="0.16"
-            />
-          </filter>
-        </defs>
+        <img
+          src="/images/quickbridge-living-system.png"
+          alt="A phone and computer connected through a QuickBridge QR hub"
+          className="absolute inset-0 h-full w-full object-cover"
+          draggable={false}
+        />
 
-        {/* ── PHONE (left) ─────────────────────────────────────────────── */}
-        <motion.g
-          initial={prefersReduced ? false : { opacity: 0, x: -12 }}
-          animate={
-            prefersReduced
-              ? { opacity: 1, x: 0 }
-              : { opacity: 1, x: 0, rotate: [0, -0.2, 0, 0.2, 0] }
-          }
-          transition={
-            prefersReduced
-              ? undefined
-              : {
-                  opacity: { duration: 0.7, delay: 0.1, ease: EASE_SPRING },
-                  x: { duration: 0.7, delay: 0.1, ease: EASE_SPRING },
-                  rotate: { duration: 16, repeat: Infinity, ease: "easeInOut" },
-                }
-          }
-          style={{ transformOrigin: "86px 77px" }}
-          filter="url(#qb-device-shadow)"
+        <svg
+          viewBox="0 0 1024 576"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          className="absolute inset-0 h-full w-full"
+          aria-hidden="true"
         >
-          <rect
-            x="56" y="24" width="60" height="106" rx="9"
-            stroke="oklch(0.7 0.13 245 / 0.55)" strokeWidth="1.5"
-            fill="oklch(0.7 0.13 245 / 0.05)"
+          <defs>
+            <filter id="qb-system-packet-glow" x="-250%" y="-250%" width="600%" height="600%">
+              <feGaussianBlur stdDeviation="5" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter id="qb-system-ring-glow" x="-200%" y="-200%" width="500%" height="500%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          <path
+            d="M 205 255 C 300 232 382 245 462 255 M 562 255 C 625 232 672 246 701 244"
+            stroke="oklch(0.82 0.13 195 / 0.28)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            className="qb-hero-system-route-glow"
           />
-          <line x1="76" y1="30" x2="96" y2="30"
-            stroke="oklch(0.7 0.13 245 / 0.4)" strokeWidth="1.2" strokeLinecap="round" />
-          <rect x="78" y="120" width="16" height="3" rx="1.5"
-            fill="oklch(0.7 0.13 245 / 0.3)" />
-          <motion.g
-            initial={prefersReduced ? false : { opacity: 0, y: 4 }}
-            animate={
-              prefersReduced
-                ? { opacity: 1, y: 0 }
-                : { opacity: [0, 1, 0.96, 1], y: [4, 0, 0, 0] }
-            }
-            transition={
-              prefersReduced
-                ? undefined
-                : {
-                    opacity: { duration: 1, delay: 0.7, times: [0, 0.4, 0.65, 1], ease: EASE_SPRING },
-                    y: { duration: 0.7, delay: 0.7, ease: EASE_SPRING },
-                    repeat: Infinity,
-                    repeatDelay: 7,
-                  }
-            }
-          >
-            <rect x="66" y="42" width="40" height="3" rx="1.5" fill="oklch(0.7 0.13 245 / 0.3)" />
-            <rect x="66" y="50" width="32" height="2.5" rx="1.25" fill="oklch(0.7 0.13 245 / 0.2)" />
-            <rect x="66" y="58" width="36" height="2.5" rx="1.25" fill="oklch(0.7 0.13 245 / 0.2)" />
-            <rect x="66" y="70" width="40" height="24" rx="3"
-              fill="oklch(0.7 0.13 245 / 0.08)" stroke="oklch(0.7 0.13 245 / 0.15)" strokeWidth="1" />
-          </motion.g>
-          <text x="86" y="143" textAnchor="middle" fontSize="9"
-            fontFamily="Inter, sans-serif" fontWeight="600"
-            fill="oklch(0.66 0.012 255)" letterSpacing="0.1em"
-            style={{ textTransform: "uppercase" }}>
-            PHONE
-          </text>
-        </motion.g>
+          <path
+            d="M 205 255 C 300 232 382 245 462 255 M 562 255 C 625 232 672 246 701 244"
+            stroke="oklch(0.82 0.13 195 / 0.58)"
+            strokeWidth="1"
+            strokeLinecap="round"
+            strokeDasharray="3 15"
+            className="qb-hero-system-route"
+          />
 
-        {/* ── CONNECTION LINE ───────────────────────────────────────────── */}
-        <path
-          d="M 118 77 H 224 M 256 77 H 362"
-          stroke="oklch(0.7 0.13 245 / 0.16)"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeDasharray="4 5"
-        />
-        <motion.path
-          d="M 118 77 H 224"
-          stroke="oklch(0.7 0.13 245 / 0.48)"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeDasharray="4 5"
-          initial={prefersReduced ? false : { pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ duration: 0.42, delay: 0.72, ease: EASE_SPRING }}
-        />
-        <motion.path
-          d="M 256 77 H 362"
-          stroke="oklch(0.7 0.13 245 / 0.48)"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeDasharray="4 5"
-          initial={prefersReduced ? false : { pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ duration: 0.42, delay: 1.02, ease: EASE_SPRING }}
-        />
-        <motion.path
-          d="M 118 77 H 224 M 256 77 H 362"
-          stroke="oklch(0.7 0.13 245 / 0.25)"
-          strokeWidth="3"
-          strokeLinecap="round"
-          initial={prefersReduced ? false : { pathLength: 0, opacity: 0 }}
-          animate={
-            prefersReduced
-              ? { pathLength: 1, opacity: 0.15 }
-              : { pathLength: 1, opacity: [0.08, 0.2, 0.08] }
-          }
-          transition={
-            prefersReduced
-              ? undefined
-              : { duration: 3.4, repeat: Infinity, ease: "easeInOut", delay: 1.3 }
-          }
-        />
+          {!prefersReduced && packetActive && (
+            <>
+              <motion.circle
+                key={`packet-${packetId}`}
+                r="4"
+                fill="oklch(0.9 0.1 190)"
+                filter="url(#qb-system-packet-glow)"
+                initial={{ cx: 205, cy: 255, opacity: 0 }}
+                animate={{
+                  cx: [205, 282, 374, 462, 512, 562, 632, 684, 701],
+                  cy: [255, 242, 238, 255, 255, 255, 241, 238, 244],
+                  opacity: [0, 1, 1, 1, 1, 1, 1, 0.9, 0],
+                }}
+                transition={{
+                  duration: PACKET_DURATION_MS / 1000,
+                  times: [0, 0.16, 0.29, 0.39, 0.5, 0.61, 0.74, 0.88, 1],
+                  ease: EASE_SETTLE,
+                }}
+              />
+              <motion.circle
+                key={`packet-echo-${packetId}`}
+                r="2"
+                fill="oklch(0.84 0.13 190 / 0.7)"
+                initial={{ cx: 205, cy: 255, opacity: 0 }}
+                animate={{
+                  cx: [205, 282, 374, 462, 512, 562, 632, 684, 701],
+                  cy: [255, 242, 238, 255, 255, 255, 241, 238, 244],
+                  opacity: [0, 0.65, 0.65, 0.65, 0.65, 0.65, 0.45, 0.2, 0],
+                }}
+                transition={{
+                  duration: PACKET_DURATION_MS / 1000,
+                  delay: 0.12,
+                  times: [0, 0.16, 0.29, 0.39, 0.5, 0.61, 0.74, 0.88, 1],
+                  ease: EASE_SETTLE,
+                }}
+              />
+            </>
+          )}
 
-        {/* Travelling pulse dot — simple left-to-right x animation;
-            no CSS offset-path to avoid cross-browser quirks.           */}
-        {!prefersReduced && (
-          <>
-            <motion.circle
-              r="3"
-              fill="oklch(0.7 0.13 245 / 0.72)"
-              cy="77"
-              initial={{ opacity: 0, cx: 118 }}
-              animate={{ opacity: [0, 1, 1, 0], cx: [118, 180, 224, 224] }}
-              transition={{
-                duration: 0.8,
-                delay: 1.35,
-                repeat: Infinity,
-                repeatDelay: 3.4,
-                ease: EASE_SPRING,
-              }}
-            />
-            <motion.circle
-              r="3"
-              fill="oklch(0.7 0.13 245 / 0.72)"
-              cy="77"
-              initial={{ opacity: 0, cx: 256 }}
-              animate={{ opacity: [0, 1, 1, 0], cx: [256, 316, 362, 362] }}
-              transition={{
-                duration: 0.8,
-                delay: 1.75,
-                repeat: Infinity,
-                repeatDelay: 3.7,
-                ease: EASE_SPRING,
-              }}
-            />
-          </>
-        )}
-
-        {/* ── QR NODE (midpoint) ────────────────────────────────────────── */}
-        <motion.g
-          initial={prefersReduced ? false : { opacity: 0, scale: 0.7 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 1.08, ease: EASE_SPRING }}
-          style={{ transformOrigin: "240px 77px" }}
-          filter="url(#qb-device-shadow)"
-        >
-          <rect x="224" y="61" width="32" height="32" rx="5"
-            fill="oklch(0.135 0.006 265)" stroke="oklch(0.7 0.13 245 / 0.4)" strokeWidth="1" />
-          <rect x="230" y="67" width="7" height="7" rx="1"
-            fill="none" stroke="oklch(0.7 0.13 245 / 0.6)" strokeWidth="1" />
-          <rect x="243" y="67" width="7" height="7" rx="1"
-            fill="none" stroke="oklch(0.7 0.13 245 / 0.6)" strokeWidth="1" />
-          <rect x="230" y="80" width="7" height="7" rx="1"
-            fill="none" stroke="oklch(0.7 0.13 245 / 0.6)" strokeWidth="1" />
-          <rect x="244" y="80" width="3" height="3" rx="0.5" fill="oklch(0.7 0.13 245 / 0.5)" />
-          <rect x="244" y="75" width="3" height="3" rx="0.5" fill="oklch(0.7 0.13 245 / 0.35)" />
-          <rect x="249" y="80" width="3" height="3" rx="0.5" fill="oklch(0.7 0.13 245 / 0.35)" />
-        </motion.g>
-
-        {/* ── COMPUTER (right) ─────────────────────────────────────────── */}
-        <motion.g
-          initial={prefersReduced ? false : { opacity: 0, x: 12 }}
-          animate={
-            prefersReduced
-              ? { opacity: 1, x: 0 }
-              : { opacity: 1, x: 0, y: [0, -1.5, 0] }
-          }
-          transition={
-            prefersReduced
-              ? undefined
-              : {
-                  opacity: { duration: 0.7, delay: 0.28, ease: EASE_SPRING },
-                  x: { duration: 0.7, delay: 0.28, ease: EASE_SPRING },
-                  y: { duration: 8, repeat: Infinity, ease: "easeInOut", delay: 1.4 },
-                }
-          }
-          style={{ transformOrigin: "407px 77px" }}
-          filter="url(#qb-device-shadow)"
-        >
-          <rect x="364" y="20" width="86" height="72" rx="5"
-            stroke="oklch(0.7 0.13 245 / 0.55)" strokeWidth="1.5"
-            fill="oklch(0.7 0.13 245 / 0.05)" />
-          <rect x="370" y="26" width="74" height="60" rx="2"
-            stroke="oklch(0.7 0.13 245 / 0.2)" strokeWidth="0.75" fill="none" />
-          <path d="M 396 92 L 388 108 L 426 108 L 418 92"
-            stroke="oklch(0.7 0.13 245 / 0.4)" strokeWidth="1.2"
-            strokeLinejoin="round" fill="oklch(0.7 0.13 245 / 0.04)" />
-          <line x1="382" y1="108" x2="432" y2="108"
-            stroke="oklch(0.7 0.13 245 / 0.35)" strokeWidth="1.2" strokeLinecap="round" />
-          <motion.g
-            initial={prefersReduced ? false : { opacity: 0, y: 4 }}
-            animate={
-              prefersReduced
-                ? { opacity: 1, y: 0 }
-                : { opacity: [0, 1, 0.96, 1], y: [4, 0, 0, 0] }
-            }
-            transition={
-              prefersReduced
-                ? undefined
-                : {
-                    opacity: { duration: 1, delay: 1.18, times: [0, 0.4, 0.65, 1], ease: EASE_SPRING },
-                    y: { duration: 0.7, delay: 1.18, ease: EASE_SPRING },
-                    repeat: Infinity,
-                    repeatDelay: 8,
-                  }
-            }
-          >
-            <rect x="376" y="32" width="62" height="4" rx="2" fill="oklch(0.7 0.13 245 / 0.25)" />
-            <rect x="376" y="40" width="48" height="3" rx="1.5" fill="oklch(0.7 0.13 245 / 0.15)" />
-            <rect x="376" y="47" width="54" height="3" rx="1.5" fill="oklch(0.7 0.13 245 / 0.15)" />
-            <rect x="376" y="56" width="62" height="22" rx="3"
-              fill="oklch(0.7 0.13 245 / 0.07)" stroke="oklch(0.7 0.13 245 / 0.18)" strokeWidth="1" />
-          </motion.g>
-          <text x="407" y="122" textAnchor="middle" fontSize="9"
-            fontFamily="Inter, sans-serif" fontWeight="600"
-            fill="oklch(0.66 0.012 255)" letterSpacing="0.1em"
-            style={{ textTransform: "uppercase" }}>
-            COMPUTER
-          </text>
-        </motion.g>
-
-        {/* ── CONNECTED BADGE ──────────────────────────────────────────── */}
-        <motion.g
-          initial={prefersReduced ? false : { opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 1.55, ease: EASE_SPRING }}
-        >
-          <rect x="177" y="107" width="126" height="20" rx="10"
-            fill="oklch(0.175 0.006 265)" stroke="oklch(0.7 0.13 245 / 0.3)" strokeWidth="1" />
           <motion.circle
-            cx="192"
-            cy="117"
-            r="3"
-            fill="oklch(0.74 0.14 158)"
-            animate={prefersReduced ? { scale: 1 } : { scale: [1, 1.08, 1] }}
-            transition={
-              prefersReduced
-                ? undefined
-                : { duration: 4, repeat: Infinity, ease: "easeInOut" }
+            cx="512"
+            cy="255"
+            r="51"
+            fill="none"
+            stroke="oklch(0.84 0.13 190 / 0.55)"
+            strokeWidth="1.5"
+            className="qb-hero-system-hub-ring"
+            animate={
+              packetActive ? { opacity: [0.3, 0.9, 0.3], scale: [0.92, 1.08, 0.92] } : undefined
             }
+            transition={packetActive ? { duration: 0.7, ease: EASE_SETTLE } : undefined}
+            style={{ transformOrigin: "512px 255px" }}
           />
-          <text x="240" y="121" textAnchor="middle" fontSize="9"
-            fontFamily="Inter, sans-serif" fontWeight="600"
-            fill="oklch(0.965 0.004 250)">
-            {ACTIVITY_MESSAGES[activityIndex]}
-          </text>
-        </motion.g>
-      </svg>
 
-      {!prefersReduced && (
-        <div className="mt-1 flex h-5 items-center justify-center">
-          <span
-            className="text-[11px] italic transition-opacity duration-300"
-            style={{
-              opacity: activityVisible ? 0.4 : 0,
-              color: "oklch(0.66 0.012 255)",
-            }}
+          <motion.rect
+            x="87"
+            y="376"
+            width="850"
+            height="62"
+            rx="31"
+            fill="oklch(0.08 0.01 260 / 0.92)"
+            stroke="oklch(0.82 0.13 195 / 0.2)"
+            strokeWidth="1"
+            className="qb-hero-system-status"
+          />
+          <circle
+            cx="426"
+            cy="407"
+            r="12"
+            fill="oklch(0.78 0.19 151)"
+            className="qb-hero-system-status-dot"
+          />
+          <text
+            x="512"
+            y="416"
+            textAnchor="middle"
+            fill="oklch(0.98 0.004 250)"
+            fontFamily="Inter, sans-serif"
+            fontSize="25"
+            fontWeight="600"
           >
-            {ACTIVITY_MESSAGES[activityIndex]}
-          </span>
-        </div>
-      )}
-    </div>
+            {currentActivity}
+          </text>
+
+          {phonePulse && (
+            <rect
+              x="94"
+              y="119"
+              width="122"
+              height="265"
+              rx="29"
+              fill="none"
+              stroke="oklch(0.84 0.13 190 / 0.9)"
+              strokeWidth="3"
+              className="qb-hero-system-phone-reaction"
+            />
+          )}
+          {computerPulse && (
+            <rect
+              x="698"
+              y="119"
+              width="230"
+              height="232"
+              rx="18"
+              fill="none"
+              stroke="oklch(0.84 0.13 190 / 0.9)"
+              strokeWidth="3"
+              className="qb-hero-system-computer-reaction"
+            />
+          )}
+        </svg>
+      </div>
+      <figcaption className="sr-only" aria-live="polite">
+        {currentActivity}
+      </figcaption>
+    </figure>
   );
 }
