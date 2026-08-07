@@ -55,4 +55,4 @@ quick-bridge-magic-main/
 
 ## User preferences
 
-(none yet)
+- Keep UI dark, minimal, and editorial. Avoid common AI-generated patterns: decorative icons beside every heading, colored icon circles, checkmark bullet lists, repetitive three-column feature grids, gradient banners, glassmorphism, oversized stats cards, icon-led FAQ accordions, checkmark-heavy comparison tables, testimonial carousels, numbered-circle timelines, logo trust rows, and badge or pill labels above hero headlines.

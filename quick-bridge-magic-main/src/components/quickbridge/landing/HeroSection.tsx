@@ -94,7 +94,7 @@ export function HeroSection({ onScrollToQR }: HeroSectionProps) {
           initial={init}
           animate="visible"
           onClick={onScrollToQR}
-          className="mt-5 inline-flex min-h-12 items-center rounded-full bg-primary px-6 py-3 text-[14px] font-semibold text-primary-foreground shadow-[0_8px_24px_oklch(0.7_0.13_245_/_0.22)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_30px_oklch(0.7_0.13_245_/_0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="mt-5 inline-flex min-h-12 items-center rounded-full border border-primary/60 bg-primary/10 px-6 py-3 text-[14px] font-semibold text-foreground shadow-md transition-all hover:-translate-y-0.5 hover:border-primary hover:bg-primary/20 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           Start a bridge{" "}
           <span aria-hidden="true" className="ml-1">
