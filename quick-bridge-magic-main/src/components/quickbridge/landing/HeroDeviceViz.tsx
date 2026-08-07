@@ -27,8 +27,6 @@ export function HeroDeviceViz() {
   const [activityIndex, setActivityIndex] = useState(0);
   const [packetId, setPacketId] = useState(0);
   const [packetActive, setPacketActive] = useState(false);
-  const [phonePulse, setPhonePulse] = useState(false);
-  const [computerPulse, setComputerPulse] = useState(false);
   const timersRef = useRef<Set<TimerHandle>>(new Set());
 
   useEffect(() => {
@@ -36,8 +34,6 @@ export function HeroDeviceViz() {
     timers.forEach((timer) => clearTimeout(timer));
     timers.clear();
     setPacketActive(false);
-    setPhonePulse(false);
-    setComputerPulse(false);
 
     if (prefersReduced) return;
 
@@ -57,22 +53,12 @@ export function HeroDeviceViz() {
 
       setPacketId((current) => current + 1);
       setPacketActive(true);
-      setPhonePulse(true);
-
-      schedule(() => {
-        setPhonePulse(false);
-      }, 180);
 
       schedule(() => {
         if (!alive) return;
 
         setPacketActive(false);
-        setComputerPulse(true);
         setActivityIndex((current) => (current + 1) % ACTIVITY_MESSAGES.length);
-
-        schedule(() => {
-          setComputerPulse(false);
-        }, 160);
 
         const nextDelay = PACKET_DELAYS_MS[delayIndex % PACKET_DELAYS_MS.length];
         delayIndex += 1;
@@ -202,33 +188,6 @@ export function HeroDeviceViz() {
             transition={{ duration: packetActive ? 0.7 : 0.2, ease: EASE_SETTLE }}
             style={{ transformOrigin: "512px 506px" }}
           />
-
-          {phonePulse && (
-            <rect
-              x="108"
-              y="316"
-              width="160"
-              height="391"
-              rx="34"
-              fill="none"
-              stroke="oklch(0.84 0.13 190 / 0.9)"
-              strokeWidth="3"
-              className="qb-hero-system-phone-reaction"
-            />
-          )}
-          {computerPulse && (
-            <rect
-              x="632"
-              y="212"
-              width="338"
-              height="563"
-              rx="24"
-              fill="none"
-              stroke="oklch(0.84 0.13 190 / 0.9)"
-              strokeWidth="3"
-              className="qb-hero-system-computer-reaction"
-            />
-          )}
         </svg>
       </div>
       <figcaption className="sr-only" aria-live="polite">
