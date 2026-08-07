@@ -1,0 +1,6 @@
+- [Static HTML meta injection](static-html-meta-injection.md) — gen-static-routes.mjs must extract and inject route-specific title/description/OG/canonical into each static HTML file; the SPA shell alone is not enough for crawlers.
+- [No dashes + tone rules](no-dashes-tone.md) — rules.md forbids em/en dashes everywhere; all prose must use natural human voice (conversational, warm, no AI polish).
+- [Session.tsx missing refs](session-missing-refs.md) — pendingHelloAfterIdentityRef, deviceNameRef, myDeviceKindRef were undeclared; caused ReferenceError crash on every guest session. Fixed + /api/turn-credentials 404 is intentional.
+- [Presence channel hashing](presence-channel-hashing.md) — channels now use qb:p:<SHA256[:32]> not raw nodeId; getPresenceChannelId() in src/lib/presence-channel.ts; breaking change from old code during SW rollover window.
+- [PHASE2_AUDIT resolved](phase2-audit-resolved.md) — all DOC-1/2/3/4 and NEW-08 through NEW-11 items implemented; tsc --noEmit passes clean; summary table updated in docs/PHASE2_AUDIT.md.
+- [WebRTC logging convention](webrtc-logging-convention.md) — qbLog/qbWarn are dev-only; qbError (added in Phase 2 audit fixes) is always-on for real production failures.

@@ -1,0 +1,68 @@
+QUICKBRIDGE - VOICEOVER SCRIPT
+YouTube Demo Video | Runtime: 80 seconds | ~130 words
+Tone: calm, confident, clean
+=============================================================
+
+
+[SCENE 1 - Hook | 0:00-0:04]
+Open it. Scan. Send. That's it.
+
+
+[SCENE 2 - Problem | 0:04-0:09]
+Email attachments. Cloud uploads. USB cables. Those days are over.
+
+
+[SCENE 3 - Solution | 0:09-0:14]
+Open QuickBridge on both devices and scan the QR code. You're instantly connected.
+
+
+[SCENE 4 - Transfer | 0:14-0:21]
+Files go directly from one device to the other. No upload step. No middleman. Instant. Up to 10 gigabytes per file.
+
+
+[SCENE 5 - Content | 0:21-0:26]
+Photos, 4K video, documents, clipboard text -- any file type.
+
+
+[SCENE 6 - Moment | 0:26-0:30]
+A 2.1 gigabyte video file. Transferred in 12 seconds. No cable. No cloud. Just done.
+
+
+[SCENE 7 - Platform | 0:30-0:34]
+Android, iPhone, Mac, Windows, Linux. Send between any combination.
+
+
+[SCENE 8 - Friction | 0:34-0:39]
+No install. No app store. No sign-up. Open the URL and start sending.
+
+
+[SCENE 9 - Privacy | 0:39-0:44]
+Your files never touch a server. Pure peer-to-peer, browser to browser.
+
+
+[SCENE 10 - Speed | 0:44-0:50]
+Direct. Instant. No relay servers in the way.
+
+
+[SCENE 11 - Difference | 0:50-0:55]
+No accounts. No uploads. Nothing is stored. Everything is encrypted. Always.
+
+
+[SCENE 12 - Closer | 0:55-1:20]
+QuickBridge. The fastest way to move files between your devices. Free, forever, no sign-up.
+
+[pause]
+
+It's just a website.
+
+
+=============================================================
+DELIVERY NOTES
+
+Scene 1    Punch each word. Short pause between them.
+Scene 4    List items should be crisp, not rushed. Let each land.
+Scene 6    Slow down on "12 seconds" -- let it breathe.
+Scene 8    Keep the list tight and decisive.
+Scene 12   Drop your pace on the final line.
+           "It's just a website." should feel like an afterthought.
+=============================================================

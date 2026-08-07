@@ -1,0 +1,320 @@
+I actually like it **being on the home page**, but I don't think it's in the right place.
+
+Right now the page reads like this:
+
+```
+Your Devices
+────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Pair this device
+────────────────────────────
+
+Scan a QR
+────────────────────────────
+```
+
+The problem is that the **Devices** card is almost acting like a footer to the pairing experience. That's backwards.
+
+## Think about the user journey
+
+There are really two completely different users landing on this page.
+
+### First-time user
+
+They have zero trusted devices.
+
+They immediately want:
+
+* Pair device
+* Scan QR
+* Join with PIN
+
+Your existing layout is perfect for them.
+
+---
+
+### Existing user
+
+They already have trusted devices.
+
+They don't want QR codes anymore.
+
+They want:
+
+> Continue on Desktop.
+
+> Send tab.
+
+> Paste.
+
+Those are now the primary job.
+
+Your roadmap even says the success metric is:
+
+> 30% of transfers come from trusted shortcuts rather than QR.
+
+If QR is still the visual center of the page, users will keep using QR because that's what the UI teaches them.
+
+Humans are wonderfully consistent at clicking the biggest thing on the screen, then claiming it was "intuitive."
+
+---
+
+# I'd actually flip the hierarchy.
+
+```
+Your Devices
+──────────────────────────
+
+Desktop
+Online
+
+[Send Tab]
+Paste
+Connect
+
+──────────────────────────
+
+Need another device?
+
++ Pair new device
+```
+
+Clicking **Pair new device** expands...
+
+```
+Pair this device
+QR
+PIN
+Pair Link
+```
+
+The pairing UI becomes secondary.
+
+---
+
+## I would even consider this
+
+When a user has at least one trusted device...
+
+```
+Your Devices
+```
+
+becomes the hero section.
+
+The QR section collapses into
+
+```
++ Add another device
+```
+
+Exactly like Apple does.
+
+You don't see AirDrop onboarding every time you open Finder.
+
+You see your devices.
+
+---
+
+## Another issue
+
+There's a huge amount of whitespace between the cards.
+
+```
+Devices
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+QR
+```
+
+That distance makes them feel unrelated.
+
+I'd probably tighten that considerably.
+
+---
+
+## The wording also changes
+
+Instead of
+
+```
+Pair this device
+```
+
+I'd say
+
+```
+Add another device
+```
+
+or
+
+```
+Add a trusted device
+```
+
+Because after Phase 2, that's what users are actually doing.
+
+They're no longer "pairing."
+
+They're growing their trusted environment.
+
+---
+
+## I also think the Devices card deserves more visual weight
+
+Currently it's almost invisible.
+
+Compare:
+
+QR section
+
+⬛⬛⬛⬛⬛⬛⬛⬛⬛
+
+Devices
+
+──────────────
+
+I'd almost invert that.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Your Devices
+
+Desktop ● Online
+
+[Send Tab]
+
+Paste
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Add another device
+
+▼
+```
+
+Make the trusted relationship feel like the permanent part of the product.
+
+QR becomes the setup mechanism.
+
+---
+
+## One thing I would definitely change
+
+The **Connect** button doesn't feel like the primary action anymore.
+
+Once trust exists, the primary actions should be:
+
+```
+Send tab
+
+Paste
+
+Continue Reading
+
+Open File
+```
+
+Connect is infrastructure.
+
+It supports the experience.
+
+It shouldn't visually dominate the Continuity actions.
+
+---
+
+### I think the long-term homepage should evolve like this:
+
+**New user (no trusted devices):**
+
+```
+Hero
+
+Pair Device
+QR
+PIN
+```
+
+↓
+
+**User with one trusted device:**
+
+```
+Your Devices ⭐
+Desktop
+
+Send Tab
+Paste
+
+Add another device
+```
+
+↓
+
+**Power user (3-5 devices):**
+
+```
+Continue on...
+
+Desktop
+Laptop
+Phone
+
+Recent actions
+
+Add device
+```
+
+Notice how the onboarding slowly disappears as the user's relationship with QuickBridge matures. That's exactly what your Phase 3 vision is about. The product stops saying "here's how to connect devices" and starts saying "your devices are ready to cooperate." That shift in emphasis is subtle, but it's what moves QuickBridge from feeling like a transfer tool to feeling like part of the user's computing environment.

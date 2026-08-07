@@ -1,0 +1,280 @@
+I actually think **Phase 3 changes the homepage more than it changes the app.** Humans are wonderfully stubborn. They don't buy architecture. They buy the sentence they tell themselves after seeing your homepage for five seconds.
+
+Right now your hero still sells **QuickBridge v1**.
+
+> "Move files between any device, on any network."
+
+That was true.
+
+But after Trusted Environments + Presence + Continuity, it undersells the product.
+
+You're no longer building "AirDrop in the browser."
+
+You're building **devices that cooperate.**
+
+---
+
+# The positioning has changed
+
+Originally the flow was:
+
+```
+Need file
+↓
+Open QuickBridge
+↓
+Scan QR
+↓
+Transfer
+↓
+Leave
+```
+
+Phase 3 becomes:
+
+```
+Laptop + Phone are trusted
+
+↓
+
+They're always aware of each other
+
+↓
+
+Need something?
+
+↓
+
+Send tab
+Paste there
+Move photo
+Open file
+
+↓
+
+Done
+```
+
+That's a completely different mental model.
+
+The homepage should start teaching it.
+
+---
+
+# I would change the headline
+
+Instead of
+
+> Move files between any device, on any network.
+
+I'd move toward
+
+> Your devices should work together.
+
+or
+
+> Make your devices work as one.
+
+or
+
+> Continue your work on any trusted device.
+
+Those sell the vision.
+
+The old headline sells only one feature.
+
+---
+
+# The subheading
+
+Current:
+
+> Open the site, scan the QR...
+
+That is already becoming outdated.
+
+Scanning QR codes is no longer the primary experience.
+
+I'd replace it with something closer to
+
+> Connect your devices once. Then send tabs, paste text, move photos and transfer files with a single click.
+
+or
+
+> Trust your devices once. After that, moving between them feels instant.
+
+Notice what disappeared:
+
+"QR"
+
+Because QR becomes onboarding.
+
+Not the product.
+
+---
+
+# The visual
+
+Current
+
+```
+Phone
+
+↓
+
+Scan QR
+
+↓
+
+Computer
+```
+
+That diagram represented Phase 1 perfectly.
+
+It doesn't represent Phase 3.
+
+Now I'd show something like
+
+```
+Laptop
+    ↔
+ Desktop
+    ↔
+ Phone
+```
+
+with little actions flowing
+
+```
+Send Tab
+
+Paste
+
+Move Photo
+
+Open File
+```
+
+Instead of
+
+```
+Phone
+↓
+
+QR
+
+↓
+
+Computer
+```
+
+because that's no longer how people primarily use it.
+
+---
+
+# The CTA
+
+Instead of
+
+```
+SCAN TO CONNECT
+```
+
+I'd eventually have
+
+```
+Connect your first device
+```
+
+or
+
+```
+Trust another device
+```
+
+Again...
+
+Connection becomes setup.
+
+Not usage.
+
+---
+
+# I'd also add a new section immediately below the hero
+
+Something like
+
+---
+
+### One trusted connection.
+
+Forever.
+
+```
+✓ Send this tab
+
+✓ Paste on Desktop
+
+✓ Move photo to Laptop
+
+✓ Open file on Phone
+
+✓ Continue reading
+```
+
+Every action is one click.
+
+No pairing.
+
+No QR.
+
+No uploads.
+
+---
+
+That tells users
+
+> "Oh...
+
+This isn't another file transfer site."
+
+---
+
+# The biggest change I'd make
+
+Right now the homepage says
+
+> QuickBridge transfers files.
+
+After Phase 3 it should say
+
+> QuickBridge lets your devices cooperate.
+
+Those sound similar, but they're completely different products.
+
+One is a utility.
+
+The other is a computing platform.
+
+---
+
+## I wouldn't remove file transfer from the hero
+
+One thing I would *not* do is swing so far toward Continuity that you hide the original value proposition. Most first-time visitors still arrive because they need to move a file **right now**. If the hero only talks about "device cooperation," many people won't realize QuickBridge solves their immediate problem.
+
+A direction I'd seriously consider is:
+
+**Headline**
+
+> **Move files instantly. Make your devices work together.**
+
+**Subheading**
+
+> Transfer files with a QR code in seconds, then trust your devices once to send tabs, paste text, continue reading, and move photos with a single click.
+
+That tells both stories:
+
+* "I can solve today's problem."
+* "There's a much bigger reason to keep coming back."
+
+That's exactly the transition you want. QR gets someone in the door. Trusted Environments and Continuity give them a reason never to uninstall the habit. Humans are surprisingly willing to build habits, provided you don't make them read three paragraphs to discover why.

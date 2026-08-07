@@ -1,0 +1,675 @@
+This is a genuinely strong architecture document. It's crossed the line from "feature spec" to "system design." The intent pipeline is much cleaner than having five unrelated implementations.
+
+That said, if this is going to become the architectural reference for Phase 3, I'd still tighten a few areas before any code is written. Most aren't bugs. They're places where future complexity will accumulate.
+
+---
+
+# Overall assessment
+
+I'd rate it around **9.3/10**.
+
+It has:
+
+* A single abstraction instead of five features.
+* Clear layering.
+* Separation of UI from transport.
+* Explicit ACK protocol.
+* Good implementation milestones.
+* Clear deferrals.
+* Metrics tied to the product vision.
+
+The remaining gaps are mostly around long-term evolution.
+
+---
+
+# 1. Intent lifecycle is missing
+
+You define the ACK.
+
+You define execution.
+
+You never define the lifecycle.
+
+I'd add one section.
+
+```
+Created
+
+↓
+
+Queued
+
+↓
+
+Sent
+
+↓
+
+Received
+
+↓
+
+Validated
+
+↓
+
+Awaiting Permission
+
+↓
+
+Executing
+
+↓
+
+Succeeded
+      OR
+Failed
+
+↓
+
+Acknowledged
+
+↓
+
+Archived
+```
+
+Every intent should always be in exactly one state.
+
+Later you'll want retry UI, history, analytics, debugging.
+
+Without a lifecycle every feature invents its own.
+
+---
+
+# 2. Intent versioning
+
+Today:
+
+```
+IntentEnvelope
+```
+
+Tomorrow:
+
+```
+OpenUrl v2
+
+Clipboard v3
+
+MediaShare v4
+```
+
+I'd add
+
+```ts
+interface IntentEnvelope {
+    version: 1;
+}
+```
+
+Not because you need it today.
+
+Because you'll desperately wish you had it in 18 months.
+
+---
+
+# 3. Payload validation
+
+You say
+
+> Validate
+
+but not
+
+**how**.
+
+I'd explicitly require schema validation.
+
+Example
+
+```
+Zod
+
+Valibot
+
+ArkType
+
+```
+
+Whatever you choose.
+
+Never
+
+```
+if ("url" in payload)
+```
+
+Schemas become documentation.
+
+---
+
+# 4. Capability versioning
+
+Current
+
+```
+browser.open
+```
+
+Future
+
+```
+browser.open.v2
+```
+
+or
+
+```
+browser.open
+
+supportsScroll
+
+supportsSelection
+```
+
+Capabilities evolve.
+
+Plan for it now.
+
+---
+
+# 5. ACK isn't enough
+
+There are actually two acknowledgements.
+
+Current
+
+```
+Received
+
+↓
+
+ACK
+```
+
+But users really care about
+
+```
+Executed
+```
+
+Those aren't the same.
+
+Example
+
+```
+Received
+
+↓
+
+Permission dialog
+
+↓
+
+User goes for lunch
+
+↓
+
+20 minutes later
+
+↓
+
+Accept
+```
+
+Technically received.
+
+Not executed.
+
+I'd distinguish
+
+```
+received
+
+accepted
+
+completed
+
+failed
+```
+
+Much richer.
+
+---
+
+# 6. Intent expiry policy
+
+Currently
+
+```
+expiresAt
+```
+
+Good.
+
+But different intents deserve different TTLs.
+
+Example
+
+```
+Clipboard
+
+10 seconds
+```
+
+```
+Continue Reading
+
+5 minutes
+```
+
+```
+Media
+
+30 minutes
+```
+
+```
+Notification
+
+Immediate only
+```
+
+Don't make one timeout fit everything.
+
+---
+
+# 7. Intent persistence
+
+Question:
+
+If reconnect happens...
+
+Should queued intents survive?
+
+Example
+
+```
+Continue Reading
+
+↓
+
+network drops
+
+↓
+
+reconnect
+
+↓
+
+deliver?
+```
+
+Some should.
+
+Some absolutely shouldn't.
+
+Need a policy.
+
+---
+
+# 8. Execution result
+
+Current
+
+```
+Success
+
+Failed
+```
+
+I'd make this richer.
+
+```ts
+status:
+received
+accepted
+completed
+failed
+expired
+cancelled
+permission-denied
+unsupported
+```
+
+Future-proof.
+
+---
+
+# 9. Capability negotiation
+
+Right now
+
+```
+Presence
+
+↓
+
+Capabilities
+```
+
+But capabilities can change.
+
+Example
+
+Laptop
+
+```
+Filesystem
+
+YES
+```
+
+User revokes permission.
+
+```
+Filesystem
+
+NO
+```
+
+Should update immediately.
+
+Need a section explaining capability refresh.
+
+---
+
+# 10. Intent cancellation
+
+Currently impossible.
+
+Suppose
+
+```
+Send File
+
+↓
+
+Oops wrong laptop
+```
+
+Need
+
+```
+CancelIntent
+```
+
+Even if Phase 3 doesn't expose UI.
+
+Architecture should reserve it.
+
+---
+
+# 11. Offline semantics
+
+One of the biggest missing pieces.
+
+If
+
+```
+Phone offline
+```
+
+and user
+
+```
+Continue Reading
+```
+
+Should it
+
+```
+Fail immediately
+
+OR
+
+Queue?
+
+```
+
+Need an explicit philosophy.
+
+I'd recommend
+
+> Continuity is live, not asynchronous.
+
+No queue.
+
+Otherwise you slowly become Dropbox.
+
+---
+
+# 12. Security invariants
+
+I'd actually add an entire section.
+
+Example
+
+```
+Every intent originates from a verified trusted environment.
+
+Every intent is scoped to one session.
+
+Every ACK references exactly one intent.
+
+Permissions are evaluated before execution.
+
+Expired intents never execute.
+
+Duplicate intent IDs never execute twice.
+
+Capability checks always precede permission checks.
+
+```
+
+Architectural invariants age incredibly well.
+
+---
+
+# 13. Execution abstraction
+
+Don't let execution become
+
+```
+switch(intent.type)
+```
+
+forever.
+
+I'd define
+
+```ts
+interface IntentExecutor {
+
+canExecute()
+
+execute()
+
+validate()
+
+}
+```
+
+Then
+
+```
+OpenUrlExecutor
+
+ClipboardExecutor
+
+MediaExecutor
+```
+
+become plugins.
+
+Much cleaner.
+
+---
+
+# 14. Action history
+
+Your roadmap adds
+
+```
+Recent Actions
+```
+
+I'd actually define it now.
+
+```
+Intent Log
+
+↓
+
+Recent Actions
+
+↓
+
+Analytics
+
+↓
+
+Retry
+
+↓
+
+Debugging
+
+```
+
+One structure.
+
+Many uses.
+
+---
+
+# 15. Error taxonomy
+
+Current
+
+```
+reason?: string
+```
+
+Good for UI.
+
+Bad for code.
+
+I'd add
+
+```ts
+reasonCode
+
+reasonMessage
+```
+
+Example
+
+```
+PERMISSION_DENIED
+
+CAPABILITY_UNAVAILABLE
+
+INTENT_EXPIRED
+
+INVALID_PAYLOAD
+
+UNSUPPORTED_VERSION
+
+EXECUTION_FAILED
+```
+
+The UI uses the message.
+
+The code uses the enum.
+
+---
+
+# 16. Analytics abstraction
+
+Don't scatter
+
+```
+gtag(...)
+```
+
+through execution.
+
+Instead
+
+```
+Intent
+
+↓
+
+Intent Dispatcher
+
+↓
+
+Analytics Hook
+
+↓
+
+GA
+```
+
+One location.
+
+---
+
+# 17. Biggest thing I'd change
+
+This is the one architectural suggestion I'd actually recommend.
+
+Rename
+
+```
+Intent Router
+```
+
+to
+
+```
+Continuity Runtime
+```
+
+Why?
+
+Because it does far more than routing.
+
+It
+
+* dispatches
+* validates
+* retries
+* tracks ACKs
+* deduplicates
+* manages timers
+* records metrics
+
+That's a runtime.
+
+Not just a router.
+
+---
+
+# One section I'd add at the end
+
+I think the document is missing one sentence that captures the philosophy of the entire architecture.
+
+Something like:
+
+> **The Continuity Runtime is intentionally generic. Every future device cooperation feature, whether clipboard, camera, notifications, AI workloads, or capabilities not yet imagined, should be expressible as a capability, an intent, and an executor flowing through the same pipeline. If a new feature requires a different transport, lifecycle, or execution model, the architecture should be questioned before the feature is built.**
+
+That single paragraph protects the architecture from slowly degenerating into "just one special case," which is how elegant systems quietly become tangled over a few years. It also aligns perfectly with your broader vision: QuickBridge isn't building five Continuity features, it's building a reusable cooperation runtime that happens to debut with five user-facing actions.

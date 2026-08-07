@@ -1,0 +1,652 @@
+This is a substantial improvement. The architecture now has a real runtime instead of a collection of features. Most of the "what happens if..." questions have been answered, which is usually where architectures fall apart after six months.
+
+That said, if I were doing a staff-engineer architecture review before approving implementation, I'd still push on a few areas. Humans have an uncanny ability to build elegant systems that explode the first time someone closes a laptop lid.
+
+---
+
+# 1. Intent ordering
+
+Right now intents are independent.
+
+What if:
+
+```
+Paste on Desktop
+Continue Reading
+Open URL
+```
+
+are dispatched in quick succession?
+
+Should they execute in dispatch order?
+
+Should they execute concurrently?
+
+Should clipboard wait until the browser has opened?
+
+You should explicitly define ordering.
+
+For example:
+
+```
+Ordering guarantees
+
+The runtime guarantees ordering only per sender/receiver pair.
+
+Intents are executed FIFO unless an executor explicitly declares
+it is parallel-safe.
+
+Clipboard -> serial
+Browser -> serial
+Notifications -> parallel
+```
+
+Otherwise you'll eventually invent queues inside executors.
+
+---
+
+# 2. Executor concurrency
+
+Related.
+
+Can two ClipboardExecutors run simultaneously?
+
+Can two FileExecutors?
+
+Can a FileExecutor and OpenUrlExecutor run together?
+
+I'd add something like
+
+```
+interface IntentExecutor {
+    concurrency:
+        | "serial"
+        | "parallel"
+        | "replace-existing";
+}
+```
+
+Examples
+
+Clipboard
+
+```
+replace-existing
+```
+
+Latest wins.
+
+File
+
+```
+parallel
+```
+
+Browser
+
+```
+serial
+```
+
+Camera
+
+```
+single-instance
+```
+
+Without this, every executor invents its own locking.
+
+---
+
+# 3. Runtime ownership
+
+Right now the runtime owns
+
+* timers
+* ACKs
+* retries
+* logging
+* metrics
+* lifecycle
+
+Good.
+
+But who owns active intents?
+
+There should be a single store.
+
+Example
+
+```
+Map<intentId, RuntimeIntent>
+```
+
+where RuntimeIntent contains
+
+```
+status
+
+createdAt
+
+updatedAt
+
+retryCount
+
+executor
+
+timer
+
+abortController
+
+```
+
+Otherwise timer maps, ACK maps, retry maps and logs slowly diverge.
+
+---
+
+# 4. Cancellation semantics
+
+You added CancelIntent.
+
+Excellent.
+
+Missing:
+
+What if
+
+```
+execution already started?
+```
+
+Example
+
+```
+Opening browser...
+
+Cancel.
+```
+
+Too late.
+
+Need executor contract.
+
+```
+Executor may return
+
+cancellable
+
+non-cancellable
+```
+
+or
+
+```
+supportsAbort()
+```
+
+File transfer?
+
+Yes.
+
+Browser.open?
+
+No.
+
+Clipboard?
+
+No.
+
+---
+
+# 5. Idempotency
+
+This one matters.
+
+Suppose
+
+```
+ACK lost
+
+Sender retries
+
+Receiver already executed.
+```
+
+Current design
+
+```
+duplicate intent silently dropped
+```
+
+But then sender never gets ACK.
+
+Much better:
+
+```
+duplicate
+
+↓
+
+return previous ACK
+```
+
+instead of
+
+```
+drop
+```
+
+This is how most RPC systems work.
+
+Otherwise one lost ACK creates permanent ambiguity.
+
+---
+
+# 6. Runtime persistence
+
+Currently runtime state is memory only.
+
+Question:
+
+User refreshes page.
+
+Should pending intents disappear?
+
+Maybe yes.
+
+Maybe no.
+
+Document it.
+
+Example
+
+```
+Intent runtime is session-scoped.
+
+Browser refresh clears active runtime state.
+
+IntentLog survives.
+
+```
+
+or
+
+```
+Pending intents restored from storage.
+```
+
+Pick one.
+
+---
+
+# 7. Version negotiation
+
+You already added
+
+```
+version:1
+```
+
+Great.
+
+Missing:
+
+What if
+
+```
+sender = v3
+
+receiver = v1
+```
+
+Need negotiation.
+
+For example
+
+```
+Hello
+
+↓
+
+supportedIntentVersions
+
+↓
+
+highest mutual version
+```
+
+Otherwise every message returns Unsupported.
+
+---
+
+# 8. Capability freshness
+
+Current flow
+
+Presence advertises
+
+↓
+
+UI enables action
+
+↓
+
+dispatch
+
+Problem
+
+Capability may disappear between advertisement and dispatch.
+
+Your runtime should always perform
+
+```
+executor.canExecute()
+```
+
+before sending.
+
+Never trust cached presence.
+
+Presence is advisory.
+
+Runtime is authoritative.
+
+---
+
+# 9. Replay protection
+
+You have
+
+```
+intentId
+
+expiresAt
+
+```
+
+Good.
+
+Missing:
+
+How long does duplicate cache live?
+
+If seen-set is cleared
+
+```
+disconnect
+
+↓
+
+reconnect
+
+↓
+
+replay old packet
+```
+
+Need wording like
+
+```
+seen-set retained until session teardown
+
+or
+
+10 minutes
+
+```
+
+Otherwise replay semantics aren't actually defined.
+
+---
+
+# 10. Clock skew
+
+Expiry uses
+
+```
+Date.now()
+```
+
+Devices disagree.
+
+Laptop
+
+```
+12:00
+```
+
+Phone
+
+```
+11:54
+```
+
+Intent immediately expires.
+
+You need tolerance.
+
+Example
+
+```
+Receiver allows ±60 seconds clock skew.
+```
+
+Tiny paragraph.
+
+Big future headache avoided.
+
+---
+
+# 11. Runtime observability
+
+You already have analytics.
+
+I'd add runtime diagnostics.
+
+```
+Debug runtime
+
+Intent ID
+
+Current state
+
+Executor
+
+Retries
+
+ACK latency
+
+Permission wait
+
+Execution time
+
+```
+
+Even if hidden behind
+
+```
+?debug=1
+```
+
+Production bugs become dramatically easier.
+
+---
+
+# 12. Error recoverability
+
+Right now
+
+```
+FAILED
+```
+
+is terminal.
+
+Different failures deserve different UI.
+
+Example
+
+| Error               | Retry        |
+| ------------------- | ------------ |
+| Permission denied   | No           |
+| Timeout             | Yes          |
+| Offline             | Yes          |
+| Unsupported version | After reload |
+| Invalid payload     | Never        |
+| Execution failed    | Maybe        |
+
+That can live beside your error taxonomy.
+
+---
+
+# 13. Executor isolation
+
+One executor should never crash another.
+
+Explicit runtime invariant:
+
+```
+Every executor exception is caught.
+
+Executor failures never terminate
+the runtime.
+
+```
+
+Otherwise one bad ClipboardExecutor breaks MediaExecutor.
+
+---
+
+# 14. Intent payload size
+
+Nothing currently limits payload size.
+
+Someone eventually sends
+
+```
+25MB base64 HTML
+```
+
+Need
+
+```
+max payload size
+
+per intent
+
+```
+
+Example
+
+Clipboard
+
+```
+1 MB
+```
+
+URL
+
+```
+16 KB
+```
+
+Metadata
+
+```
+64 KB
+```
+
+The runtime should reject oversized payloads before serialization.
+
+---
+
+# 15. Transport abstraction
+
+This is probably the biggest architectural suggestion.
+
+Today
+
+```
+Runtime
+
+↓
+
+WebRTC
+```
+
+Instead define
+
+```ts
+interface IntentTransport {
+
+    send(intent)
+
+    sendAck()
+
+    connected()
+
+}
+```
+
+WebRTC becomes
+
+```
+WebRtcTransport
+```
+
+If Phase 5 ever introduces WebTransport, LAN discovery, or native wrappers, the runtime remains unchanged.
+
+That separation pays dividends later.
+
+---
+
+# 16. Executor registry
+
+Instead of
+
+```
+switch(intent.type)
+```
+
+I'd explicitly register executors.
+
+```ts
+registry.register(
+    "clipboard",
+    ClipboardExecutor
+)
+
+registry.register(
+    "browser.open",
+    BrowserExecutor
+)
+```
+
+The runtime never changes again.
+
+New intent = new executor.
+
+That's a hallmark of a mature architecture.
+
+---
+
+# 17. Testing strategy
+
+One thing missing entirely is how this gets verified. A runtime like this benefits from defining its test surface before implementation.
+
+I'd recommend four layers:
+
+* **Unit tests** for envelope validation, ACK tracking, expiry, retries, deduplication, and permission decisions.
+* **Executor tests** that mock browser APIs (`clipboard`, `window.open`, etc.) and verify correct success/failure behavior.
+* **Integration tests** with two simulated peers exchanging intents over a fake transport.
+* **Fault injection tests** that deliberately drop ACKs, duplicate messages, disconnect the transport mid-execution, skew clocks, and inject malformed payloads.
+
+Without fault-injection tests, distributed runtimes tend to look flawless until the first unstable Wi-Fi connection reminds everyone that entropy is undefeated.
+
+## Overall assessment
+
+I'd put this architecture around **9.7/10**.
+
+The biggest leap isn't the individual features. It's that you've stopped thinking in terms of "Send Tab" and "Paste on..." and started thinking in terms of a **generic distributed intent runtime**. That is the kind of abstraction that can survive years of feature additions instead of collapsing into five nearly identical code paths.
+
+The remaining gaps are mostly about making the runtime behave like a mature distributed system: explicit ordering, idempotency, transport abstraction, concurrency contracts, observability, and recovery semantics. Those are the details that users never notice, which is precisely why they matter. When they're done well, the product simply feels dependable, despite browsers doing their best impression of caffeinated squirrels.

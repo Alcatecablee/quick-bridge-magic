@@ -1,0 +1,244 @@
+Phase 3 Continuity: Implementation Review
+BUGS — Will break things
+BUG 1: Version check is a no-op (use-webrtc.ts ~line 1106)
+
+version: (msg.version as number) === INTENT_ENVELOPE_VERSION
+  ? INTENT_ENVELOPE_VERSION
+  : INTENT_ENVELOPE_VERSION,
+
+Both branches of the ternary return INTENT_ENVELOPE_VERSION. The actual version the peer sent is discarded. The envelope always arrives at handleIncomingIntent with version === 1, so the version mismatch guard (envelope.version !== INTENT_ENVELOPE_VERSION) can never fire. This defeats the entire future-proofing that finding 7 and AUDIT-U were designed to provide.
+
+Fix:
+
+version: msg.version as typeof INTENT_ENVELOPE_VERSION,
+
+BUG 2: Wrong capability string gates "Paste on" button (DevicesPanel.tsx line 281)
+
+const peerCanPaste = liveCaps.includes("clipboard");
+
+"clipboard" is the Phase 2 presence capability meaning the peer can read clipboard (navigator.clipboard.readText). The Phase 3 capability for receiving a paste is "clipboard.write" — defined as such in continuity-permissions.ts and INTENT_CAPABILITY_MAP. Worse: detectLocalCapabilities() never pushes "clipboard.write" to the caps array, and VALID_CAPS doesn't include it. The result is:
+
+peerCanPaste shows the button when the peer can read clipboard (not necessarily write).
+Even if you fix the check to "clipboard.write", the peer never broadcasts it and parseCapabilities would strip it.
+This is a three-part fix: (1) push "clipboard.write" in detectLocalCapabilities() when navigator.clipboard.writeText is available; (2) add it to VALID_CAPS; (3) change peerCanPaste to liveCaps.includes("clipboard.write"). Currently the button appears correctly on most real browsers by coincidence (browsers that have readText also have writeText), but it will silently misfire on any browser where those differ.
+
+BUG 3: Double analytics event for pending intents (Session.tsx line 639)
+
+// Session.tsx pending intent callback:
+void trackContinuityAction(type, "completed");
+// …also fired inside handleIncomingAck in continuity-runtime.ts:
+trackContinuityAction(ri.envelope.type, "completed");
+
+handleIncomingAck always fires trackContinuityAction for every terminal ACK. The onAckUpdate callback in Session.tsx's pending-intent effect fires trackContinuityAction a second time for the same intent. Every pending-intent action is double-counted in GA. Since the kill criteria for Phase 3 uses this exact event to measure "Average Continuity Actions per Trusted Environment per Day", the metric will be inflated by ~2x for the most common flow.
+
+Fix: remove void trackContinuityAction(type, "completed") from the Session.tsx callback. The runtime already handles it.
+
+BUG 4: replace-existing silently orphans the replaced intent's sender
+
+In executeIntent (~line 434):
+
+if (executor.concurrency === "replace-existing") {
+  for (const [id, existing] of this.activeIntents) {
+    if (id !== envelope.intentId && existing.envelope.type === envelope.type) {
+      if (existing.abortController) existing.abortController.abort();
+      this.activeIntents.delete(id);   // ← deleted, no ACK sent
+    }
+  }
+}
+
+The replaced intent's entry is removed from activeIntents but no final ACK is sent. The sending side still has an active timer for that intentId and will wait the full 10 seconds before timing out. The architecture specifies a CancelIntent mechanism and "cancelled" as a valid IntentStatus precisely for this case.
+
+Fix: before deleting the replaced entry, call:
+
+this.transport.sendAck({
+  intentId: id,
+  status: "cancelled",
+  reasonCode: "CANCELLED",
+  reasonMessage: "Replaced by a newer intent.",
+});
+existing.onAckUpdate?.({ intentId: id, status: "cancelled", reasonCode: "CANCELLED" }, false);
+
+BUG 5: transport.connected() captures stale status closure
+
+In Session.tsx, the transport object built inside the useEffect closes over status from the render at the time the effect ran:
+
+connected() {
+  return status === "connected";  // ← stale closure
+}
+
+The guard if (continuityRuntimeRef.current) return; prevents the effect from rebuilding the transport when [peerTrustVerified, status] deps re-fire. The connected() call in dispatchIntent will read the frozen status from the original render rather than the live value. During the brief window where the runtime still exists but the DataChannel is renegotiating, dispatchIntent will incorrectly report connected() === true and attempt to send over a closed DataChannel.
+
+Fix: use a ref instead of a closure:
+
+const statusRef = useRef(status);
+useEffect(() => { statusRef.current = status; });
+// …
+connected() { return statusRef.current === "connected"; }
+
+DESIGN GAPS — Wrong, not yet crashing
+GAP 1: "ask" permission silently executes (Milestone E placeholder)
+
+The comment acknowledges this:
+
+// "ask" permission: show a prompt. For Milestone A this falls through to
+// execute (treating "ask" as "always" until Milestone E adds the prompt UI).
+
+The consequence: any trusted device can paste arbitrary text onto your clipboard, open URLs in your browser, or write files to your disk without any user confirmation. The default for all capabilities is "ask", which currently means "always". This is the correct pragmatic approach for internal testing, but the code should have a loud runtime warning so it isn't accidentally shipped to production as-is:
+
+if (permission === "ask") {
+  // TODO(Milestone-E): show inline permission prompt.
+  // TEMPORARY: treating "ask" as "always". Remove before Phase 3 launch.
+  if (import.meta.env.DEV) {
+    console.warn("[QB] Permission prompt not yet implemented. Executing silently.");
+  }
+}
+
+GAP 2: handleIncomingAck "accepted" extended timer fires silently
+
+When a peer sends an "accepted" ACK (meaning they're about to execute), the runtime extends the timer:
+
+ri.timer = setTimeout(() => {
+  if (!this.activeIntents.has(ack.intentId)) return;
+  this.activeIntents.delete(ack.intentId);
+  // ← no onAckUpdate, no IntentLog write, no analytics
+}, INTENT_ACK_TIMEOUT_MS);
+
+If the connection drops after "accepted" but before "completed", the intent entry is silently deleted. The caller never gets a onAckUpdate callback, no IntentLog entry is written, and analytics miss the failure. The sender's UI is left showing whatever "accepted" state it last rendered.
+
+Fix: the timeout callback should fire onAckUpdate with a failed/timeout ACK and call writeIntentLog.
+
+GAP 3: ClipboardPayloadSchema permits an empty payload
+
+export const ClipboardPayloadSchema = z.object({
+  text: z.string().optional(),
+  html: z.string().optional(),
+});
+
+Both fields are optional. An empty {} passes schema validation. The executor writes "" to the clipboard. There's no server-side guard equivalent to the !text.trim() check in handlePasteOn. A malicious trusted peer (or a future code path that doesn't go through DevicesPanel) can write empty/whitespace clipboard content through the executor:
+
+Fix: add a .refine():
+
+export const ClipboardPayloadSchema = z.object({
+  text: z.string().optional(),
+  html: z.string().optional(),
+}).refine(d => (d.text?.length ?? 0) > 0 || (d.html?.length ?? 0) > 0, {
+  message: "Clipboard payload must contain text or html.",
+});
+
+GAP 4: IntentLog targetNickname is semantically inverted for received intents
+
+In executeIntent, the log entry for a received intent is:
+
+targetNodeId: envelope.targetNodeId,   // local device — correct
+targetNickname: senderNickname,         // sender's name — WRONG
+
+For a received intent, targetNodeId is the local device's nodeId, but targetNickname records the sender's name. When Milestone E renders "Recent Actions", it reads targetNickname to show "Pasted on [device]". A received paste will show the sender's name instead of the local device's name, which is confusing and incorrect. The field should store the local device nickname for received intents.
+
+GAP 5: handleSendTab sends the QuickBridge session URL
+
+const intent: PendingIntent = {
+  type: "open-url",
+  payload: { url: window.location.href, title: document.title },
+  ...
+};
+
+If DevicesPanel is rendered inside an active session (/session/$id), window.location.href is the QuickBridge session URL, not the user's content. The receiving device opens a QuickBridge session page that it has no context for. This is a UX trap. The button should either be disabled when the current URL is a QuickBridge route, or the feature should be documented as "for use outside the session page" (e.g., in a browser extension or the landing page's devices panel).
+
+GAP 6: permissionWaitStartedAt is never set
+
+RuntimeIntent has a permissionWaitStartedAt?: number field (used by getDebugState() for the permissionWait metric). No code path ever writes it. When the permission prompt is added in Milestone E, this field needs to be set before the prompt appears and cleared after the user responds. Currently getDebugState() always returns permissionWait: undefined for every intent.
+
+GAP 7: serialQueue is never reset in teardown()
+
+private serialQueue: Promise<void> = Promise.resolve();
+// teardown() does not reset it
+
+The serial queue is a growing chain of .then() calls. After teardown(), the queue's existing .then() callbacks can still fire for any already-enqueued executeNow closures. Each executeNow checks this.activeIntents.has(envelope.intentId) first, so they bail cleanly — but the queue chain grows forever over a long session and is never garbage-collected until the runtime instance is dropped. Over a session with hundreds of clipboard intents, this accumulates a non-trivial closure chain. Adding this.serialQueue = Promise.resolve(); in teardown() would cut it loose.
+
+GAP 8: AUDIT-V multi-tab hazard extends to Continuity
+
+The Phase 2 audit flagged that two tabs with the same node identity could create competing RTCPeerConnection instances. The same problem applies to Continuity: two tabs will each create a ContinuityRuntime, and an incoming "clipboard" intent will be handled by both. Two clipboard writes to the same text is harmless, but two window.open() calls will open two tabs on the receiver. The BroadcastChannel tab-leader pattern recommended in AUDIT-V is the right fix here too — the follower tab's runtime should not execute intents.
+
+GAP 9: writeIntentLog fails silently and permanently on quota exceeded
+
+private writeIntentLog(entry: IntentLogEntry): void {
+  try {
+    const raw = localStorage.getItem(INTENT_LOG_KEY);
+    // ...
+    localStorage.setItem(INTENT_LOG_KEY, JSON.stringify(log));
+  } catch {}  // ← silent failure forever
+}
+
+After a quota error, the log stops writing. Importantly, the log is also used for analytics (the runtime reads it back) and will be used for Recent Actions in Milestone E. The 100-entry cap should protect in most cases, but large clipboard payloads mean those 100 entries could easily exceed the typical 5 MB localStorage budget. The catch should evict aggressively (halve the log) and retry rather than silently give up.
+
+ROADMAP ISSUES
+ROADMAP 1: Phase 3 kill criteria metric has a methodology problem
+
+From ROADMAP.md:
+
+The daily per-environment average is computed in GA by dividing successful continuity_action_dispatched events by distinct sessions that have fired trusted_device_added (count >= 1) in the trailing 30 days.
+
+trusted_device_added is a one-time event per trust relationship. Sessions are GA sessions (30-minute windows), not user sessions. Dividing daily action events by a 30-day trailing count produces a number that is neither "average actions per day" nor "average actions per trusted environment." What you want is distinct users (not sessions) with at least one trusted device, computed daily. GA's standard user-scoped metric (distinct client_id with trusted_device_count >= 1 in the last 30 days) is what to use as the denominator. Using sessions inflates the denominator significantly for power users who open multiple tabs.
+
+ROADMAP 2: Milestone D (Files) two-phase handshake is not wired into the ACK timeout
+
+The architecture describes a metadata ACK followed by a transfer followed by a completion ACK. The INTENT_DEFAULT_TTL_MS["open-file"] is 1,800,000 ms (30 min) — for a 9 GB file this is reasonable. But the sender-side INTENT_ACK_TIMEOUT_MS (10 s) governs when the sender gives up waiting for the first "received" ACK. These are two separate timers. The architecture document is clear on the two-ACK model, but the runtime only has one timer per intent. For Milestone D, the runtime needs a second timer window that starts after "accepted" to cover the transfer duration — currently the "accepted" extended timer re-uses INTENT_ACK_TIMEOUT_MS (10 s), which is completely wrong for a 9 GB transfer.
+
+ROADMAP 3: cancel intent type is wired but never dispatched
+
+CancelPayloadSchema, CancelIntent type, INTENT_ORDERING["cancel"] = "parallel", and MAX_INTENT_PAYLOAD_BYTES["cancel"] = 1024 all exist. There is no registered CancelExecutor and no UI dispatches a cancel intent. An incoming "cancel" message will hit executorRegistry.get("cancel") → undefined → send CAPABILITY_UNAVAILABLE back. The architecture says this is reserved; the code should document this more visibly (perhaps with a // RESERVED: no executor registered yet comment at the registry registration block) rather than silently failing.
+
+OPTIMIZATIONS
+OPT 1: writeIntentLog parses and stringifies the full array on every write
+
+For a user who rapidly clips text (clipboard intents arrive quickly), the full 100-entry log is deserialized and reserialized on every intent completion. Consider debouncing or batching writes, or appending to a separate "pending" array and merging on read.
+
+OPT 2: dispatchIntent stringifies the payload twice
+
+const payloadJson = JSON.stringify(payload);   // size check
+// …
+this.transport.sendIntent(envelope);           // sendIntent also stringifies
+
+The payload is serialized once here for byte-counting and again inside sendContinuityIntent when JSON.stringify({ t: "continuity-intent", ...envelope }) runs. For large clipboard payloads (up to 1 MB), this doubles the serialization cost. Cache the stringified form and pass it through, or check payloadJson.length after building the full envelope string once.
+
+OPT 3: payloadJson.length measures UTF-16 code units, not bytes
+
+const payloadJson = JSON.stringify(payload);
+if (payloadJson.length > maxBytes) { … }
+
+String.prototype.length in JavaScript returns UTF-16 code units. For ASCII text this equals the byte count, but for CJK text or emoji (which take 3-4 bytes in UTF-8), payloadJson.length can underestimate the actual byte size by 2-4x. A clipboard payload of 1 MB worth of Chinese characters would pass the 1 MB limit check but transmit 3-4 MB over the DataChannel.
+
+Fix: new TextEncoder().encode(payloadJson).length (or new Blob([payloadJson]).size) gives true UTF-8 byte count.
+
+OPT 4: generateId() uses .replace().slice() instead of crypto.getRandomValues
+
+The current fallback for environments without randomUUID:
+
+return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+
+Math.random() is not cryptographically secure. For an intentId, collision resistance matters more than secrecy, but crypto.getRandomValues(new Uint8Array(16)).toString() (or btoa(...)) provides both at no extra cost.
+
+SUMMARY TABLE
+#	Severity	Category	Location
+BUG 1	HIGH	Version bypass: ternary always outputs INTENT_ENVELOPE_VERSION	use-webrtc.ts ~line 1106
+BUG 2	HIGH	peerCanPaste checks wrong cap; "clipboard.write" never broadcast	DevicesPanel.tsx:281, capabilities.ts
+BUG 3	MEDIUM	Double GA event for pending intents	Session.tsx:639
+BUG 4	MEDIUM	replace-existing never sends "cancelled" ACK for displaced intent	continuity-runtime.ts:434
+BUG 5	MEDIUM	connected() stale closure survives reconnect	Session.tsx:590
+GAP 1	HIGH	"ask" permission silently executes (no user consent)	continuity-runtime.ts:404
+GAP 2	MEDIUM	"accepted" extended timer fires silently — no log, no callback	continuity-runtime.ts:223
+GAP 3	MEDIUM	ClipboardPayloadSchema allows empty payload through validation	continuity-types.ts:208
+GAP 4	MEDIUM	IntentLog targetNickname is sender's name on received intents	continuity-runtime.ts:499
+GAP 5	MEDIUM	handleSendTab sends QuickBridge session URL when called from a session	DevicesPanel.tsx:209
+GAP 6	LOW	permissionWaitStartedAt never written	continuity-runtime.ts
+GAP 7	LOW	serialQueue not reset in teardown() — memory leak over long sessions	continuity-runtime.ts:82
+GAP 8	LOW	Multi-tab: two runtimes both execute incoming intents	Session.tsx:595
+GAP 9	LOW	writeIntentLog fails permanently after quota, no retry	continuity-runtime.ts:556
+RM 1	MEDIUM	Kill-criteria denominator methodology (sessions vs users)	ROADMAP.md
+RM 2	MEDIUM	Milestone D "accepted" timer reuses 10 s — wrong for large file transfers	continuity-runtime.ts:224
+RM 3	LOW	cancel executor missing: silently returns CAPABILITY_UNAVAILABLE	continuity-executor.ts
+OPT 1	LOW	Full log parse+stringify on every intent write	continuity-runtime.ts:545
+OPT 2	LOW	Payload double-serialized in dispatchIntent	continuity-runtime.ts:103
+OPT 3	LOW	Byte limit uses String.length (UTF-16) not UTF-8 byte count	continuity-types.ts:37
+OPT 4	LOW	Math.random() fallback in generateId()	continuity-runtime.ts:575
+The two that should be fixed before any real-world testing: BUG 1 (version negotiation is entirely broken) and BUG 2 (the capability string mismatch means the Paste button's visibility logic is wrong by design). GAP 1 needs a loud in-code warning before Phase 3 ships publicly.
