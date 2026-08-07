@@ -84,10 +84,7 @@ function buildGrid(): IconCell[] {
       const rotation = Math.floor(rand() * 8) * 22.5 * (rand() > 0.5 ? 1 : -1);
 
       const sizeBase = 13 + rand() * 8;
-      // Keep icons "almost invisible" as the brief requires. Previous range
-      // (0.03 - 0.075) was legible and competed with the headline. New range
-      // (0.012 - 0.032) reads as texture, not content.
-      const opacity = 0.012 + rand() * 0.02;
+      const opacity = 0.03 + rand() * 0.045;
 
       cells.push({ Icon, x, y, rotation, size: sizeBase, opacity });
     }
