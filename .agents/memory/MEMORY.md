@@ -5,3 +5,4 @@
 - [PHASE2_AUDIT resolved](phase2-audit-resolved.md) — all DOC-1/2/3/4 and NEW-08 through NEW-11 items implemented; tsc --noEmit passes clean; summary table updated in docs/PHASE2_AUDIT.md.
 - [WebRTC logging convention](webrtc-logging-convention.md) — qbLog/qbWarn are dev-only; qbError (added in Phase 2 audit fixes) is always-on for real production failures.
 - [Hero asset framing](hero-asset-framing.md) — the square device artwork must stay contained; wide cover cropping cuts off the phone, QR, and monitor.
+- [Chapter 2 device layering](chapter2-device-visual-layering.md) — reuse the square artwork and SVG overlay in one coordinate space; avoid broad descendant SVG positioning rules.

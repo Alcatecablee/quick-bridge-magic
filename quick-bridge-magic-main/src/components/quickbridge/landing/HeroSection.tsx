@@ -1,5 +1,4 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { HeroDeviceViz } from "./HeroDeviceViz";
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
@@ -37,7 +36,6 @@ export function HeroSection({ onScrollToQR }: HeroSectionProps) {
   const line3Variants = mkLine(0.24);
   const subtitleVariants = mkFade(0.38);
   const ctaVariants = mkFade(0.5);
-  const vizVariants = mkFade(0.58);
 
   const init = prefersReduced ? "visible" : "hidden";
 
@@ -102,15 +100,6 @@ export function HeroSection({ onScrollToQR }: HeroSectionProps) {
           </span>
         </motion.button>
       )}
-
-      <motion.div
-        variants={vizVariants}
-        initial={init}
-        animate="visible"
-        className="mt-10 sm:mt-12"
-      >
-        <HeroDeviceViz />
-      </motion.div>
     </section>
   );
 }

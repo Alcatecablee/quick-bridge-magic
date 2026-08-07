@@ -22,7 +22,7 @@ type TimerHandle = ReturnType<typeof setTimeout>;
  * session, inspect a peer, or send data. Pairing and transfer behavior remains
  * in the session route and WebRTC hook.
  */
-export function HeroDeviceViz() {
+export function HeroDeviceViz({ compact = false }: { compact?: boolean }) {
   const prefersReduced = useReducedMotion();
   const [activityIndex, setActivityIndex] = useState(0);
   const [packetId, setPacketId] = useState(0);
@@ -79,9 +79,15 @@ export function HeroDeviceViz() {
   const imageLabel = `Phone and computer connected through a QuickBridge hub. ${currentActivity}.`;
 
   return (
-    <figure className="mx-auto mt-1 w-full max-w-[680px]">
+    <figure
+      className={`mx-auto w-full ${
+        compact ? "max-w-[384px]" : "mt-1 max-w-[680px]"
+      }`}
+    >
       <div
-        className="qb-hero-system relative mx-auto aspect-[1024/1024] w-full max-w-[440px]"
+        className={`qb-hero-system relative mx-auto aspect-[1024/1024] w-full ${
+          compact ? "max-w-full" : "max-w-[440px]"
+        }`}
         role="img"
         aria-label={imageLabel}
       >
