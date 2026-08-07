@@ -217,15 +217,15 @@ function SectionLabel() {
   return (
     <div className="qb-chapter2-header max-w-2xl border-b border-border/50 pb-4">
       <div className="flex items-center gap-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+        <p className="text-[14px] font-semibold uppercase tracking-[0.18em] text-primary">
           Chapter 2
         </p>
         <span className="h-px w-8 bg-primary/35" aria-hidden="true" />
-        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+        <p className="text-[13px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
           After the first connection
         </p>
       </div>
-      <p className="mt-2 max-w-xl text-[13.5px] leading-relaxed text-muted-foreground/65">
+      <p className="mt-3 max-w-xl text-[16px] leading-relaxed text-muted-foreground/75">
         Trust your devices once. Every action after that takes one click.
       </p>
     </div>
