@@ -91,7 +91,7 @@ function buildGrid(): IconCell[] {
     const rotation = Math.floor(rand() * 8) * 22.5 * (rand() > 0.5 ? 1 : -1);
 
     const sizeBase = 30 + rand() * 14;
-    const opacity = 0.03 + rand() * 0.045;
+    const opacity = 0.015 + rand() * 0.03;
 
     cells.push({ Icon, x, y, rotation, size: sizeBase, opacity });
   }
