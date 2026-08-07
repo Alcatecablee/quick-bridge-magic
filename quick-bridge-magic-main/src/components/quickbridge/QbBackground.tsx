@@ -104,7 +104,7 @@ const GRID = buildGrid();
 export function QbBackground() {
   return (
     <div
-      className="pointer-events-none absolute inset-0 overflow-hidden"
+      className="pointer-events-none fixed inset-0 overflow-hidden"
       aria-hidden
     >
       {/* Subtle grain texture overlay using an SVG turbulence filter.
