@@ -65,29 +65,35 @@ function buildGrid(): IconCell[] {
   const rand = seededRandom(42);
   const cells: IconCell[] = [];
 
-  const cols = 18;
-  const rows = 28;
-  const cellW = 100 / cols;
-  const cellH = 100 / rows;
+  const iconCount = 180;
+  const minDistance = 3.8;
 
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      const iconIndex = (row * cols + col) % ICONS.length;
-      const Icon = ICONS[(iconIndex + Math.floor(rand() * 5)) % ICONS.length];
+  for (let i = 0; i < iconCount; i++) {
+    let x = 0;
+    let y = 0;
+    let attempts = 0;
 
-      const jitterX = (rand() - 0.5) * cellW * 0.3;
-      const jitterY = (rand() - 0.5) * cellH * 0.3;
+    do {
+      x = 3 + rand() * 94;
+      y = 3 + rand() * 94;
+      attempts++;
+    } while (
+      attempts < 80 &&
+      cells.some(
+        (cell) =>
+          Math.hypot((cell.x - x) * 0.75, cell.y - y) < minDistance,
+      )
+    );
 
-      const x = col * cellW + cellW / 2 + jitterX;
-      const y = row * cellH + cellH / 2 + jitterY;
+    const iconIndex = i % ICONS.length;
+    const Icon = ICONS[(iconIndex + Math.floor(rand() * 5)) % ICONS.length];
 
-      const rotation = Math.floor(rand() * 8) * 22.5 * (rand() > 0.5 ? 1 : -1);
+    const rotation = Math.floor(rand() * 8) * 22.5 * (rand() > 0.5 ? 1 : -1);
 
-      const sizeBase = 13 + rand() * 8;
-      const opacity = 0.03 + rand() * 0.045;
+    const sizeBase = 30 + rand() * 14;
+    const opacity = 0.03 + rand() * 0.045;
 
-      cells.push({ Icon, x, y, rotation, size: sizeBase, opacity });
-    }
+    cells.push({ Icon, x, y, rotation, size: sizeBase, opacity });
   }
 
   return cells;
