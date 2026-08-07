@@ -93,16 +93,16 @@ export function HeroDeviceViz() {
   const imageLabel = `Phone and computer connected through a QuickBridge hub. ${currentActivity}.`;
 
   return (
-    <figure className="mx-auto mt-2 w-full max-w-[780px]">
+    <figure className="mx-auto mt-2 w-full max-w-[820px]">
       <div
-        className="qb-hero-system relative aspect-[16/9] w-full overflow-hidden rounded-[28px]"
+        className="qb-hero-system relative aspect-[16/9] w-full overflow-hidden rounded-[24px] sm:rounded-[30px]"
         role="img"
         aria-label={imageLabel}
       >
         <img
           src="/images/quickbridge-living-system.png"
           alt="A phone and computer connected through a QuickBridge QR hub"
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full scale-[1.015] object-cover"
           draggable={false}
         />
 
@@ -193,42 +193,14 @@ export function HeroDeviceViz() {
             stroke="oklch(0.84 0.13 190 / 0.55)"
             strokeWidth="1.5"
             className="qb-hero-system-hub-ring"
-            animate={
-              packetActive ? { opacity: [0.3, 0.9, 0.3], scale: [0.92, 1.08, 0.92] } : undefined
-            }
-            transition={packetActive ? { duration: 0.7, ease: EASE_SETTLE } : undefined}
+            initial={{ opacity: 0.3, scale: 1 }}
+            animate={{
+              opacity: packetActive ? [0.3, 0.9, 0.3] : 0.3,
+              scale: packetActive ? [0.92, 1.08, 0.92] : 1,
+            }}
+            transition={{ duration: packetActive ? 0.7 : 0.2, ease: EASE_SETTLE }}
             style={{ transformOrigin: "512px 255px" }}
           />
-
-          <motion.rect
-            x="87"
-            y="376"
-            width="850"
-            height="62"
-            rx="31"
-            fill="oklch(0.08 0.01 260 / 0.92)"
-            stroke="oklch(0.82 0.13 195 / 0.2)"
-            strokeWidth="1"
-            className="qb-hero-system-status"
-          />
-          <circle
-            cx="426"
-            cy="407"
-            r="12"
-            fill="oklch(0.78 0.19 151)"
-            className="qb-hero-system-status-dot"
-          />
-          <text
-            x="512"
-            y="416"
-            textAnchor="middle"
-            fill="oklch(0.98 0.004 250)"
-            fontFamily="Inter, sans-serif"
-            fontSize="25"
-            fontWeight="600"
-          >
-            {currentActivity}
-          </text>
 
           {phonePulse && (
             <rect
