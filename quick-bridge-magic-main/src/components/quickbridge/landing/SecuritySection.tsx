@@ -4,9 +4,22 @@ export function SecuritySection() {
   const prefersReduced = useReducedMotion();
 
   return (
-    <div className="mx-auto max-w-4xl px-4 sm:px-6">
+    <div className="mx-auto max-w-5xl px-4 sm:px-6">
+      <div className="mb-10 text-center sm:mb-14">
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+          Private by default
+        </p>
+        <h2 className="text-balance text-3xl font-black tracking-tight text-foreground sm:text-4xl md:text-5xl">
+          Your files take the shortest route.
+        </h2>
+        <p className="mx-auto mt-3 max-w-xl text-[14px] leading-relaxed text-muted-foreground sm:text-[15px]">
+          QuickBridge connects your devices directly, then gets out of the way.
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-border/70 bg-card/30 p-5 sm:p-8">
       {/* ── Visual Flow: Your file -> Encrypted -> Direct -> Gone ── */}
-      <div className="flex flex-col items-center justify-center py-16">
+      <div className="flex flex-col items-center justify-center py-8 sm:py-10">
         <div className="grid w-full max-w-2xl grid-cols-2 justify-items-center gap-y-3 font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground sm:flex sm:items-center sm:justify-between sm:gap-y-0 sm:text-[12px]">
           <span>Your file</span>
           <span>Encrypted</span>
@@ -17,7 +30,7 @@ export function SecuritySection() {
         <div className="relative mt-4 h-[1px] w-full max-w-2xl bg-white/5">
           {!prefersReduced && (
             <motion.div
-              className="absolute left-0 top-0 h-full w-1/4 bg-gradient-to-r from-transparent via-white to-transparent opacity-80"
+              className="absolute left-0 top-0 h-full w-1/4 bg-primary/60"
               animate={{ left: ["-25%", "100%"] }}
               transition={{
                 duration: 3,
@@ -39,36 +52,12 @@ export function SecuritySection() {
         </h2>
       </div>
 
-      {/* ── Metrics without cards ── */}
-      <div className="mt-20 sm:mt-32">
-        <div className="grid grid-cols-1 gap-8 divide-y divide-white/5 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-y-0">
-          <div className="flex flex-col items-center py-4 text-center sm:py-0">
-            <span className="text-5xl font-black tracking-tight text-foreground sm:text-6xl">
-              10<span className="text-3xl text-muted-foreground/50">GB</span>
-            </span>
-            <span className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Maximum file size
-            </span>
-          </div>
-
-          <div className="flex flex-col items-center py-4 text-center sm:py-0">
-            <span className="text-5xl font-black tracking-tight text-foreground sm:text-6xl">
-              &lt;5<span className="text-3xl text-muted-foreground/50">s</span>
-            </span>
-            <span className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Average pairing time
-            </span>
-          </div>
-
-          <div className="flex flex-col items-center py-4 text-center sm:py-0">
-            <span className="text-5xl font-black tracking-tight text-foreground sm:text-6xl">
-              Free
-            </span>
-            <span className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Forever
-            </span>
-          </div>
-        </div>
+      <div className="mt-12 border-t border-border/70 pt-6 text-center sm:mt-16">
+        <p className="mx-auto max-w-2xl text-[13px] leading-relaxed text-muted-foreground sm:text-[14px]">
+          <span className="font-medium text-foreground">Up to 10 GB</span> with auto-save,
+          pairing in under five seconds, and no subscription or account required.
+        </p>
+      </div>
       </div>
     </div>
   );

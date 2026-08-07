@@ -252,9 +252,8 @@ export function DevicesPanel({ identity, nickname, deviceKind }: Props) {
     typeof navigator.clipboard.readText === "function";
 
   return (
-    <section className="relative mx-auto max-w-sm rounded-2xl bg-white/[0.02] p-5 shadow-2xl ring-1 ring-white/10 backdrop-blur-xl">
-      <div className="pointer-events-none absolute inset-0 -z-10 rounded-2xl bg-gradient-to-b from-white/[0.06] to-transparent" />
-      <div className="mb-4 flex items-center justify-between px-1">
+    <section className="mx-auto max-w-5xl rounded-xl border border-border/80 bg-card p-5 shadow-lg shadow-black/10 sm:p-6">
+      <div className="mb-5 flex items-center justify-between">
         <p className="text-[13px] font-medium tracking-wide text-foreground/90">Your Devices</p>
         <Link
           to="/devices"
@@ -268,8 +267,8 @@ export function DevicesPanel({ identity, nickname, deviceKind }: Props) {
           {pasteError}
         </p>
       )}
-      <div className="flex flex-col gap-1">
-        {nodes.map((node, i) => {
+      <div className="grid gap-2 sm:grid-cols-2">
+        {nodes.map((node) => {
           const isOnline = onlineNodeIds.has(node.nodeId);
           const liveCaps = peerCapabilities.get(node.nodeId) ?? node.capabilitySnapshot ?? [];
           const peerCanOpenUrl = liveCaps.includes("browser.open");
@@ -279,13 +278,11 @@ export function DevicesPanel({ identity, nickname, deviceKind }: Props) {
           return (
             <div
               key={node.nodeId}
-              className={`group relative overflow-hidden rounded-xl bg-white/[0.03] p-3 transition-colors hover:bg-white/[0.06] ${
-                i > 0 ? "mt-1" : ""
-              }`}
+              className="group relative overflow-hidden rounded-xl bg-white/[0.035] p-3.5 transition-colors hover:bg-white/[0.06]"
             >
               <div className="flex items-center gap-3">
                 {/* Avatar / Icon with online glow */}
-                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/40 ring-1 ring-white/10">
+                <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border bg-background/60">
                   <DeviceIcon kind={node.deviceKind} />
                   {isOnline && (
                     <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-background shadow-[0_0_8px_rgba(34,197,94,0.6)]" />

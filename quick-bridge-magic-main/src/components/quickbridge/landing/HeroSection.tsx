@@ -46,7 +46,7 @@ export function HeroSection({ onScrollToQR }: HeroSectionProps) {
   const init = prefersReduced ? "visible" : "hidden";
 
   return (
-    <section className="mb-10 pt-4 text-center sm:mb-12 sm:pt-8">
+    <section className="mx-auto max-w-5xl text-center">
       <motion.h1 className="font-black tracking-tight text-[44px] leading-[1.1] sm:text-[58px] md:text-[72px]">
         <span className="block overflow-hidden pb-[0.1em]">
           <motion.span
@@ -86,7 +86,7 @@ export function HeroSection({ onScrollToQR }: HeroSectionProps) {
         variants={subtitleVariants}
         initial={init}
         animate="visible"
-        className="mx-auto mt-8 max-w-2xl text-[18px] font-medium leading-relaxed text-muted-foreground sm:text-[22px]"
+        className="mx-auto mt-8 max-w-2xl text-[17px] font-medium leading-relaxed text-muted-foreground sm:text-[21px]"
       >
         Files. Tabs. Clipboard. Photos. One click.
       </motion.p>
@@ -108,7 +108,7 @@ export function HeroSection({ onScrollToQR }: HeroSectionProps) {
         variants={vizVariants}
         initial={init}
         animate="visible"
-        className="mt-12"
+        className="mt-10 sm:mt-12"
       >
         <HeroDeviceViz />
       </motion.div>

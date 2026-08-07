@@ -28,14 +28,17 @@ export function WorkflowComparison() {
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6">
       <div className="text-center">
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+          One direct connection
+        </p>
         <h2 className="text-balance text-3xl font-black tracking-tight text-foreground sm:text-4xl md:text-5xl">
           The old way vs. QuickBridge.
         </h2>
       </div>
 
-      <div className="mt-16 flex flex-col gap-12 sm:mt-24 sm:gap-24">
+      <div className="mt-10 flex flex-col gap-5 sm:mt-14 sm:gap-6">
         {/* ---- OLD WAY ---- */}
-        <div>
+        <div className="rounded-2xl border border-border/70 bg-card/30 p-5 sm:p-8">
           <p className="mb-6 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground/60 text-center">
             The old way
           </p>
@@ -72,7 +75,7 @@ export function WorkflowComparison() {
         </div>
 
         {/* ---- QUICKBRIDGE ---- */}
-        <div>
+        <div className="rounded-2xl border border-primary/25 bg-primary/[0.045] p-5 shadow-lg shadow-primary/[0.04] sm:p-8">
           <p className="mb-6 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary text-center">
             QuickBridge
           </p>

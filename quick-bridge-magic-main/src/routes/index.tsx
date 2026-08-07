@@ -608,9 +608,9 @@ function Home() {
           </div>
         }
       />
-      <main className="relative mx-auto max-w-6xl px-4 pb-24 pt-6 sm:px-6 sm:pt-12">
+      <main className="relative mx-auto max-w-6xl px-4 pb-28 pt-8 sm:px-6 sm:pt-14">
         {resumeTarget && (
-          <div className="mb-5 flex flex-col items-start gap-3 rounded-xl border border-primary/30 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+          <div className="mx-auto mb-8 flex max-w-5xl flex-col items-start gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
             <div className="min-w-0">
               <p className="text-sm font-semibold text-foreground">
                 You have an active bridge
@@ -689,18 +689,18 @@ function Home() {
         {/* Continuity: sticky scroll storytelling section.
             Five one-click interactions cycle as the user scrolls.
             On reduced-motion, falls back to a simple vertical list. */}
-        <section className="mt-16 sm:mt-24">
+        <section className="mt-24 sm:mt-32">
           <StickyScrollSection />
         </section>
 
         {/* Comparison: animated "old way vs. QuickBridge" workflow.
             Old-way steps build one by one, then QuickBridge appears. */}
-        <Reveal as="section" className="mt-16 sm:mt-24">
+        <Reveal as="section" className="mt-24 sm:mt-32">
           <WorkflowComparison />
         </Reveal>
 
         {/* Security Section (Trust flow & unboxed metrics) */}
-        <Reveal as="section" className="mt-16 sm:mt-24">
+        <Reveal as="section" className="mt-24 sm:mt-32">
           <SecuritySection />
         </Reveal>
 
@@ -708,10 +708,10 @@ function Home() {
             "Add another device". First-time visitors see it immediately once
             IDB confirms they have no trusted devices (pairingOpen auto-sets). */}
         {(!hasTrustedDevices || pairingOpen) && (
-        <Reveal as="section" id="pair" className={hasTrustedDevices ? "mt-2" : "mt-16 scroll-mt-24 sm:mt-24"}>
-          <div className="grid gap-4 sm:gap-5 lg:grid-cols-5">
+        <Reveal as="section" id="pair" className={hasTrustedDevices ? "mt-8" : "mt-24 scroll-mt-24 sm:mt-32"}>
+          <div className="mx-auto grid max-w-5xl gap-5 sm:gap-6 lg:grid-cols-5">
             {/* QR / pair card */}
-            <Card id="qr" className="relative overflow-hidden border-border bg-card p-4 sm:p-6 lg:col-span-3 scroll-mt-24">
+            <Card id="qr" className="relative overflow-hidden border-border/80 bg-card/90 p-5 shadow-lg shadow-black/10 sm:p-7 lg:col-span-3 scroll-mt-24">
               {/* Card header - stacks on mobile */}
               <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -891,8 +891,8 @@ function Home() {
             </Card>
 
             {/* Scanner card */}
-            <Card id="scan" className="scroll-mt-24 border-border bg-card p-4 sm:p-6 lg:col-span-2">
-              <div className="mb-3 sm:mb-4">
+            <Card id="scan" className="scroll-mt-24 border-border/80 bg-card/90 p-5 shadow-lg shadow-black/10 sm:p-7 lg:col-span-2">
+              <div className="mb-4 sm:mb-5">
                 <p className="text-sm font-semibold">Scan a QR code</p>
                 <p className="text-[12px] text-muted-foreground">If another device is showing one</p>
               </div>
@@ -943,7 +943,7 @@ function Home() {
         {/* Compatibility and Features sections removed */}
 
         {/* FAQ */}
-        <Reveal as="section" id="faq" className="mt-16 scroll-mt-24 sm:mt-24">
+        <Reveal as="section" id="faq" className="mt-24 scroll-mt-24 sm:mt-32">
           <FaqSection />
         </Reveal>
 

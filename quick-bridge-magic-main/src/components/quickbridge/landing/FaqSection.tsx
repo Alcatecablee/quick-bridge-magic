@@ -40,10 +40,10 @@ export function FaqSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <div className="grid gap-10 lg:grid-cols-5">
+    <div className="mx-auto grid max-w-5xl gap-10 lg:grid-cols-5 lg:gap-16">
       <div className="lg:col-span-2">
         <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-primary">FAQ</p>
-        <h2 className="mt-2 text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
+        <h2 className="mt-2 text-balance text-3xl font-black tracking-tight text-foreground sm:text-4xl md:text-5xl">
           Questions, answered honestly.
         </h2>
         <p className="mt-3 max-w-md text-[14px] leading-relaxed text-muted-foreground">
@@ -51,17 +51,17 @@ export function FaqSection() {
         </p>
       </div>
       <div className="lg:col-span-3">
-        <div className="flex flex-col border-y border-border divide-y divide-border">
+        <div className="flex flex-col rounded-2xl border border-border/70 bg-card/25 px-5 divide-y divide-border/70 sm:px-7">
           {faqs.map((item, i) => {
             const isOpen = openIndex === i;
             const questionId = `faq-question-${i}`;
             const answerId = `faq-answer-${i}`;
             return (
-              <div key={item.q} className="py-1">
+              <div key={item.q} className="py-1.5">
                 <button
                   type="button"
                   onClick={() => setOpenIndex(isOpen ? null : i)}
-                  className="flex w-full items-center justify-between py-4 text-left focus:outline-none"
+                  className="flex w-full items-center justify-between gap-4 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   id={questionId}
                   aria-expanded={isOpen}
                   aria-controls={answerId}

@@ -15,7 +15,6 @@ interface Interaction {
   description: string;
   fromLabel: string;
   toLabel: string;
-  icon: string; // emoji as a lightweight icon placeholder until SVG scene is rendered
 }
 
 const INTERACTIONS: Interaction[] = [
@@ -26,7 +25,6 @@ const INTERACTIONS: Interaction[] = [
       "Reading something on your laptop? One click and it is open on your phone, at the same scroll position.",
     fromLabel: "Laptop",
     toLabel: "Phone",
-    icon: "⇢",
   },
   {
     label: "Continue reading",
@@ -35,7 +33,6 @@ const INTERACTIONS: Interaction[] = [
       "Started an article on your phone? Pick it up on your desktop without sending yourself a link.",
     fromLabel: "Phone",
     toLabel: "Desktop",
-    icon: "⇢",
   },
   {
     label: "Paste anywhere",
@@ -44,7 +41,6 @@ const INTERACTIONS: Interaction[] = [
       "Copy text on one device and paste it on another. No email, no notes app, no cloud clipboard.",
     fromLabel: "Any device",
     toLabel: "Any device",
-    icon: "⇢",
   },
   {
     label: "Move a photo",
@@ -53,7 +49,6 @@ const INTERACTIONS: Interaction[] = [
       "Took a shot on your phone and need it on your computer right now? Tap once. It is there.",
     fromLabel: "Phone",
     toLabel: "Computer",
-    icon: "⇢",
   },
   {
     label: "Open a file",
@@ -62,7 +57,6 @@ const INTERACTIONS: Interaction[] = [
       "Send a document, spreadsheet, or PDF to another device and keep working where the screen is bigger.",
     fromLabel: "Computer",
     toLabel: "Tablet or Phone",
-    icon: "⇢",
   },
 ];
 
@@ -576,9 +570,6 @@ function MovePhotoScene() {
           <rect x="213" y="46" width="46" height="38" rx="3" stroke="oklch(0.7 0.13 245 / 0.4)" strokeWidth="1" fill="oklch(0.7 0.13 245 / 0.1)" />
           <path d="M 213 76 L 224 62 L 233 70 L 240 64 L 259 76 Z" fill="oklch(0.7 0.13 245 / 0.2)" />
           <circle cx="250" cy="53" r="5" fill="oklch(0.7 0.13 245 / 0.18)" />
-          {/* Check badge */}
-          <circle cx="259" cy="46" r="6" fill="oklch(0.74 0.14 158)" />
-          <path d="M 256 46 L 258.5 48.5 L 262 43.5" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
         </motion.g>
         <path d="M 222 114 L 216 128 L 294 128 L 288 114" stroke="oklch(0.7 0.13 245 / 0.35)" strokeWidth="1.2" fill="none" />
         <line x1="208" y1="128" x2="300" y2="128" stroke="oklch(0.7 0.13 245 / 0.3)" strokeWidth="1.2" strokeLinecap="round" />
