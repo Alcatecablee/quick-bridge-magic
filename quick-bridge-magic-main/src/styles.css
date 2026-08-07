@@ -228,29 +228,54 @@
 }
 
 .qb-hero-system {
+  position: relative;
   isolation: isolate;
-  background: #151718;
-  border: 1px solid oklch(0.9 0.02 250 / 0.1);
+  background: transparent;
   animation: qb-hero-system-float 8s ease-in-out infinite;
-  box-shadow:
-    0 26px 70px oklch(0 0 0 / 0.3),
-    0 2px 8px oklch(0 0 0 / 0.22);
   will-change: transform;
+}
+
+.qb-hero-system::before {
+  position: absolute;
+  inset: 8% 4% 10%;
+  z-index: 0;
+  pointer-events: none;
+  content: "";
+  background:
+    radial-gradient(
+      ellipse 34% 24% at 50% 50%,
+      oklch(0.78 0.13 190 / 0.11),
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 68% 42% at 50% 63%,
+      oklch(0.34 0.035 245 / 0.16),
+      transparent 76%
+    );
+  filter: blur(18px);
 }
 
 .qb-hero-system::after {
   position: absolute;
-  inset: 1px;
-  z-index: 1;
+  right: 12%;
+  bottom: 8%;
+  left: 12%;
+  z-index: 0;
+  height: 12%;
   pointer-events: none;
   content: "";
-  border: 1px solid oklch(0.9 0.02 250 / 0.06);
-  border-radius: inherit;
-  box-shadow: inset 0 1px 0 oklch(1 1 1 / 0.035);
+  background: radial-gradient(
+    ellipse at center,
+    oklch(0 0 0 / 0.48),
+    transparent 72%
+  );
+  filter: blur(16px);
+  opacity: 0.72;
 }
 
 .qb-hero-system > img {
-  z-index: 0;
+  position: relative;
+  z-index: 1;
   user-select: none;
   filter: saturate(0.96) contrast(1.02);
 }

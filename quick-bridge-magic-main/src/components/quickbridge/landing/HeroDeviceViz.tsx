@@ -81,12 +81,12 @@ export function HeroDeviceViz() {
   return (
     <figure className="mx-auto mt-1 w-full max-w-[680px]">
       <div
-        className="qb-hero-system relative mx-auto aspect-[1024/1024] w-full max-w-[440px] overflow-hidden rounded-[24px] sm:rounded-[30px]"
+        className="qb-hero-system relative mx-auto aspect-[1024/1024] w-full max-w-[440px]"
         role="img"
         aria-label={imageLabel}
       >
         <img
-          src="/images/quickbridge-living-system.png"
+          src="/images/quickbridge-living-system-transparent.png"
           alt="A phone and computer connected through a QuickBridge QR hub"
           className="absolute inset-0 h-full w-full object-contain"
           loading="eager"
