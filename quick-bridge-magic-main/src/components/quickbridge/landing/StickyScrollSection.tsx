@@ -125,15 +125,14 @@ function StickyImpl() {
   return (
     <div ref={containerRef} style={{ minHeight: "500vh" }} className="relative">
       <div
-        className="sticky top-0 h-screen"
-        style={{ height: "100svh", overflow: "clip" }}
+        className="sticky top-[57px] h-[calc(100svh-57px)] overflow-clip sm:top-[69px] sm:h-[calc(100svh-69px)]"
       >
-        <div className="flex h-full flex-col justify-center px-4 py-12 sm:px-8">
-          <div className="mb-8 sm:mb-10">
+        <div className="flex h-full flex-col justify-center px-4 py-4 sm:px-8 sm:py-6">
+          <div className="mb-4 sm:mb-6">
             <SectionLabel />
           </div>
 
-          <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-10 sm:grid-cols-2 sm:gap-16">
+          <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-16">
             <div className="flex flex-col justify-center">
               <AnimatePresence mode="wait">
                 <motion.div
@@ -175,7 +174,7 @@ function StickyImpl() {
                 initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.62, ease: EASE }}
-                className="flex aspect-square w-full max-w-[27rem] items-center justify-center"
+                className="qb-chapter2-visual flex aspect-square w-full items-center justify-center"
               >
                 <HeroDeviceViz compact />
               </motion.div>

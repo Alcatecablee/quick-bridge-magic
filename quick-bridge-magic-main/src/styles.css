@@ -300,6 +300,16 @@
   animation: qb-hero-system-breathe 4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
 
+.qb-chapter2-visual {
+  max-width: min(27rem, calc(100svh - 21rem));
+}
+
+@media (min-width: 640px) {
+  .qb-chapter2-visual {
+    max-width: min(27rem, calc(100svh - 15rem));
+  }
+}
+
 /* ─── Brand mark "bee-wing buzz" ──────────────────────────────────────────── */
 /* High-frequency multi-axis jitter + glow on the QuickBridge icon so the    */
 /* arrow reads like wings in motion. Gated behind data-bridge="active" on    */
