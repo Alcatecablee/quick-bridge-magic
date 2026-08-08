@@ -14,6 +14,11 @@
 import { openQbDb, TRUSTED_STORE } from "./qb-db";
 import type { DeviceKind } from "./device";
 
+export const TRUSTED_NODES_CHANNEL = "qb-trusted-nodes";
+// Singleton channel for broadcasting mutations
+const bc = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(TRUSTED_NODES_CHANNEL) : null;
+
+
 // All capability identifiers.
 // Phase 2 presence capabilities: files, clipboard, camera, microphone, location, storage, gpu, display.
 // Phase 3 Continuity capabilities (finding 8 -- advertised in presence, validated at execution time):
@@ -111,10 +116,11 @@ export async function upsertTrustedNode(node: TrustedNode): Promise<void> {
     // Resolve/reject on transaction boundary rather than on individual request
     // callbacks. This ensures the promise only settles once the engine has
     // durably committed (or rolled back) all writes in this transaction.
-    // Without this, a storage-quota rollback that fires after putReq.onsuccess
-    // would falsely resolve the promise and leave the caller thinking the record
     // was saved when it wasn't.
-    tx.oncomplete = () => resolve();
+    tx.oncomplete = () => {
+      bc?.postMessage({ type: "MUTATED" });
+      resolve();
+    };
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error ?? new Error("Transaction aborted"));
 
@@ -162,7 +168,10 @@ export async function removeTrustedNode(nodeId: string): Promise<void> {
   const db = await openQbDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(TRUSTED_STORE, "readwrite");
-    tx.oncomplete = () => resolve();
+    tx.oncomplete = () => {
+      bc?.postMessage({ type: "MUTATED" });
+      resolve();
+    };
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error ?? new Error("Transaction aborted"));
     tx.objectStore(TRUSTED_STORE).delete(nodeId);
@@ -182,7 +191,10 @@ export async function touchTrustedNode(
   const db = await openQbDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(TRUSTED_STORE, "readwrite");
-    tx.oncomplete = () => resolve();
+    tx.oncomplete = () => {
+      bc?.postMessage({ type: "MUTATED" });
+      resolve();
+    };
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error ?? new Error("Transaction aborted"));
 
@@ -211,7 +223,10 @@ export async function renameTrustedNode(nodeId: string, nickname: string): Promi
   const db = await openQbDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(TRUSTED_STORE, "readwrite");
-    tx.oncomplete = () => resolve();
+    tx.oncomplete = () => {
+      bc?.postMessage({ type: "MUTATED" });
+      resolve();
+    };
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error ?? new Error("Transaction aborted"));
 

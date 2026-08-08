@@ -121,6 +121,7 @@ import {
 import { TrustPrompt } from "./TrustPrompt";
 import { ContinuityRuntime, PENDING_INTENT_KEY_PREFIX, type PendingIntent } from "@/lib/continuity-runtime";
 import type { IntentEnvelope, IntentAck } from "@/lib/continuity-types";
+import { useDeviceDisplayName } from "@/hooks/use-device-name";
 
 interface Props {
   sessionId: string;
@@ -278,6 +279,7 @@ export function Session({ sessionId, isInitiator }: Props) {
   const pendingNonceRef = useRef<string | null>(null);
   const nodeHelloSentRef = useRef(false);
   const seenForTrustRef = useRef(new Set<string>());
+  const resolvedPeerNameRef = useRef<string>("Other device");
   // Prevents concurrent trust writes if the user double-taps "Trust this
   // device" or "Trust again" before the first IDB write resolves.
   const trustingInFlightRef = useRef(false);
@@ -360,7 +362,7 @@ export function Session({ sessionId, isInitiator }: Props) {
       .then(([valid, stored]) => {
         if (valid) {
           setPeerTrustVerified(true);
-          void touchTrustedNode(nodeId, Date.now(), peerHello.nickname);
+          void touchTrustedNode(nodeId, Date.now());
         } else {
           // Detect key reset: same nodeId but different public key coordinates.
           // This almost always means the peer cleared their browser storage and
@@ -395,7 +397,7 @@ export function Session({ sessionId, isInitiator }: Props) {
     const runtime = continuityRuntimeRef.current;
     if (!runtime) return;
     const senderNodeId = peerNodeHelloRef.current?.nodeId ?? "";
-    const senderNickname = peerNodeHelloRef.current?.nickname ?? "Other device";
+    const senderNickname = resolvedPeerNameRef.current;
     runtime.handleIncomingIntent(envelope, senderNodeId, senderNickname);
   }, []);
 
@@ -476,6 +478,13 @@ sendContinuityIntentRef.current = sendContinuityIntent;
 sendIntentAckRef.current = sendIntentAck;
 deviceNameRef.current = deviceName;
 myDeviceKindRef.current = myDeviceKind;
+
+  const resolvedPeerName = useDeviceDisplayName(
+    peerTrustFailed ? null : peerNodeHello?.nodeId,
+    peerDeviceName,
+    peerDeviceKind
+  );
+  resolvedPeerNameRef.current = resolvedPeerName;
 
   const navigate = useNavigate();
 
@@ -746,7 +755,7 @@ myDeviceKindRef.current = myDeviceKind;
       const node: TrustedNode = {
         nodeId: peerHello.nodeId,
         publicKeyJwk: peerHello.publicKeyJwk,
-        nickname: peerHello.nickname,
+        nickname: existing?.nickname ?? peerHello.nickname,
         deviceKind: peerHello.deviceKind,
         trustLevel: "trusted",
         capabilitySnapshot: existing?.capabilitySnapshot ?? ["files"],
@@ -1470,7 +1479,7 @@ myDeviceKindRef.current = myDeviceKind;
     if (status === "connected" && prevStatusRef.current !== "connected") {
       if (!connectedAtRef.current) connectedAtRef.current = Date.now();
       reconnectStartedAtRef.current = null;
-      notify("Bridge connected", `${peerDeviceName?.trim() || "Your peer"} joined the session`, "qb-connect");
+      notify("Bridge connected", `${resolvedPeerName} joined the session`, "qb-connect");
       stalledNotifiedRef.current = false;
       setForceRelay(false);
       trackPeerConnected(quality);
@@ -1564,7 +1573,7 @@ myDeviceKindRef.current = myDeviceKind;
     }
     if (peerStreamingToDisk && !didAnnounceLargeModeRef.current) {
       didAnnounceLargeModeRef.current = true;
-      const who = peerDeviceName?.trim() || "The receiving device";
+      const who = resolvedPeerName;
       toast.success("Large file mode enabled", {
         description: `${who} can save straight to disk - you can now send files up to ${STREAMED_MAX_FILE_LABEL}.`,
       });
@@ -1973,9 +1982,7 @@ myDeviceKindRef.current = myDeviceKind;
         if (t === lastClipRef.current) return; // already sent via auto-clip session
         lastSuggestedRef.current = t;
         const preview = t.length > 60 ? `${t.slice(0, 60)}…` : t;
-        const peerLabel =
-          peerDeviceName?.trim() ||
-          (peerDeviceKind ? deviceLabel(peerDeviceKind, "peer") : "other device");
+        const peerLabel = resolvedPeerName;
         toast(`Send to ${peerLabel}?`, {
           description: preview,
           duration: 6000,
@@ -2167,7 +2174,7 @@ myDeviceKindRef.current = myDeviceKind;
   const myFallback = deviceLabel(myDeviceKind, "self");
   const myShown = deviceName.trim() || myFallback;
   const peerFallback = peerDeviceKind ? deviceLabel(peerDeviceKind, "peer") : "Other device";
-  const peerShown = peerDeviceName?.trim() || peerFallback;
+  const peerShown = resolvedPeerName;
   const connected = status === "connected";
   const reconnecting = status === "reconnecting";
 
@@ -2908,7 +2915,7 @@ myDeviceKindRef.current = myDeviceKind;
               Device identity changed
             </p>
             <p className="text-[12px] leading-relaxed text-muted-foreground">
-              "{peerNodeHello.nickname}" is connecting with new cryptographic keys. This usually happens after browser data is cleared. Trust this device again to reconnect securely.
+              "{resolvedPeerName}" is connecting with new cryptographic keys. This usually happens after browser data is cleared. Trust this device again to reconnect securely.
             </p>
             <div className="mt-3 flex gap-2">
               <Button
@@ -3527,7 +3534,7 @@ myDeviceKindRef.current = myDeviceKind;
               >
                 <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
                   <span className="truncate pr-2">
-                    {m.from === "me" ? "You" : peerDeviceName?.trim() || "Peer"}
+                    {m.from === "me" ? "You" : resolvedPeerName}
                     {m.kind === "clipboard" ? " · clipboard" : ""}
                   </span>
                   <Button

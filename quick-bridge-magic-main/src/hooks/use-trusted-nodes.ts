@@ -38,6 +38,18 @@ export function useTrustedNodes(): UseTrustedNodesResult {
 
   useEffect(() => {
     load();
+    const bc = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("qb-trusted-nodes") : null;
+    if (!bc) return;
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === "MUTATED") {
+        load();
+      }
+    };
+    bc.addEventListener("message", handler);
+    return () => {
+      bc.removeEventListener("message", handler);
+      bc.close();
+    };
   }, [load]);
 
   const remove = useCallback(async (nodeId: string) => {
