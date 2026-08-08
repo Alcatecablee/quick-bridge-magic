@@ -32,8 +32,21 @@ export function SecuritySection() {
 
           <div className="relative mt-5 h-3 w-full max-w-2xl overflow-hidden">
             <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-white/10" />
+            <div
+              className="pointer-events-none absolute inset-x-0 top-1/2 z-[1] flex -translate-y-1/2 justify-between px-[14%]"
+              aria-hidden="true"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/45" />
+              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/45" />
+              <motion.span
+                className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_9px_oklch(0.7_0.13_245_/_0.75)]"
+                animate={prefersReduced ? { opacity: 1, scale: 1 } : { opacity: [0.7, 1, 0.7], scale: [1, 1.2, 1] }}
+                transition={{ duration: 2.4, ease: "easeInOut", repeat: Infinity }}
+              />
+              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/45" />
+            </div>
             <motion.div
-              className="absolute left-1/2 top-1/2 h-px w-1/4 -translate-y-1/2 bg-primary/80 shadow-[0_0_12px_oklch(0.7_0.13_245_/_0.55)]"
+              className="absolute left-1/2 top-1/2 h-px w-1/4 -translate-y-1/2 bg-primary shadow-[0_0_20px_oklch(0.7_0.13_245_/_0.8),0_0_7px_oklch(0.7_0.13_245_/_0.95)]"
               animate={prefersReduced ? { opacity: 1 } : { opacity: [0.5, 0.95, 0.5] }}
               transition={{ duration: 2.4, ease: "easeInOut", repeat: Infinity }}
             />
@@ -53,11 +66,6 @@ export function SecuritySection() {
                     }}
                   />
                 ))}
-                <motion.span
-                  className="absolute left-[66.666%] top-1/2 h-3 w-px -translate-y-1/2 bg-primary shadow-[0_0_9px_oklch(0.7_0.13_245_/_0.75)]"
-                  animate={{ opacity: [0, 1, 0], scaleY: [0.5, 1, 0.5] }}
-                  transition={{ duration: 1.8, delay: 1.4, ease: "easeInOut", repeat: Infinity }}
-                />
               </>
             )}
           </div>

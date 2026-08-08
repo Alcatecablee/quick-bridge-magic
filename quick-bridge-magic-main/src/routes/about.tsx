@@ -160,9 +160,6 @@ function AboutPage() {
             <h1 className="mt-3 text-balance font-black text-[46px] sm:text-[64px] md:text-[84px] tracking-tight text-foreground">
               About QuickBridge 2026
             </h1>
-            <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-              I'm Clive Makazhu, a self-taught developer based in Johannesburg, South Africa. CompTIA A+ and Network+ certified, 15 years in IT and software, and still genuinely annoyed by tools that make simple things complicated.
-            </p>
           </header>
         </Reveal>
 
