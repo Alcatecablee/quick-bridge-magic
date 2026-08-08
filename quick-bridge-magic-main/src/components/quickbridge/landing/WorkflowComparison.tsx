@@ -55,71 +55,71 @@ export function WorkflowComparison() {
 
       <div className="mt-10 flex flex-col gap-5 sm:mt-14 sm:gap-6">
         {/* ---- OLD WAY ---- */}
-        <div className="rounded-xl border border-border/70 bg-card/30 p-5 sm:p-8">
-          <p className="mb-6 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground/60 text-center">
+        <div className="rounded-xl border border-border/60 bg-card/30 p-6 sm:p-9">
+          <p className="mb-7 text-center font-mono text-[12px] font-medium uppercase tracking-[0.2em] text-muted-foreground/70">
             The old way
           </p>
           <motion.div
             variants={slowFlowVariants}
             initial={prefersReduced ? "visible" : "hidden"}
             animate="visible"
-            className="flex flex-col items-center justify-between gap-6 sm:flex-row sm:gap-2"
+            className="flex flex-col items-center justify-between gap-7 sm:flex-row sm:gap-4"
           >
-            <motion.div variants={slowItemVariants} className="font-mono text-[13px] text-muted-foreground">Phone</motion.div>
+            <motion.div variants={slowItemVariants} className="font-mono text-[14px] text-muted-foreground/80">Phone</motion.div>
             
             <motion.div variants={slowItemVariants} className="flex flex-col items-center gap-2">
-              <span className="text-[10px] uppercase text-muted-foreground/40">
+              <span className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground/55">
                 Upload {Math.round(uploadProgress)}%
               </span>
-              <div className="h-1 w-24 overflow-hidden rounded-full bg-white/5 sm:w-16">
+              <div className="h-1.5 w-24 overflow-hidden rounded-full bg-white/10 sm:w-20">
                 <div
-                  className="h-full bg-muted-foreground/30 transition-[width] duration-100 linear"
+                  className="h-full bg-muted-foreground/50 transition-[width] duration-100 linear"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
             </motion.div>
 
-            <motion.div variants={slowItemVariants} className="font-mono text-[13px] text-muted-foreground">Cloud...</motion.div>
+            <motion.div variants={slowItemVariants} className="font-mono text-[15px] text-muted-foreground/80">Cloud...</motion.div>
             
             <motion.div variants={slowItemVariants} className="flex flex-col items-center gap-2">
-              <span className="text-[10px] uppercase text-muted-foreground/40">
+              <span className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground/55">
                 Download {Math.round(downloadProgress)}%
               </span>
-              <div className="h-1 w-24 overflow-hidden rounded-full bg-white/5 sm:w-16">
+              <div className="h-1.5 w-24 overflow-hidden rounded-full bg-white/10 sm:w-20">
                 <div
-                  className="h-full bg-muted-foreground/30 transition-[width] duration-100 linear"
+                  className="h-full bg-muted-foreground/50 transition-[width] duration-100 linear"
                   style={{ width: `${downloadProgress}%` }}
                 />
               </div>
             </motion.div>
 
-            <motion.div variants={slowItemVariants} className="font-mono text-[13px] text-muted-foreground">Desktop</motion.div>
+            <motion.div variants={slowItemVariants} className="font-mono text-[14px] text-muted-foreground/80">Desktop</motion.div>
           </motion.div>
         </div>
 
         {/* ---- QUICKBRIDGE ---- */}
-        <div className="rounded-xl border border-border/70 bg-card/30 p-5 sm:p-8">
-          <p className="mb-6 text-center font-mono text-[11px] uppercase tracking-[0.2em] text-primary/70">
+        <div className="rounded-xl border border-border/60 bg-card/30 p-6 sm:p-9">
+          <p className="mb-8 text-center font-mono text-[15px] font-medium uppercase tracking-[0.2em] text-primary/80 sm:text-[16px]">
             QuickBridge
           </p>
           <motion.div
             initial={prefersReduced ? { opacity: 1 } : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.5 }}
-            className="flex items-end gap-3 sm:gap-6"
+            className="flex items-end gap-4 sm:gap-8"
           >
-            <div className="flex w-12 shrink-0 flex-col items-center gap-1 sm:w-20">
+            <div className="flex w-16 shrink-0 flex-col items-center gap-1 sm:w-24">
               <img
                 src="/images/quickbridge-phone-trimmed.png"
                 alt="Phone ready to send"
-                className="h-16 w-full object-contain opacity-90 sm:h-20"
+                className="h-20 w-full object-contain opacity-90 sm:h-24"
               />
-              <div className="font-mono text-[16px] font-medium text-foreground">Phone</div>
-              <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground/50">
+              <div className="font-mono text-[18px] font-medium text-foreground sm:text-[20px]">Phone</div>
+              <span className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground/65">
                 Sending
               </span>
             </div>
-            <div className="relative mb-8 flex h-12 min-w-0 flex-1 items-center">
+            <div className="relative mb-10 flex h-12 min-w-0 flex-1 items-center">
               <div className="absolute inset-x-0 top-1/2 h-px bg-border" />
               <div className="absolute inset-x-0 top-1/2 h-px bg-foreground/10" />
               {!prefersReduced &&
@@ -137,23 +137,23 @@ export function WorkflowComparison() {
                     }}
                   />
                 ))}
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/50">
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-3 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/65">
                 Direct
               </div>
             </div>
-            <div className="flex w-12 shrink-0 flex-col items-center gap-1 sm:w-20">
+            <div className="flex w-16 shrink-0 flex-col items-center gap-1 sm:w-24">
               <img
                 src="/images/quickbridge-desktop-trimmed.png"
                 alt="Desktop ready to receive"
-                className="h-16 w-full object-contain opacity-90 sm:h-20"
+                className="h-20 w-full object-contain opacity-90 sm:h-24"
               />
-              <div className="font-mono text-[16px] font-medium text-foreground">Desktop</div>
-              <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground/50">
+              <div className="font-mono text-[18px] font-medium text-foreground sm:text-[20px]">Desktop</div>
+              <span className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground/65">
                 Receiving
               </span>
             </div>
           </motion.div>
-          <div className="mt-5 border-t border-border/50 pt-3 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/45">
+          <div className="mt-6 border-t border-border/50 pt-4 text-center font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground/55">
             Encrypted browser to browser transfer. No cloud step.
           </div>
         </div>
