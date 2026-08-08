@@ -33,7 +33,7 @@ export function SecuritySection() {
           <div className="relative mt-5 h-3 w-full max-w-2xl overflow-hidden">
             <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-white/10" />
             <motion.div
-              className="absolute left-2/3 top-1/2 h-px w-1/3 -translate-y-1/2 bg-primary/80 shadow-[0_0_12px_oklch(0.7_0.13_245_/_0.55)]"
+              className="absolute left-1/2 top-1/2 h-px w-1/4 -translate-y-1/2 bg-primary/80 shadow-[0_0_12px_oklch(0.7_0.13_245_/_0.55)]"
               animate={prefersReduced ? { opacity: 1 } : { opacity: [0.5, 0.95, 0.5] }}
               transition={{ duration: 2.4, ease: "easeInOut", repeat: Infinity }}
             />
