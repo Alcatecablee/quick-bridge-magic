@@ -137,7 +137,7 @@ export function WorkflowComparison() {
                     }}
                   />
                 ))}
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-3 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/65">
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-3 font-mono text-[12px] font-medium uppercase tracking-[0.18em] text-foreground/80 sm:text-[13px]">
                 Direct
               </div>
             </div>
