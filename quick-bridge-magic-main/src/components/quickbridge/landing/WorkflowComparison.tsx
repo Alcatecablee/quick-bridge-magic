@@ -99,24 +99,29 @@ export function WorkflowComparison() {
 
         {/* ---- QUICKBRIDGE ---- */}
         <div className="rounded-xl border border-border/70 bg-card/30 p-5 sm:p-8">
-          <p className="mb-6 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary text-center">
+          <p className="mb-6 text-center font-mono text-[11px] uppercase tracking-[0.2em] text-primary/70">
             QuickBridge
           </p>
           <motion.div
             initial={prefersReduced ? { opacity: 1 } : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.5 }}
-            className="flex items-center gap-3 sm:gap-6"
+            className="flex items-end gap-3 sm:gap-6"
           >
-            <div className="flex min-w-0 flex-col gap-1">
+            <div className="flex w-12 shrink-0 flex-col items-center gap-1 sm:w-20">
+              <img
+                src="/images/quickbridge-phone-trimmed.png"
+                alt="Phone ready to send"
+                className="h-16 w-full object-contain opacity-90 sm:h-20"
+              />
               <div className="font-mono text-[16px] font-medium text-foreground">Phone</div>
-              <span className="text-[10px] uppercase tracking-[0.16em] text-primary/70">
+              <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground/50">
                 Sending
               </span>
             </div>
-            <div className="relative flex h-12 min-w-0 flex-1 items-center">
+            <div className="relative mb-8 flex h-12 min-w-0 flex-1 items-center">
               <div className="absolute inset-x-0 top-1/2 h-px bg-border" />
-              <div className="absolute inset-x-0 top-1/2 h-px bg-primary/20" />
+              <div className="absolute inset-x-0 top-1/2 h-px bg-foreground/10" />
               {!prefersReduced &&
                 [0, 1, 2].map((packet) => (
                   <motion.span
@@ -132,26 +137,24 @@ export function WorkflowComparison() {
                     }}
                   />
                 ))}
-              <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-md border border-primary/20 bg-card px-2 py-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-primary">
-                  P2P
-                </span>
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/50">
+                Direct
               </div>
             </div>
-            <div className="flex min-w-0 flex-col items-end gap-1">
+            <div className="flex w-12 shrink-0 flex-col items-center gap-1 sm:w-20">
+              <img
+                src="/images/quickbridge-desktop-trimmed.png"
+                alt="Desktop ready to receive"
+                className="h-16 w-full object-contain opacity-90 sm:h-20"
+              />
               <div className="font-mono text-[16px] font-medium text-foreground">Desktop</div>
-              <span className="text-[10px] uppercase tracking-[0.16em] text-primary/70">
+              <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground/50">
                 Receiving
               </span>
             </div>
           </motion.div>
-          <div className="mt-5 flex items-center justify-center gap-2 border-t border-border/50 pt-3 text-[10px] uppercase tracking-[0.16em] text-muted-foreground/50">
-            <span>Encrypted</span>
-            <span className="h-1 w-1 rounded-full bg-primary/60" />
-            <span>Browser to browser</span>
-            <span className="h-1 w-1 rounded-full bg-primary/60" />
-            <span>No cloud step</span>
+          <div className="mt-5 border-t border-border/50 pt-3 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/45">
+            Encrypted browser to browser transfer. No cloud step.
           </div>
         </div>
       </div>
