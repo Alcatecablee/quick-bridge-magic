@@ -1224,9 +1224,8 @@ export function useWebRTC(
       qbLog("[QB] scheduleReconnect: session is ending/ended, skipping");
       return;
     }
-    if (!peerPresentRef.current) {
-      qbLog("[QB] scheduleReconnect: no peer present, setting waiting");
-      setStatus("waiting");
+    if (!peerPresentRef.current && statusRef.current === "waiting") {
+      qbLog("[QB] scheduleReconnect: no peer present and waiting, staying in waiting");
       return;
     }
     if (reconnectAttemptRef.current >= MAX_RECONNECT_ATTEMPTS) {
@@ -1592,6 +1591,7 @@ export function useWebRTC(
     //    a previous session.
     const payload = {
       t: "session-ended",
+      type: "session-ended",
       sessionId: sessionId,
       reason,
     };
@@ -1891,26 +1891,8 @@ export function useWebRTC(
           sendSignal({ type: "hello" });
         }
       }
-      // Peer just left while we were active - update status
       if (!hasPeer && pcRef.current) {
-        qbLog("[QB] peer left, tearing down");
-        teardownPeer();
-        setQuality("unknown");
-        setStatus("waiting");
-        // Cancel any pending reconnect timer: we cannot reconnect without the
-        // peer in the signaling channel. Do NOT reset the attempt counter here.
-        // If the peer's Supabase WebSocket dropped transiently (e.g. the remote
-        // device was backgrounded by the OS), resetting the counter would allow
-        // the loop to run forever: each brief-open / presence-drop cycle would
-        // wipe the credit and MAX_RECONNECT_ATTEMPTS would never be reached.
-        // The counter is only reset by:
-        //   - the DC_STABLE_DURATION_MS timer in dc.onopen (stable fresh connection)
-        //   - pc.onconnectionstatechange "connected" when dc is already open (ICE restart)
-        //   - useEffect cleanup on unmount (fresh QR scan starts from zero)
-        if (reconnectTimerRef.current) {
-          clearTimeout(reconnectTimerRef.current);
-          reconnectTimerRef.current = null;
-        }
+        qbLog("[QB] peer dropped from signaling; leaving WebRTC and reconnect timers untouched");
       }
     };
 
@@ -1923,6 +1905,7 @@ export function useWebRTC(
         sdp?: RTCSessionDescriptionInit;
         candidate?: RTCIceCandidateInit;
       };
+      if (sessionEndingRef.current) return;
       if (msg.type === "offer" && msg.sdp) {
         const isIceRestart = !!(msg as { iceRestart?: boolean }).iceRestart;
         qbLog(`[QB] received OFFER${isIceRestart ? " (ICE restart)" : ""}`);
