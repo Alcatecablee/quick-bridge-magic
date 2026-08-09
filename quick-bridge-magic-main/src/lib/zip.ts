@@ -31,9 +31,9 @@ export async function zipFiles(
     // that is no longer directly assignable to BlobPart[].
     const chunks: BlobPart[] = [];
 
-    const zip = new Zip((err, dat, final) => {
+    const zip = new Zip((err: Error | null, dat: Uint8Array, final: boolean) => {
       if (err) { reject(err); return; }
-      chunks.push(dat);
+      chunks.push(dat as unknown as BlobPart);
       if (final) {
         // Pass the chunks array directly to the File constructor rather than
         // concatenating into a single Uint8Array first. The Blob/File

@@ -39,8 +39,20 @@ export type ConnectionStatus =
   | "connecting"
   | "connected"
   | "reconnecting"
-  | "disconnected"
-  | "stalled";
+  | "ending"
+  | "ended";
+
+export type SessionEndReason =
+  | "local_disconnect"
+  | "remote_disconnect"
+  | "transport_lost"
+  | "timeout"
+  | "session_expired"
+  | "verification_failed"
+  | "key_changed"
+  | "navigation"
+  | "browser_closed"
+  | "error";
 
 export type ConnectionQuality = "direct" | "relay" | "unknown";
 
@@ -429,6 +441,20 @@ export function useWebRTC(
   // Debounce timer separating the transient "disconnected" PC state from the
   // terminal "failed"/"closed" states. Cancelled if ICE self-recovers.
   const disconnectedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Terminal-state guard: set to true the moment endSession() begins so that
+  // all async callbacks (scheduleReconnect, ICE handlers, DC events) become
+  // no-ops. Never reset within the lifetime of this hook instance.
+  const sessionEndingRef = useRef(false);
+  // The reason that caused the session to end. Captured once, never mutated.
+  const endReasonRef = useRef<SessionEndReason | null>(null);
+  // Forward-decl ref so endSession can be called from inside closures
+  // (e.g. DataChannel onmessage, Supabase signalHandler) that are created
+  // before endSession is defined below.
+  const endSessionRef = useRef<(reason: SessionEndReason) => void>(() => {});
+  // Snapshot of outgoing/incoming file state for use inside endSession,
+  // which must cancel all active operations synchronously.
+  const outgoingFilesSnapshotRef = useRef<Record<string, OutgoingFile>>({});
+  const incomingFilesSnapshotRef = useRef<Record<string, IncomingFile>>({}); 
 
   // Fetch short-lived Cloudflare TURN credentials on mount and refresh every
   // 23 h (credentials TTL is 24 h). Falls back to the static ICE servers if
@@ -1134,6 +1160,17 @@ export function useWebRTC(
               } catch (err) {
                 qbError("[QB] DataChannel: onIntentAck callback threw", err);
               }
+            } else if (msg.t === "session-ended") {
+              // Remote peer deliberately closed the session.
+              // Validate the sessionId so a stale event from a previous
+              // session cannot accidentally terminate a new one.
+              if (typeof msg.sessionId === "string" && msg.sessionId !== sessionId) {
+                qbWarn("[QB] DataChannel: session-ended sessionId mismatch, discarding",
+                  { received: msg.sessionId, expected: sessionId });
+                return;
+              }
+              qbLog("[QB] DataChannel: received session-ended from peer");
+              endSessionRef.current("remote_disconnect");
             } else {
               qbWarn("[QB] DataChannel: unknown message type from peer", String(msg.t));
             }
@@ -1180,14 +1217,22 @@ export function useWebRTC(
   );
 
   const scheduleReconnect = useCallback(() => {
+    // Terminal guard: once endSession() has been called, no reconnection is
+    // ever attempted. This prevents ICE/DC close events from accidentally
+    // resurrecting a deliberately ended session.
+    if (sessionEndingRef.current) {
+      qbLog("[QB] scheduleReconnect: session is ending/ended, skipping");
+      return;
+    }
     if (!peerPresentRef.current) {
       qbLog("[QB] scheduleReconnect: no peer present, setting waiting");
       setStatus("waiting");
       return;
     }
     if (reconnectAttemptRef.current >= MAX_RECONNECT_ATTEMPTS) {
-      qbLog("[QB] scheduleReconnect: max attempts reached, setting disconnected");
-      setStatus("disconnected");
+      qbLog("[QB] scheduleReconnect: max attempts reached, ending session");
+      // Delegate to endSession so all cleanup runs in one place.
+      endSessionRef.current("timeout");
       return;
     }
     if (reconnectTimerRef.current) return; // already scheduled
@@ -1396,6 +1441,7 @@ export function useWebRTC(
     if (connectTimerRef.current) clearTimeout(connectTimerRef.current);
     connectTimerRef.current = setTimeout(() => {
       connectTimerRef.current = null;
+      if (sessionEndingRef.current) return;
       // The connect timer is always cancelled by dc.onopen and
       // pc.onconnectionstatechange when the connection succeeds, so if
       // we reach here the connection has not completed. Calling
@@ -1407,7 +1453,8 @@ export function useWebRTC(
       if (peerPresentRef.current) {
         scheduleReconnect();
       } else {
-        setStatus("stalled");
+        // No peer and connect timed out: treat as a timeout end.
+        endSessionRef.current("timeout");
       }
     }, CONNECT_TIMEOUT_MS);
   }, [scheduleReconnect]);
@@ -1463,6 +1510,119 @@ export function useWebRTC(
   }, [armConnectTimeout, createPeerConnection, sendSignal, setupDataChannel, tryComputeSas]);
 
   startOfferRef.current = startOffer;
+
+  // ---------------------------------------------------------------------------
+  // endSession: the single authoritative entry-point for session termination.
+  // Idempotent, terminal, and synchronous from the caller's perspective.
+  // ---------------------------------------------------------------------------
+  const endSession = useCallback((reason: SessionEndReason) => {
+    // Idempotency guard: once we are ending/ended, do nothing.
+    if (sessionEndingRef.current) {
+      qbLog(`[QB] endSession(${reason}): already ending/ended, ignoring`);
+      return;
+    }
+    sessionEndingRef.current = true;
+    endReasonRef.current = reason;
+    qbLog(`[QB] endSession: reason=${reason}`);
+    setStatus("ending");
+
+    // 1. Cancel all active outgoing transfers so the peer and UI know they
+    //    are dead, not merely paused. Cancelled means user/session action;
+    //    it should NOT be marked as a retryable error.
+    const dc = dcRef.current;
+    setOutgoingFiles((s) => {
+      const next = { ...s };
+      for (const id of Object.keys(next)) {
+        const f = next[id];
+        if (!f.done && !f.error) {
+          // Tell the peer we are stopping so they don't wait indefinitely.
+          try {
+            if (dc && dc.readyState === "open") {
+              dc.send(JSON.stringify({ t: "file-cancel", id }));
+            }
+          } catch {}
+          next[id] = { ...f, error: "Bridge ended", retryable: false };
+        }
+      }
+      return next;
+    });
+
+    // 2. Mark all in-progress incoming transfers as cancelled (not failed).
+    //    Abort their disk writers and clear their buffers.
+    setIncomingFiles((s) => {
+      const next = { ...s };
+      for (const id of Object.keys(next)) {
+        const f = next[id];
+        if (!f.done && !f.error) {
+          const buf = incomingBuffersRef.current[id];
+          if (buf && !buf.aborted) {
+            buf.aborted = true;
+            const writer = buf.writer;
+            const cleanup = buf.cleanup;
+            if (writer) {
+              buf.writeQueue = buf.writeQueue
+                .then(async () => {
+                  try { await (writer as unknown as { abort?: () => Promise<void> }).abort?.(); } catch {}
+                  try { await writer.close(); } catch {}
+                  if (cleanup) { try { await cleanup(); } catch {} }
+                })
+                .catch(() => {});
+            }
+            delete incomingBuffersRef.current[id];
+            void clearInFlightTransfer(id).catch(() => {});
+          }
+          next[id] = { ...f, error: "Bridge ended", done: false };
+        }
+      }
+      return next;
+    });
+
+    // 3. Cancel all pending grace timers.
+    for (const t of Object.values(graceTimersRef.current)) clearTimeout(t);
+    graceTimersRef.current = {};
+
+    // 4. Cancel auto-resume timer.
+    if (autoResumeTimerRef.current) {
+      clearTimeout(autoResumeTimerRef.current);
+      autoResumeTimerRef.current = null;
+    }
+
+    // 5. Send session-ended via DataChannel (fast path, arrives first).
+    //    Validated payload lets the receiver reject stale events from
+    //    a previous session.
+    const payload = {
+      t: "session-ended",
+      sessionId: sessionId,
+      reason,
+    };
+    try {
+      if (dc && dc.readyState === "open") {
+        dc.send(JSON.stringify(payload));
+      }
+    } catch {}
+
+    // 6. Send session-ended via Supabase as a fallback for the case where
+    //    the DataChannel never opened or the DC send fails (race before
+    //    handshake completes).
+    try {
+      channelRef.current?.send({
+        type: "broadcast",
+        event: "signal",
+        payload,
+      });
+    } catch {}
+
+    // 7. Tear down WebRTC peer.
+    teardownRef.current();
+
+    // 8. Transition to ended.
+    setStatus("ended");
+  }, [
+    sessionId,
+  ]);
+  // Populate the forward-decl ref immediately so closures created before
+  // endSession was defined (setupDataChannel, signalHandler) can call it.
+  endSessionRef.current = endSession;
 
   // Teardown without removing the realtime channel
   const teardownPeer = useCallback(() => {
@@ -1884,6 +2044,19 @@ export function useWebRTC(
             if (!aborted) scheduleReconnect();
           });
         }
+      } else if (msg.type === "session-ended") {
+        // Supabase fallback: remote peer ended the session before (or in lieu of)
+        // the DataChannel. Validate the sessionId so a stale event from a prior
+        // session cannot accidentally terminate a freshly started session.
+        if (aborted) return;
+        const incomingSessionId = (msg as { sessionId?: string }).sessionId;
+        if (typeof incomingSessionId === "string" && incomingSessionId !== sessionId) {
+          qbWarn("[QB] signalHandler: session-ended sessionId mismatch, discarding",
+            { received: incomingSessionId, expected: sessionId });
+          return;
+        }
+        qbLog("[QB] signalHandler: received session-ended from peer via Supabase");
+        endSessionRef.current("remote_disconnect");
       }
       } catch (err) {
         // Catch any rejection from the async signaling steps (e.g. setLocalDescription
@@ -1938,7 +2111,9 @@ export function useWebRTC(
           if (aborted) return;
           if (subscribeRetries >= MAX_SUBSCRIBE_RETRIES) {
             console.error(`[QB] channel subscribe failed after ${MAX_SUBSCRIBE_RETRIES} retries, giving up`);
-            setStatus("stalled");
+            // Signaling has permanently failed: treat as a session error so
+            // cleanup runs and the UI routes to the correct error state.
+            endSessionRef.current("error");
             return;
           }
           subscribeRetries++;
@@ -1974,9 +2149,20 @@ export function useWebRTC(
     // be blocked from reconnecting. pagehide is used instead of beforeunload
     // because it fires on iOS, back-forward cache entries, and tab close alike.
     const onPageHide = () => {
+      // Best-effort: tell the peer the session is ending due to browser/tab close.
+      // Not guaranteed on all browsers, so the peer's reconnect-timeout safety net
+      // remains the authoritative fallback. Never call endSessionRef here because
+      // the page is already tearing down and React state updates won't commit.
+      try {
+        const dc = dcRef.current;
+        const exitPayload = { t: "session-ended", sessionId, reason: "browser_closed" };
+        if (dc && dc.readyState === "open") dc.send(JSON.stringify(exitPayload));
+        channelRef.current?.send({ type: "broadcast", event: "signal", payload: { type: "session-ended", sessionId, reason: "browser_closed" } });
+      } catch {}
       try { void channelRef.current?.untrack(); } catch {}
     };
     window.addEventListener("pagehide", onPageHide);
+
 
     return () => {
       window.removeEventListener("pagehide", onPageHide);
@@ -2589,6 +2775,7 @@ export function useWebRTC(
 
   return {
     status,
+    endReason: endReasonRef.current,
     quality,
     peerPresent,
     bridgeBusy,
@@ -2610,6 +2797,7 @@ export function useWebRTC(
     cancelIncoming,
     releaseIncoming,
     manualReconnect,
+    endSession,
     isInitiator,
     sasCode,
     saveDirectory,

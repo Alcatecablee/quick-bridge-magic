@@ -64,7 +64,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useWebRTC, MAX_TEXT_BYTES, RESUME_GRACE_MS, type ConnectionQuality } from "@/hooks/use-webrtc";
+import { useWebRTC, MAX_TEXT_BYTES, RESUME_GRACE_MS, type ConnectionQuality, type SessionEndReason } from "@/hooks/use-webrtc";
 import { useBridgeSignal } from "@/lib/bridge-signal";
 import { StatusBadge } from "./StatusBadge";
 import { Sparkline } from "./Sparkline";
@@ -394,6 +394,16 @@ export function Session({ sessionId, isInitiator }: Props) {
   // Passes senderNodeId from the verified session context so it cannot be
   // spoofed from the envelope (finding 3 / review point 3).
   const handleContinuityIntent = useCallback((envelope: IntentEnvelope) => {
+    // Phase 6 Continuity Cleanup: reject new intents if we are terminating.
+    if (statusRef.current === "ending" || statusRef.current === "ended") {
+      sendIntentAckRef.current?.({
+        intentId: envelope.intentId,
+        status: "failed",
+        reasonCode: "EXECUTION_FAILED",
+        reasonMessage: "Device is offline.",
+      });
+      return;
+    }
     const runtime = continuityRuntimeRef.current;
     if (!runtime) return;
     const senderNodeId = peerNodeHelloRef.current?.nodeId ?? "";
@@ -425,6 +435,7 @@ export function Session({ sessionId, isInitiator }: Props) {
 
   const {
     status,
+    endReason,
     quality,
     messages,
     incomingFiles,
@@ -448,6 +459,7 @@ export function Session({ sessionId, isInitiator }: Props) {
     setSaveDirectory,
     streamToDiskSupported,
     manualReconnect,
+    endSession,
     bridgeBusy,
     lastAutoResume,
     sendNodeHello,
@@ -467,6 +479,7 @@ export function Session({ sessionId, isInitiator }: Props) {
   handleContinuityIntent,
   handleIntentAck,
 );
+const endSessionRef = useRef(endSession);
 
 // Populate send-function refs and value-tracking refs after each render so
 // the dependency-free effects and pre-hook callbacks always read current
@@ -476,6 +489,9 @@ sendNodeChallengeRef.current = sendNodeChallenge;
 sendNodeVerifyRef.current = sendNodeVerify;
 sendContinuityIntentRef.current = sendContinuityIntent;
 sendIntentAckRef.current = sendIntentAck;
+// Keep endSessionRef current so the unmount effect below always calls the
+// latest version even after React re-renders.
+endSessionRef.current = endSession;
 deviceNameRef.current = deviceName;
 myDeviceKindRef.current = myDeviceKind;
 
@@ -487,6 +503,17 @@ myDeviceKindRef.current = myDeviceKind;
   resolvedPeerNameRef.current = resolvedPeerName;
 
   const navigate = useNavigate();
+
+  // Session cleanup on unmount (navigation away, back button, etc.).
+  // Guarantees no zombie WebRTC connection is left open if the user navigates
+  // without pressing the explicit Disconnect button. The endSession call is
+  // idempotent: if the session is already ending/ended it is a no-op.
+  useEffect(() => {
+    return () => {
+      endSessionRef.current("navigation");
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Load the local ECDSA identity from IndexedDB once on mount. Subsequent
   // DataChannel opens read from the in-memory cache with no IDB round-trip.
@@ -1160,24 +1187,16 @@ myDeviceKindRef.current = myDeviceKind;
   const lastManualReconnectRef = useRef<number>(0);
 
   const endBridge = useCallback(() => {
-    clearActiveSession();
-    if (isInitiator) removeKey(StorageKeys.hostSessionId);
-    pendingFilesRef.current = [];
-    setPendingFiles([]);
-    // Release OS audio focus so mobile devices can sleep/lock normally.
-    suspendAudio();
-    toast("Bridge ended", { description: "The connection has been closed." });
-    navigate({ to: "/" });
-  }, [isInitiator, navigate]);
+    endSession("local_disconnect");
+  }, [endSession]);
 
+  // confirmEndBridge: used when the user confirms they want to end while a
+  // transfer is in progress. Delegates to endSession which handles atomic
+  // transfer cancellation and peer notification.
   const confirmEndBridge = useCallback(() => {
-    clearActiveSession();
-    if (isInitiator) removeKey(StorageKeys.hostSessionId);
-    pendingFilesRef.current = [];
-    setPendingFiles([]);
-    suspendAudio();
-    setBridgeEnded(true);
-  }, [isInitiator]);
+    endSession("local_disconnect");
+  }, [endSession]);
+
 
   const shareQuickBridge = useCallback(() => {
     const url = "https://quickbridge.app";
@@ -1248,7 +1267,7 @@ myDeviceKindRef.current = myDeviceKind;
   statusRef.current = status;
   const prevQualityRef = useRef<ConnectionQuality>(quality);
   // Verification timer: scheduled when the debounce in handleFiles suppresses
-  // a manualReconnect call. Fires after 3 s to retry if still disconnected.
+  // a manualReconnect call. Fires after 3 s to retry if still reconnecting.
   const reconnectVerifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     return () => {
@@ -1256,12 +1275,12 @@ myDeviceKindRef.current = myDeviceKind;
     };
   }, []);
   // Mobile recovery queue: files chosen while the WebRTC peer is in any
-  // recoverable non-connected state (reconnecting / disconnected / stalled /
+  // recoverable non-connected state (reconnecting / connecting /
   // mid-handshake) are held here and auto-flushed on the next "connected"
   // transition. Without this, the file picker round-trip on Android silently
   // drops the selection: opening the OS picker backgrounds the tab, the OS
   // suspends the WebRTC peer, and on slow devices the reconnect attempt
-  // budget can be fully exhausted (status="disconnected") before the user
+  // budget can be fully exhausted (status="ended") before the user
   // finishes picking. `pendingFiles` is a state mirror so the inline banner
   // can re-render reactively while the ref holds the actual File objects.
   const pendingFilesRef = useRef<File[]>([]);
@@ -1453,28 +1472,45 @@ myDeviceKindRef.current = myDeviceKind;
   }, [messages, history]);
 
   useEffect(() => {
-    if (status === "stalled" && !stalledNotifiedRef.current) {
-      stalledNotifiedRef.current = true;
-      toast.error("Connection is taking too long", {
-        id: "qb-stalled",
-        description:
-          "A network firewall or strict NAT may be blocking the direct connection. We'll keep trying via a relay.",
-      });
-    }
     if (status === "reconnecting" && prevStatusRef.current === "connected") {
       toast.warning("Connection lost - reconnecting…", {
         id: "qb-status",
         description: "We'll try to restore your bridge automatically.",
       });
     }
-    if (status === "disconnected" && prevStatusRef.current !== "disconnected") {
+    if (status === "ended" && prevStatusRef.current !== "ended") {
       connectedAtRef.current = null;
       reconnectStartedAtRef.current = null;
-      playDisconnectSound();
-      toast.error("Couldn't reconnect", {
-        id: "qb-status",
-        description: "Reload the page or open the pair link again to start a new bridge.",
-      });
+      clearActiveSession();
+      if (isInitiator) removeKey(StorageKeys.hostSessionId);
+      pendingFilesRef.current = [];
+      setPendingFiles([]);
+      suspendAudio();
+      // Route based on why the session ended.
+      const reason = endReason;
+      if (reason === "local_disconnect" || reason === "navigation" || reason === null) {
+        // Silent: user explicitly left. navigate without a toast.
+        navigate({ to: "/" });
+      } else if (reason === "remote_disconnect" || reason === "browser_closed") {
+        // Remote party ended: inform user and return home.
+        playDisconnectSound();
+        toast("Bridge ended", {
+          id: "qb-status",
+          description: "The other device disconnected.",
+        });
+        navigate({ to: "/" });
+      } else if (reason === "timeout" || reason === "transport_lost" || reason === "error") {
+        // Connection failed unrecoverably: stay on page to show inline error UI.
+        // The `ended` status + `endReason` are used by the render below.
+        playDisconnectSound();
+      } else if (
+        reason === "verification_failed" ||
+        reason === "key_changed" ||
+        reason === "session_expired"
+      ) {
+        // Security/expiry: stay on page; inline UI handles it.
+        playDisconnectSound();
+      }
     }
     if (status === "connected" && prevStatusRef.current !== "connected") {
       if (!connectedAtRef.current) connectedAtRef.current = Date.now();
@@ -1496,7 +1532,7 @@ myDeviceKindRef.current = myDeviceKind;
       setConnectBurst((n) => n + 1);
     }
     prevStatusRef.current = status;
-  }, [status]);
+  }, [status, endReason]);
 
   // Reset the countdown baseline on every reconnect attempt — not just the
   // first one. The status effect above only fires when `status` changes, so
@@ -1590,16 +1626,12 @@ myDeviceKindRef.current = myDeviceKind;
         const arr = Array.from(files);
         // Hold the selection if the peer is in any recoverable non-connected
         // state. On Android the OS backgrounds the tab while the file picker
-        // is open and suspends WebRTC; on a slow device the reconnect budget
-        // can be fully exhausted (status="disconnected") before the picker
-        // closes, so we MUST queue for "disconnected" too, not just
-        // "reconnecting", otherwise the file is silently dropped. We also
-        // queue mid-handshake ("connecting") and "stalled" so a fast pick
-        // during initial setup or post-stall doesn't fall through.
+        // is open and suspends WebRTC. We queue mid-handshake ("connecting")
+        // and "reconnecting" so a fast pick during initial setup or reconnect
+        // doesn't fall through. We do NOT queue on "ended" because the session
+        // is terminal and will never automatically recover.
         const recoverable =
           status === "reconnecting" ||
-          status === "disconnected" ||
-          status === "stalled" ||
           status === "connecting";
         if (recoverable && arr.length > 0) {
           const key = (f: File) => `${f.name}|${f.size}|${f.lastModified}`;
@@ -1639,21 +1671,14 @@ myDeviceKindRef.current = myDeviceKind;
               description: "We'll send as soon as the link is back.",
             });
           }
-          // Wake the bridge if reconnect already gave up, stalled, or is
+          // Wake the bridge if reconnect already gave up or is
           // still waiting on a backoff timer. On Android Chrome the
           // visibilitychange event does not reliably fire when returning
           // from the system file picker (it's an overlay, not a true tab
           // switch), so we can't count on that handler to cancel the
           // pending delay. Kicking manualReconnect() here directly
-          // cancels any pending backoff and starts an immediate attempt,
-          // regardless of whether visibilitychange fires.
-          //
-          // Debounce: if the visibilitychange handler already called
-          // manualReconnect() in the same event-loop window (which is
-          // the normal path on Android Chrome), skip the second call.
-          // Two rapid manualReconnect() calls tear down the brand-new PC
-          // mid-negotiation, causing the offer to fail completely.
-          if (status === "disconnected" || status === "stalled" || status === "reconnecting" || status === "connecting") {
+          // cancels any pending backoff and starts an immediate attempt.
+          if (status === "reconnecting" || status === "connecting") {
             if (Date.now() - lastManualReconnectRef.current > 1000) {
               lastManualReconnectRef.current = Date.now();
               manualReconnect();
@@ -1799,12 +1824,12 @@ myDeviceKindRef.current = myDeviceKind;
       }
       return;
     }
-    // Note: we deliberately do NOT drain on "disconnected" anymore. handleFiles
-    // now also queues for "disconnected" and kicks manualReconnect, so a
-    // transient disconnect should bounce back to "connected" and drain
-    // normally. The hopeless case is covered by `endBridge` (user-initiated)
-    // and the queue stays visible in the inline banner so the user can
-    // discard or wait. Surfacing the count beats a fire-and-forget toast.
+    // Note: we deliberately do NOT drain on terminal states ("ended"). handleFiles
+    // will refuse to queue if the session is ended, but if files were already
+    // queued and the session subsequently ended (e.g. timeout), the hopeless
+    // case is covered by endSession (user-initiated) or the inline ended banner.
+    // The queue stays visible in the inline banner so the user can discard
+    // or wait. Surfacing the count beats a fire-and-forget toast.
   }, [status, sendFile, effectiveMaxBytes, effectiveMaxLabel, peerStreamingToDisk]);
 
   const handleSendText = () => {
@@ -2194,11 +2219,11 @@ myDeviceKindRef.current = myDeviceKind;
     if (status === "reconnecting") {
       return { eyebrow: "Reconnecting", eyebrowDot: "bg-warning animate-pulse", title: "Reconnecting…", body: `The link dropped - trying again (attempt ${reconnectAttempt} of ${maxReconnectAttempts}).` };
     }
-    if (status === "disconnected") {
-      return { eyebrow: "Disconnected", eyebrowDot: "bg-destructive", title: "Connection lost.", body: "We couldn't reach the other device. Use Retry now, or refresh the page on both devices." };
-    }
-    if (status === "stalled") {
-      return { eyebrow: "Network blocked", eyebrowDot: "bg-destructive animate-pulse", title: "Network may be blocked.", body: "Your network is preventing peer-to-peer setup. Try a different network or enable a TURN server." };
+    if (status === "ended") {
+      if (endReason === "error") {
+        return { eyebrow: "Network blocked", eyebrowDot: "bg-destructive animate-pulse", title: "Network may be blocked.", body: "Your network is preventing peer-to-peer setup. Try a different network or enable a TURN server." };
+      }
+      return { eyebrow: "Disconnected", eyebrowDot: "bg-destructive", title: "Connection lost.", body: "We couldn't reach the other device. Refresh the page on both devices to start a new session." };
     }
     if (isInitiator) {
       const waitingBody = trustedConnectTargetName
@@ -2234,7 +2259,7 @@ myDeviceKindRef.current = myDeviceKind;
             <Button onClick={() => window.location.reload()} className="h-10">
               <RotateCw className="mr-2 h-4 w-4" /> Try again
             </Button>
-            <Button onClick={endBridge} variant="outline" className="h-10">
+            <Button onClick={() => endSession("local_disconnect")} variant="outline" className="h-10">
               Go home
             </Button>
           </div>
@@ -2357,7 +2382,7 @@ myDeviceKindRef.current = myDeviceKind;
                 connected ? "bg-success/25 opacity-100" :
                 reconnecting ? "bg-warning/25 opacity-100" :
                 status === "connecting" ? "bg-primary/20 opacity-100" :
-                (status === "disconnected" || status === "stalled") ? "bg-destructive/20 opacity-100" :
+                status === "ended" ? "bg-destructive/20 opacity-100" :
                 "opacity-0"
               )}
             />
@@ -2367,7 +2392,7 @@ myDeviceKindRef.current = myDeviceKind;
                 connected ? "border-success/50 bg-success/10" :
                 reconnecting ? "border-warning/50 bg-warning/10" :
                 status === "connecting" ? "border-primary/50 bg-primary/10" :
-                (status === "disconnected" || status === "stalled") ? "border-destructive/50 bg-destructive/10" :
+                status === "ended" ? "border-destructive/50 bg-destructive/10" :
                 "border-border/60 bg-muted/20"
               )}
             >
@@ -2375,7 +2400,7 @@ myDeviceKindRef.current = myDeviceKind;
                 <Loader2 className={cn("h-7 w-7 animate-spin", reconnecting ? "text-warning" : "text-primary")} />
               ) : connected ? (
                 <ArrowLeftRight className="h-7 w-7 text-success" />
-              ) : (status === "disconnected" || status === "stalled") ? (
+              ) : status === "ended" ? (
                 <AlertTriangle className="h-7 w-7 text-destructive" />
               ) : (
                 <Loader2 className="h-7 w-7 animate-spin text-muted-foreground/30" />
@@ -2419,7 +2444,7 @@ myDeviceKindRef.current = myDeviceKind;
               {resendingInvite ? "Sending..." : "Send invite again"}
             </Button>
           )}
-          {(status === "disconnected" || status === "stalled") && (
+          {status === "ended" && (endReason === "error" || endReason === "timeout" || endReason === "transport_lost") && (
             <a
               href="/help#troubleshooting"
               target="_blank"
@@ -2691,16 +2716,16 @@ myDeviceKindRef.current = myDeviceKind;
               <HelpCircle className="h-3.5 w-3.5" />
             </a>
           </Button>
-          {status === "disconnected" && (
+          {status === "ended" && (
             <Button
               size="sm"
               variant="outline"
               className="h-11 flex-1 gap-1.5 text-[11px]"
-              onClick={() => manualReconnect()}
-              title="Retry the connection now"
+              onClick={() => window.location.reload()}
+              title="Start a new session"
             >
               <RotateCw className="h-3.5 w-3.5" />
-              Retry
+              Start Over
             </Button>
           )}
           <Button
@@ -2851,8 +2876,8 @@ myDeviceKindRef.current = myDeviceKind;
         </Card>
       )}
 
-      {/* Stalled connection diagnostic - shown when ICE negotiation times out */}
-      {status === "stalled" && (
+      {/* Stalled connection diagnostic - shown when ICE negotiation fails */}
+      {status === "ended" && endReason === "error" && (
         <Card className="border-warning/30 bg-warning/5 p-4 backdrop-blur space-y-3">
           <div className="flex items-start gap-2">
             <AlertTriangle className="h-4 w-4 shrink-0 text-warning mt-0.5" />

@@ -7,8 +7,8 @@ const LABELS: Record<ConnectionStatus, string> = {
   connecting: "Connecting…",
   connected: "Connected",
   reconnecting: "Reconnecting…",
-  disconnected: "Disconnected",
-  stalled: "Network may be blocked",
+  ending: "Ending session…",
+  ended: "Session ended",
 };
 
 interface Props {
@@ -25,8 +25,8 @@ export function StatusBadge({ status, quality, attempt, maxAttempts }: Props) {
     status === "connecting" && "bg-primary animate-pulse",
     status === "reconnecting" && "bg-warning animate-pulse",
     status === "waiting" && "bg-muted-foreground",
-    status === "disconnected" && "bg-destructive",
-    status === "stalled" && "bg-destructive animate-pulse",
+    status === "ending" && "bg-destructive animate-pulse",
+    status === "ended" && "bg-destructive",
   );
   const label =
     status === "reconnecting" && attempt && maxAttempts
