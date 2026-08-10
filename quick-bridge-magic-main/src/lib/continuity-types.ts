@@ -81,6 +81,7 @@ export type ContinuityIntentType =
 export interface IntentEnvelope {
   version: typeof INTENT_ENVELOPE_VERSION;
   intentId: string;
+  sessionId: string;
   type: ContinuityIntentType;
   // nodeId of the device that SENT the intent.
   // Required on the receiver side for permission lookups (finding 3).
@@ -100,7 +101,8 @@ export type IntentStatus =
   | "expired"
   | "cancelled"
   | "permission-denied"
-  | "unsupported";
+  | "unsupported"
+  | "requires-user-action";
 
 // Terminal statuses: once reached, no further transitions are valid.
 // Used by the runtime to guard against backward transitions (Part II state machine audit).
@@ -111,6 +113,7 @@ export const TERMINAL_STATUSES = new Set<IntentStatus>([
   "cancelled",
   "permission-denied",
   "unsupported",
+  "requires-user-action",
 ]);
 
 // Valid intent statuses accepted from the wire. Used to reject ACKs with unknown
@@ -124,6 +127,7 @@ export const VALID_INTENT_STATUSES = new Set<string>([
   "cancelled",
   "permission-denied",
   "unsupported",
+  "requires-user-action",
 ]);
 
 // Machine-readable error codes used by logging, analytics, and retry logic.
@@ -137,7 +141,8 @@ export type IntentErrorCode =
   | "EXECUTION_FAILED"
   | "CANCELLED"
   | "PAYLOAD_TOO_LARGE"
-  | "RATE_LIMITED";
+  | "RATE_LIMITED"
+  | "SESSION_UNAVAILABLE";
 
 // Error to retry policy mapping (finding 12).
 export const INTENT_RETRY_POLICY: Record<
@@ -153,6 +158,7 @@ export const INTENT_RETRY_POLICY: Record<
   CANCELLED: "no",
   PAYLOAD_TOO_LARGE: "no",
   RATE_LIMITED: "yes",
+  SESSION_UNAVAILABLE: "yes",
 };
 
 // ACK message (two ACKs per intent: "received" on arrival, "completed"/"failed" on finish).
@@ -339,3 +345,35 @@ export type ClipboardPayload = z.infer<typeof ClipboardPayloadSchema>;
 export type OpenFilePayload = z.infer<typeof OpenFilePayloadSchema>;
 export type MediaSharePayload = z.infer<typeof MediaSharePayloadSchema>;
 export type CancelPayload = z.infer<typeof CancelPayloadSchema>;
+
+// --- Payload Constructors ---
+// Centralized constructors to enforce normalization rules before serialization.
+// Ensures inputs adhere to schema limits (e.g. title truncation) so multiple
+// callers don't need to manually slice strings to avoid Zod INVALID_PAYLOAD errors.
+
+export function createOpenUrlPayload(url: string, title: string, favicon?: string): OpenUrlPayload {
+  return {
+    url,
+    // Title is limited to 500 chars by the schema.
+    title: title.slice(0, 500),
+    favicon,
+  };
+}
+
+export function createContinueReadingPayload(
+  url: string,
+  title: string,
+  scrollY: number,
+  timestamp: number,
+  selection?: string,
+  favicon?: string,
+): ContinueReadingPayload {
+  return {
+    url,
+    title: title.slice(0, 500),
+    scrollY: Math.max(0, Math.floor(scrollY)), // ensure integer >= 0
+    timestamp,
+    selection: selection ? selection.slice(0, 10000) : undefined,
+    favicon,
+  };
+}

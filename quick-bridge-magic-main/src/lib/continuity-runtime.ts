@@ -86,6 +86,9 @@ export class ContinuityRuntime {
   // Single store for all in-flight intents (finding 3).
   private readonly activeIntents = new Map<string, RuntimeIntent>();
 
+  // Completed intent cache for idempotency replays (max 120s TTL).
+  private readonly completedIntents = new Map<string, { ack: IntentAck; completedAt: number; timer: ReturnType<typeof setTimeout> }>();
+
   // Seen-set retained until teardown() (finding 9).
   private readonly seenIntentIds = new Set<string>();
 
@@ -97,9 +100,12 @@ export class ContinuityRuntime {
   // per window. (C-2 fix: rate limiter was documented but never implemented)
   private readonly incomingTimestamps: number[] = [];
 
-  constructor(transport: IntentTransport, localNodeId: string) {
+  private readonly sessionId: string;
+
+  constructor(transport: IntentTransport, localNodeId: string, sessionId: string) {
     this.transport = transport;
     this.localNodeId = localNodeId;
+    this.sessionId = sessionId;
   }
 
   // Call on session teardown (DataChannel close). Clears runtime state only;
@@ -109,6 +115,10 @@ export class ContinuityRuntime {
       if (ri.timer) clearTimeout(ri.timer);
       if (ri.abortController) ri.abortController.abort();
     }
+    for (const cache of this.completedIntents.values()) {
+      clearTimeout(cache.timer);
+    }
+    this.completedIntents.clear();
     this.activeIntents.clear();
     this.seenIntentIds.clear();
     // Reset the serial queue so accumulated .then() closures from serial intents
@@ -168,6 +178,7 @@ export class ContinuityRuntime {
     const envelope: IntentEnvelope = {
       version: INTENT_ENVELOPE_VERSION,
       intentId,
+      sessionId: this.sessionId,
       type,
       senderNodeId: this.localNodeId,
       targetNodeId,
@@ -195,12 +206,9 @@ export class ContinuityRuntime {
     ri.timer = setTimeout(() => {
       const current = this.activeIntents.get(intentId);
       if (!current) return;
-      if (
-        current.status === "completed" ||
-        current.status === "failed" ||
-        current.status === "permission-denied" ||
-        current.status === "unsupported"
-      ) return;
+      // Guard: if the intent already reached a terminal status via a real ACK,
+      // the timeout fires but there is nothing left to do.
+      if (TERMINAL_STATUSES.has(current.status)) return;
       this.activeIntents.delete(intentId);
       const timeoutAck: IntentAck = {
         intentId,
@@ -357,20 +365,16 @@ export class ContinuityRuntime {
       return;
     }
 
-    // Idempotency: duplicate intentId replays the previous ACK (finding 5).
-    if (this.seenIntentIds.has(envelope.intentId)) {
-      const existing = this.activeIntents.get(envelope.intentId);
-      if (existing?.lastAck) {
-        this.transport.sendAck(existing.lastAck);
-      }
+    // Reject stale intents from previous sessions or other bridges.
+    if (envelope.sessionId !== this.sessionId) {
+      // Intentionally do not send an ACK, as the sender is presumably on a different session.
       return;
     }
-    this.seenIntentIds.add(envelope.intentId);
 
     // Rate limit: sliding window over the last RATE_LIMIT_WINDOW_MS.
     // Evict timestamps outside the window, then reject if the count is at cap.
-    // Applied after the seen-set check so duplicate intentIds do not consume
-    // rate-limit budget. (C-2 fix: rate limiter was declared but never enforced)
+    // Evaluated BEFORE deduplication so attackers cannot bypass rate limits by
+    // spamming unique IDs.
     const nowForLimit = Date.now();
     const windowStart = nowForLimit - RATE_LIMIT_WINDOW_MS;
     let trimIdx = 0;
@@ -381,6 +385,23 @@ export class ContinuityRuntime {
       trimIdx++;
     }
     this.incomingTimestamps.splice(0, trimIdx);
+
+    // Idempotency: duplicate intentId replays the previous ACK (finding 5).
+    // Note: Deduplication does not consume a rate limit token.
+    if (this.seenIntentIds.has(envelope.intentId)) {
+      const active = this.activeIntents.get(envelope.intentId);
+      if (active?.lastAck) {
+        this.transport.sendAck(active.lastAck);
+        return;
+      }
+      const completed = this.completedIntents.get(envelope.intentId);
+      if (completed) {
+        this.transport.sendAck(completed.ack);
+        return;
+      }
+      return;
+    }
+
     if (this.incomingTimestamps.length >= RATE_LIMIT_MAX_INTENTS) {
       this.transport.sendAck({
         intentId: envelope.intentId,
@@ -391,6 +412,8 @@ export class ContinuityRuntime {
       return;
     }
     this.incomingTimestamps.push(nowForLimit);
+
+    this.seenIntentIds.add(envelope.intentId);
 
     // Expiry check with clock skew tolerance (finding 10).
     const now = Date.now();
@@ -546,7 +569,7 @@ export class ContinuityRuntime {
     // rather than timing out after the full INTENT_ACK_TIMEOUT_MS window.
     if (executor.concurrency === "replace-existing") {
       for (const [id, existing] of this.activeIntents) {
-        if (id !== envelope.intentId && existing.envelope.type === envelope.type) {
+        if (id !== envelope.intentId && existing.envelope.type === envelope.type && existing.envelope.createdAt < envelope.createdAt) {
           if (existing.abortController) existing.abortController.abort();
           const cancelledAck: IntentAck = {
             intentId: id,
@@ -576,14 +599,18 @@ export class ContinuityRuntime {
     this.transport.sendAck(acceptedAck);
 
     let result: {
-      status: "completed" | "failed";
-      reasonCode?: ReturnType<typeof String> extends infer T ? T : never;
+      status: "completed" | "failed" | "requires-user-action";
+      reasonCode?: import("./continuity-types").IntentErrorCode;
       reasonMessage?: string;
     };
 
-    // Executor isolation: every exception is caught here (finding 13).
+    // Executor isolation (finding 13) + Timeout enforcement.
     try {
-      result = await executor.execute(envelope, ac?.signal ?? undefined);
+      const execPromise = executor.execute(envelope, ac?.signal ?? undefined);
+      const timeoutPromise = new Promise<{ status: "failed"; reasonCode: "EXECUTION_FAILED"; reasonMessage: string }>((_, reject) => {
+        setTimeout(() => reject(new Error("Executor timed out after 30 seconds.")), 30_000);
+      });
+      result = await Promise.race([execPromise, timeoutPromise]);
     } catch (err) {
       result = {
         status: "failed",
@@ -597,19 +624,29 @@ export class ContinuityRuntime {
     if (!this.activeIntents.has(envelope.intentId)) return;
 
     ri.completedAt = Date.now();
-    ri.status = result.status as IntentStatus;
+    ri.status = result.status as import("./continuity-types").IntentStatus;
     ri.updatedAt = ri.completedAt;
 
     const finalAck: IntentAck = {
       intentId: envelope.intentId,
       status: result.status,
-      reasonCode: result.reasonCode as import("./continuity-types").IntentErrorCode | undefined,
+      reasonCode: result.reasonCode,
       reasonMessage: result.reasonMessage,
     };
     ri.lastAck = finalAck;
     this.transport.sendAck(finalAck);
 
     this.activeIntents.delete(envelope.intentId);
+    
+    // Idempotency replay cache (120s TTL)
+    const timer = setTimeout(() => {
+      this.completedIntents.delete(envelope.intentId);
+    }, 120_000);
+    this.completedIntents.set(envelope.intentId, {
+      ack: finalAck,
+      completedAt: ri.completedAt,
+      timer
+    });
 
     // GAP-4 fix: for received intents, targetNickname should be the local device
     // name (we are the target), and senderNickname records who sent it.

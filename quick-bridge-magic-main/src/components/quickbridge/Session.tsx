@@ -291,6 +291,9 @@ export function Session({ sessionId, isInitiator }: Props) {
   const sendIntentAckRef = useRef<((ack: IntentAck) => void) | null>(null);
   // Phase 3 Continuity runtime: session-scoped, created when DC opens.
   const continuityRuntimeRef = useRef<ContinuityRuntime | null>(null);
+  // Intents that arrived during the micro-gap between DataChannel open and
+  // runtime creation are buffered here and flushed once the runtime is ready.
+  const incomingIntentBufferRef = useRef<Array<{ envelope: IntentEnvelope; senderNodeId: string; senderNickname: string }>>([]);
   // Set to true in the status effect when the DataChannel opens but IDB has
   // not resolved yet (first-use race: keypair generation is slower than
   // WebRTC negotiation). The identity load .then() reads this flag and sends
@@ -394,20 +397,37 @@ export function Session({ sessionId, isInitiator }: Props) {
   // Passes senderNodeId from the verified session context so it cannot be
   // spoofed from the envelope (finding 3 / review point 3).
   const handleContinuityIntent = useCallback((envelope: IntentEnvelope) => {
-    // Phase 6 Continuity Cleanup: reject new intents if we are terminating.
-    if (statusRef.current === "ending" || statusRef.current === "ended") {
+    // Reject new intents if the session is terminating.
+    const currentStatus = statusRef.current;
+    if (currentStatus === "ending" || currentStatus === "ended") {
       sendIntentAckRef.current?.({
         intentId: envelope.intentId,
         status: "failed",
-        reasonCode: "EXECUTION_FAILED",
-        reasonMessage: "Device is offline.",
+        reasonCode: "SESSION_UNAVAILABLE",
+        reasonMessage: "Session is ending.",
+      });
+      return;
+    }
+    // Reject new intents during reconnection: do not silently queue work
+    // while the transport is down.
+    if (currentStatus === "reconnecting") {
+      sendIntentAckRef.current?.({
+        intentId: envelope.intentId,
+        status: "failed",
+        reasonCode: "SESSION_UNAVAILABLE",
+        reasonMessage: "Session is reconnecting. Please try again once connected.",
       });
       return;
     }
     const runtime = continuityRuntimeRef.current;
-    if (!runtime) return;
     const senderNodeId = peerNodeHelloRef.current?.nodeId ?? "";
     const senderNickname = resolvedPeerNameRef.current;
+    if (!runtime) {
+      // Runtime is not yet ready (micro-gap between DC open and useEffect).
+      // Buffer the intent — it will be flushed immediately once the runtime is created.
+      incomingIntentBufferRef.current.push({ envelope, senderNodeId, senderNickname });
+      return;
+    }
     runtime.handleIncomingIntent(envelope, senderNodeId, senderNickname);
   }, []);
 
@@ -624,15 +644,17 @@ myDeviceKindRef.current = myDeviceKind;
           sendIntentAckRef.current?.(ack);
         },
         connected() {
-          // Use statusRef (updated on every render) rather than the closed-over
-          // status value, which is frozen at the moment this effect first ran.
-          // Without this, dispatchIntent reports connected()===true during the
-          // brief window between a DataChannel drop and the teardown effect firing.
           return statusRef.current === "connected";
         },
       };
 
-      continuityRuntimeRef.current = new ContinuityRuntime(transport, localNodeId);
+      continuityRuntimeRef.current = new ContinuityRuntime(transport, localNodeId, sessionId);
+
+      // Flush intents that arrived during the micro-gap before the runtime was ready.
+      const buffered = incomingIntentBufferRef.current.splice(0);
+      for (const { envelope, senderNodeId, senderNickname } of buffered) {
+        continuityRuntimeRef.current.handleIncomingIntent(envelope, senderNodeId, senderNickname);
+      }
     }
 
     if (status !== "connected" && status !== "connecting") {
@@ -641,25 +663,32 @@ myDeviceKindRef.current = myDeviceKind;
         rt.teardown();
         continuityRuntimeRef.current = null;
       }
+      // Discard any buffered intents so stale work does not bleed into
+      // the next reconnect cycle.
+      incomingIntentBufferRef.current.length = 0;
     }
-  }, [peerTrustVerified, status]);
+  }, [peerTrustVerified, status, sessionId]);
 
   // Phase 3 Continuity: pending intent dispatch.
   // DevicesPanel stores a pending intent in sessionStorage under
-  // qb:ci:<sessionId> before navigating here. We dispatch it once the
-  // runtime exists (peerTrustVerified, DataChannel open).
+  // qb:ci:<sessionId> before navigating here. We dispatch it exactly once,
+  // when all three conditions are satisfied: trust verified, status connected,
+  // and runtime ready. The try/finally guarantees the storage key is always
+  // cleaned up, preventing a malformed payload from haunting future sessions.
   useEffect(() => {
-    if (!peerTrustVerified || !continuityRuntimeRef.current) return;
+    if (!peerTrustVerified || status !== "connected" || !continuityRuntimeRef.current) return;
     const pendingKey = `${PENDING_INTENT_KEY_PREFIX}${sessionId}`;
     let pending: PendingIntent | null = null;
     try {
       const raw = sessionStorage.getItem(pendingKey);
       if (raw) {
         pending = JSON.parse(raw) as PendingIntent;
-        sessionStorage.removeItem(pendingKey);
       }
     } catch {
-      // Malformed or unavailable sessionStorage. Skip dispatch.
+      // Malformed sessionStorage payload. Fall through to finally to clean up.
+    } finally {
+      // Always remove the key so a corrupted payload cannot haunt future sessions.
+      try { sessionStorage.removeItem(pendingKey); } catch {}
     }
     if (!pending) return;
     const rt = continuityRuntimeRef.current;
@@ -676,10 +705,10 @@ myDeviceKindRef.current = myDeviceKind;
               ? `Pasted on ${targetNickname}`
               : `Sent to ${targetNickname}`;
           toast.success(label);
-          // trackContinuityAction is already called inside handleIncomingAck
-          // in ContinuityRuntime for every terminal ACK. Calling it here too
-          // would double-count every pending-intent completion in GA, inflating
-          // the Phase 3 kill-criteria metric by ~2x. (BUG 3 fix)
+        } else if (ack.status === "requires-user-action") {
+          toast.info(`Action required on ${targetNickname}.`, {
+            description: ack.reasonMessage ?? "Open the device to complete the action.",
+          });
         } else if (ack.status === "permission-denied") {
           toast.error(`${targetNickname} declined.`, {
             description: ack.reasonMessage,
@@ -695,7 +724,11 @@ myDeviceKindRef.current = myDeviceKind;
         }
       },
     );
-  }, [peerTrustVerified, sessionId]);
+  // Depend on status so the effect re-evaluates once the runtime is confirmed
+  // connected and ready. Without status in the dep array, an early fire when
+  // peerTrustVerified becomes true but status is still "connecting" would
+  // silently abort, and the effect would never retry.
+  }, [peerTrustVerified, status, sessionId]);
 
   // Monotonic counter of successfully completed file transfers this session.
   // Tracked separately from incomingFiles/outgoingFiles so the count survives

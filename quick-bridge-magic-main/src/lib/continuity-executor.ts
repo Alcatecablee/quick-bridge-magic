@@ -72,7 +72,7 @@ export interface IntentExecutor<
     intent: T,
     signal?: AbortSignal,
   ): Promise<{
-    status: "completed" | "failed";
+    status: "completed" | "failed" | "requires-user-action";
     reasonCode?: IntentErrorCode;
     reasonMessage?: string;
   }>;
@@ -124,10 +124,9 @@ const openUrlExecutor: IntentExecutor = {
     const win = window.open(url, "_blank", "noopener,noreferrer");
     if (!win) {
       return {
-        status: "failed",
+        status: "requires-user-action",
         reasonCode: "EXECUTION_FAILED",
-        reasonMessage:
-          "Browser blocked the popup. Allow popups for QuickBridge.",
+        reasonMessage: "Browser blocked the popup. Allow popups for QuickBridge.",
       };
     }
     return { status: "completed" };
@@ -154,10 +153,9 @@ const continueReadingExecutor: IntentExecutor = {
     const win = window.open(url, "_blank", "noopener,noreferrer");
     if (!win) {
       return {
-        status: "failed",
+        status: "requires-user-action",
         reasonCode: "EXECUTION_FAILED",
-        reasonMessage:
-          "Browser blocked the popup. Allow popups for QuickBridge.",
+        reasonMessage: "Browser blocked the popup. Allow popups for QuickBridge.",
       };
     }
     return { status: "completed" };
@@ -205,12 +203,30 @@ const clipboardExecutor: IntentExecutor = {
       return { status: "completed" };
     } catch (err) {
       return {
-        status: "failed",
+        status: "requires-user-action",
         reasonCode: "EXECUTION_FAILED",
         reasonMessage:
-          err instanceof Error ? err.message : "Clipboard write failed.",
+          err instanceof Error ? err.message : "Clipboard write requires user action.",
       };
     }
+  },
+};
+
+// CancelExecutor: Cancellation protocol end-to-end.
+// Evaluates to a no-op but safely acknowledges receipt.
+const cancelExecutor: IntentExecutor = {
+  type: "cancel",
+  concurrency: "parallel",
+  cancellable: false,
+  canExecute(_intent) {
+    return true;
+  },
+  validate(_intent) {
+    // Validated implicitly by schema check in runtime before this is reached.
+  },
+  async execute(_intent) {
+    // Acknowledging receipt completes the cancel cycle.
+    return { status: "completed" };
   },
 };
 
@@ -219,3 +235,4 @@ const clipboardExecutor: IntentExecutor = {
 executorRegistry.register(openUrlExecutor);
 executorRegistry.register(continueReadingExecutor);
 executorRegistry.register(clipboardExecutor);
+executorRegistry.register(cancelExecutor);

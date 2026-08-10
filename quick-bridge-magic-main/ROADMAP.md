@@ -237,6 +237,37 @@ With Presence working, build the one-click actions that make the relationship fe
 
 **What not to build in Phase 3:** bi-directional clipboard sync, auto tab sync, multi-device broadcast, background execution without user action, capability chaining, AI workload routing. All deferred until the intent pipeline is proven.
 
+**Milestones A, B, C -- Completion status: HARDENING COMPLETE, awaiting lifecycle test matrix.**
+
+All core code for Milestones A, B, and C has been implemented and hardened against the following invariants:
+
+| Criterion | Status |
+|---|---|
+| Intent envelope schema validation (Zod) | Done |
+| Permission model | Done |
+| Executor architecture (registry, isolation, timeouts) | Done |
+| DataChannel transport (IntentTransport interface) | Done |
+| Idempotent intent IDs (sender + receiver) | Done |
+| Duplicate delivery handling (completedIntents cache, 120s TTL) | Done |
+| ACK handling (including late ACKs, duplicate ACKs) | Done |
+| Cancellation protocol (`CancelExecutor`) | Done |
+| Queue replacement semantics (newer kills older via `createdAt`) | Done |
+| Runtime initialization has no delivery gap (buffer + flush) | Done |
+| Pending session handoff is reliable (`try/finally` + `status` dep) | Done |
+| Session teardown cancels all in-flight work | Done |
+| Stale-session intents rejected (`sessionId` on every envelope) | Done |
+| Executor timeouts (30s hard limit via `Promise.race`) | Done |
+| Popup/clipboard restrictions handled explicitly (`requires-user-action`) | Done |
+| Completed-intent replay cache with TTL | Done |
+| Rate limiting (checked before deduplication) | Done |
+| Multi-path deduplication (seen-set survives teardown) | Done |
+| TypeScript passes (`tsc --noEmit` exits 0) | Done |
+| Manual lifecycle test matrix | **Pending -- required before marking A/B/C complete** |
+
+**Milestone D:** Files and media. Not started. Prerequisite: A/B/C lifecycle test matrix passes.
+
+**Milestone E:** Recent actions surface, inline permission prompts (`REQUIRES_USER_ACTION` state), permission management UI. Not started.
+
 **Kill criteria:** Two metrics, both required.
 
 1. Adoption: at least 30% of transfers among sessions with 2+ trusted environments originate from a Continuity shortcut rather than a QR scan.
@@ -310,6 +341,6 @@ File these for Phase 5 conversations. They are proof the Bridge Layer is valuabl
 
 ---
 
-*Last updated: August 2026*
+*Last updated: August 2026 -- Phase 3 Milestones A/B/C hardening complete; lifecycle test matrix pending*
 *Owner: Clive Makazhu*
-*See also: VISION.md, PRINCIPLES.md*
+*See also: VISION.md, PRINCIPLES.md, docs/PHASE3_ARCHITECTURE.md*

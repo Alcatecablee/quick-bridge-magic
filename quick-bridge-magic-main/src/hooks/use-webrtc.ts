@@ -1136,6 +1136,7 @@ export function useWebRTC(
                 // can detect mismatches and send UNSUPPORTED_VERSION (BUG 1 fix).
                 version: msg.version as typeof INTENT_ENVELOPE_VERSION,
                 intentId: String(msg.intentId ?? ""),
+                sessionId: String(msg.sessionId ?? ""),
                 type: String(msg.type ?? "") as ContinuityIntentType,
                 senderNodeId: String(msg.senderNodeId ?? ""),
                 targetNodeId: String(msg.targetNodeId ?? ""),

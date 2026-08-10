@@ -26,6 +26,7 @@ import { generateSessionId } from "@/lib/session";
 import { detectLocalCapabilities } from "@/lib/capabilities";
 import { touchTrustedNode, type Capability } from "@/lib/trusted-nodes-db";
 import { PENDING_INTENT_KEY_PREFIX, type PendingIntent } from "@/lib/continuity-runtime";
+import { createOpenUrlPayload } from "@/lib/continuity-types";
 
 interface Props {
   identity: NodeIdentity;
@@ -208,10 +209,7 @@ export function DevicesPanel({
     (targetNodeId: string, targetNickname: string) => {
       const intent: PendingIntent = {
         type: "open-url",
-        payload: {
-          url: window.location.href,
-          title: document.title,
-        },
+        payload: createOpenUrlPayload(window.location.href, document.title),
         targetNodeId,
         targetNickname,
       };
