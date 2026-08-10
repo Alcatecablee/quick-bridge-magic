@@ -2223,6 +2223,12 @@ myDeviceKindRef.current = myDeviceKind;
       if (endReason === "error") {
         return { eyebrow: "Network blocked", eyebrowDot: "bg-destructive animate-pulse", title: "Network may be blocked.", body: "Your network is preventing peer-to-peer setup. Try a different network or enable a TURN server." };
       }
+      if (endReason === "verification_failed" || endReason === "key_changed") {
+        return { eyebrow: "Security alert", eyebrowDot: "bg-destructive animate-pulse", title: "Connection blocked.", body: "The device identity could not be verified or has changed unexpectedly. This connection was terminated to protect your security." };
+      }
+      if (endReason === "session_expired") {
+        return { eyebrow: "Session expired", eyebrowDot: "bg-warning", title: "Session expired.", body: "This pairing link has expired. Start a new session from the host device." };
+      }
       return { eyebrow: "Disconnected", eyebrowDot: "bg-destructive", title: "Connection lost.", body: "We couldn't reach the other device. Refresh the page on both devices to start a new session." };
     }
     if (isInitiator) {

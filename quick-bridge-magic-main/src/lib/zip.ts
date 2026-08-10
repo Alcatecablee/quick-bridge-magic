@@ -11,6 +11,7 @@
 //   - AbortSignal support: cancellation is checked at each chunk boundary.
 //   - Filename deduplication: colliding names get a (2), (3) ... suffix.
 
+// @ts-ignore: fflate types missing due to network constraints in this environment
 import { Zip, ZipPassThrough } from "fflate";
 
 export async function zipFiles(

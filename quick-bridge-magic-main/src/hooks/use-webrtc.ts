@@ -312,6 +312,9 @@ export function useWebRTC(
   onIntentAck?: (ack: IntentAck) => void,
 ) {
   const [status, setStatus] = useState<ConnectionStatus>("waiting");
+  // Ref mirror so async callbacks (scheduleReconnect, ICE handlers) can read
+  // the current status synchronously without capturing a stale closure value.
+  const statusRef = useLatestRef(status);
   const [peerPresent, setPeerPresent] = useState(false);
   // True when this guest joined a session that already has another guest claiming it.
   // The session page renders a "bridge already in use" dead-end with a Retry button.
@@ -1224,8 +1227,12 @@ export function useWebRTC(
       qbLog("[QB] scheduleReconnect: session is ending/ended, skipping");
       return;
     }
+    // If already waiting with no peer in signaling, stay there — no WebRTC
+    // reconnect is possible. In all other cases (reconnecting, connected, etc.)
+    // proceed even if presence has dropped, because transport state is
+    // authoritative (Rule 8/9: WebRTC state drives session, not Supabase).
     if (!peerPresentRef.current && statusRef.current === "waiting") {
-      qbLog("[QB] scheduleReconnect: no peer present and waiting, staying in waiting");
+      qbLog("[QB] scheduleReconnect: no peer present and already waiting, staying");
       return;
     }
     if (reconnectAttemptRef.current >= MAX_RECONNECT_ATTEMPTS) {
@@ -1494,6 +1501,11 @@ export function useWebRTC(
   const startOfferRef = useRef<(() => Promise<void>) | null>(null);
 
   const startOffer = useCallback(async () => {
+    // Terminal guard: never start a new offer once endSession() has begun.
+    if (sessionEndingRef.current) {
+      qbLog("[QB] startOffer: session is ending/ended, skipping");
+      return;
+    }
     qbLog("[QB] startOffer: creating offer");
     setStatus("connecting");
     armConnectTimeout();
