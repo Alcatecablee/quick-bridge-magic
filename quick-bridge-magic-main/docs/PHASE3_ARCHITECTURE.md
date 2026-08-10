@@ -841,6 +841,42 @@ Unit tests for `ContinuityRuntime` should mock `IntentTransport` and inject a co
 
 ---
 
-*Last updated: August 2026 -- Milestones A, B, C implementation + staff-engineer review incorporated*
+## August 2026 hardening review: additional findings
+
+The following 10 findings from the August 2026 production-readiness audit were incorporated into the implementation. Each entry records what was changed from the original design and why.
+
+**Hardening finding 1 -- `replace-existing` was inverting its intent.**
+The `ClipboardExecutor` concurrency policy `"replace-existing"` was cancelling all in-flight intents of the same type regardless of age. Because the serial FIFO queue processes the oldest intent first, the oldest intent was executing and killing newer ones waiting in the queue. This is backwards. Fixed by adding a `createdAt` guard: only intents whose `createdAt` is strictly less than the replacement intent's `createdAt` are cancelled. Newer work is now correctly preserved.
+
+**Hardening finding 2 -- Intents silently dropped during runtime init micro-gap.**
+The Continuity Runtime was created inside a React `useEffect`, which fires asynchronously after the DataChannel opens. Any intent arriving in the window between DC open and the effect firing was silently dropped, causing a timeout for the sender. Fixed by adding `incomingIntentBufferRef` to buffer intents that arrive before the runtime is ready. When the runtime is created, the buffer is immediately flushed synchronously.
+
+**Hardening finding 3 -- Pending `sessionStorage` intent lost on early effect fire.**
+The pending intent `useEffect` depended on `[peerTrustVerified, sessionId]`. If `peerTrustVerified` became true while the WebRTC status was still `"connecting"`, the effect fired, found the runtime null, and aborted with no retry. Because `status` was not in the dependency array, the effect never re-ran. Fixed by adding `status` to the dependency array and requiring `status === "connected"` before dispatching.
+
+**Hardening finding 4 -- Corrupted `sessionStorage` payload immortal across sessions.**
+If `JSON.parse(raw)` threw on a corrupted pending intent payload, `sessionStorage.removeItem(key)` was skipped, leaving the broken payload to fail again on every future session using the same key. Fixed by placing `sessionStorage.removeItem(key)` in a `try/finally` block that always executes regardless of parse outcome.
+
+**Hardening finding 5 -- Replayed completed intents caused sender timeout.**
+The idempotency check looked up `this.activeIntents.get(intentId)` to resend the cached ACK. Completed intents are removed from `activeIntents`. Replays after completion hit the seen-set guard but received no ACK, causing the sender to time out. Fixed by introducing a `completedIntents: Map<string, { ack, completedAt, timer }>` cache. After execution, the final ACK is stored with a 120-second self-cleaning TTL timer. The idempotency path now checks both `activeIntents` and `completedIntents`.
+
+**Hardening finding 6 -- Rate limiting bypassed via duplicate intent IDs.**
+The deduplication check (`seenIntentIds`) ran before the rate limiter. An attacker could spam thousands of copies of the same intentId without consuming any rate-limit budget. Fixed by running rate limiting first for new intent IDs. Duplicate IDs return the cached ACK without consuming a token, preserving efficient idempotent retries while preventing the bypass.
+
+**Hardening finding 7 -- No session boundary on incoming intents.**
+`IntentEnvelope` had no `sessionId` field. A stale intent from a previous session arriving after a reconnect would be processed by the new runtime as if it were fresh. Fixed by adding `sessionId: string` to `IntentEnvelope`. The `ContinuityRuntime` constructor now requires `sessionId`. The receiver silently rejects envelopes whose `sessionId` does not match the current session without sending any ACK.
+
+**Hardening finding 8 -- Executors could hang indefinitely.**
+There was no maximum execution time for executors. A browser API that never resolved (`window.open` in certain multi-tab environments, `navigator.clipboard.write` on a locked screen) would leave an intent permanently `"accepted"` with no resolution. Fixed by wrapping `executor.execute()` in `Promise.race` against a 30-second timeout that resolves to `EXECUTION_FAILED`.
+
+**Hardening finding 9 -- Popup blocking and clipboard denial treated as generic failures.**
+When `window.open()` returned `null` (popup blocked by the browser) or `navigator.clipboard.write()` threw a `NotAllowedError` (tab backgrounded without user gesture), the result was `EXECUTION_FAILED` -- indistinguishable from a crash. The `REQUIRES_USER_ACTION` state essential for Milestone E's "Tap to open" prompt had no protocol-level representation. Fixed by adding `"requires-user-action"` to `IntentStatus` and `TERMINAL_STATUSES`. Both URL executors return `status: "requires-user-action"` when `window.open` returns null. `ClipboardExecutor` does the same on permission errors. `Session.tsx` renders a distinct info toast for this status. `SESSION_UNAVAILABLE` was also added as an `IntentErrorCode` for intents rejected during reconnection or teardown.
+
+**Hardening finding 10 -- `CancelExecutor` missing from registry.**
+The `"cancel"` intent type had TTL, payload size limits, and a `CancelPayloadSchema` defined, but no executor was registered. Inbound cancel intents fell through to `CAPABILITY_UNAVAILABLE`. Fixed by implementing and registering `cancelExecutor` -- a stateless no-op that validates the payload and returns `"completed"`. Cancellation is now a first-class protocol operation end-to-end.
+
+---
+
+*Last updated: August 2026 -- Milestones A, B, C implementation + staff-engineer review + August 2026 hardening review*
 *Source: Phase 3 design review, August 2026*
 *See also: ROADMAP.md, PRINCIPLES.md, VISION.md*
