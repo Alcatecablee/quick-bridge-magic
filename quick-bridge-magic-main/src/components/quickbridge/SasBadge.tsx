@@ -32,7 +32,6 @@ export function SasBadge({ code, className }: SasBadgeProps) {
     <div className={cn("w-full text-[11px]", className)}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 font-medium text-foreground/90">
-          <ShieldCheck className="h-3.5 w-3.5 text-primary shrink-0" />
           <span>Verify connection</span>
         </div>
         <button

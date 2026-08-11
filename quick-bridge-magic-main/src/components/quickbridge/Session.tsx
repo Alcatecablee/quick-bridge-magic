@@ -2673,7 +2673,7 @@ myDeviceKindRef.current = myDeviceKind;
             )}
           </div>
           {connected && connectedAtRef.current && (() => {
-            const totalSec = Math.floor((now - connectedAtRef.current) / 1000);
+            const totalSec = Math.max(0, Math.floor((now - connectedAtRef.current) / 1000));
             const h = Math.floor(totalSec / 3600);
             const m = Math.floor((totalSec % 3600) / 60);
             const s = totalSec % 60;
@@ -2692,7 +2692,7 @@ myDeviceKindRef.current = myDeviceKind;
         <div className="px-4 pb-4">
           <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-background/30 px-4 py-3">
             <div className="flex flex-1 min-w-0 flex-col items-center gap-1.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <div className="flex h-9 w-9 items-center justify-center text-muted-foreground">
                 {deviceIcon(myDeviceKind, "h-4 w-4")}
               </div>
               {editingName ? (
@@ -2756,8 +2756,8 @@ myDeviceKindRef.current = myDeviceKind;
 
             <div className="flex flex-1 min-w-0 flex-col items-center gap-1.5">
               <div className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-500",
-                peerDeviceKind ? "bg-muted/50 text-foreground" : "bg-muted/20 text-muted-foreground/25"
+                "flex h-9 w-9 items-center justify-center transition-all duration-500",
+                peerDeviceKind ? "text-foreground" : "text-muted-foreground/25"
               )}>
                 {deviceIcon(peerDeviceKind, "h-4 w-4")}
               </div>
