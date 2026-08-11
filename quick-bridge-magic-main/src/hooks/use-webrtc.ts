@@ -2553,8 +2553,10 @@ export function useWebRTC(
   // to propagate or the sender's cap will be stale.
   useEffect(() => {
     const ch = channelRef.current;
-    if (!ch) return;
-    void ch.track({
+    // Don't track if the channel isn't fully joined yet.
+    if (!ch || ch.state !== "joined") return;
+    
+    ch.track({
       role: isInitiator ? "host" : "guest",
       device: myDeviceKindRef.current,
       name: deviceName ?? "",
@@ -2565,6 +2567,8 @@ export function useWebRTC(
         save: !!saveDirectory,
         memBytes: detectSafeMemoryBytes(),
       },
+    }).catch(() => {
+      // Ignore errors if the channel state changes mid-track.
     });
   }, [deviceName, isInitiator, myDeviceKind, saveDirectory]);
 
