@@ -60,12 +60,7 @@ export function QualityBadge({ quality }: { quality: ConnectionQuality }) {
           ? "Direct peer-to-peer connection - fastest path."
           : "Relayed through a TURN server because a direct path was blocked. Still encrypted end-to-end, but slower."
       }
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-medium",
-        isDirect
-          ? "border-success/40 bg-success/10 text-success"
-          : "border-warning/40 bg-warning/10 text-warning",
-      )}
+      className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-1 text-[11px] font-medium text-muted-foreground"
     >
       {isDirect ? <Wifi className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
       {isDirect ? "Direct" : "Relay"}
