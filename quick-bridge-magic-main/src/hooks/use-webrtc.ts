@@ -957,6 +957,20 @@ export function useWebRTC(
                   sendControlMessage({ t: "file-resume-ack", id: meta.id, start: resumeFrom });
                 } catch {}
               }
+              // FSA receiving invariant: if this browser supports the File
+              // System Access API but no verified save directory is currently
+              // set, we must not accumulate this file into RAM. The folder gate
+              // UI protects against the normal case, but a race (peer sends
+              // file-start before the user has chosen a folder) could bypass
+              // the UI guard. Abort the transfer at the protocol level so the
+              // sender receives a clear failure rather than a silent hang.
+              // This guard intentionally runs AFTER the resume paths above:
+              // a file already in a buffer (resume) was started before any
+              // race could occur and is allowed to continue.
+              if (streamToDiskSupported() && !saveDirectoryRef.current) {
+                sendDataMessage({ t: "file-abort", id: meta.id, reason: "No save folder selected. Choose a folder on the receiving device.", sequence: Date.now() });
+                return;
+              }
               const buf: IncomingBuffer = {
                 meta,
                 received: 0,

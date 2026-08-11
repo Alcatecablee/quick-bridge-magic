@@ -119,6 +119,7 @@ import {
   PRESENCE_CHAN_PREFIX,
 } from "@/lib/presence-channel";
 import { TrustPrompt } from "./TrustPrompt";
+import { RequireFolderModal, type FolderGateMode } from "./RequireFolderModal";
 import { ContinuityRuntime, PENDING_INTENT_KEY_PREFIX, type PendingIntent } from "@/lib/continuity-runtime";
 import type { IntentEnvelope, IntentAck } from "@/lib/continuity-types";
 import { useDeviceDisplayName } from "@/hooks/use-device-name";
@@ -316,6 +317,11 @@ export function Session({ sessionId, isInitiator }: Props) {
   // Shown when a trusted peer presents a different public key for the same
   // nodeId (most often after they cleared browser storage).
   const [keyResetDetected, setKeyResetDetected] = useState(false);
+
+  // Mandatory save folder gate (desktop/FSA only).
+  // null = no gate needed (folder ready or FSA unsupported).
+  const [folderGateMode, setFolderGateMode] = useState<FolderGateMode | null>(null);
+  const [isPickingFolder, setIsPickingFolder] = useState(false);
 
   // Refs that break the circular dependency between the callbacks below
   // (defined before useWebRTC) and the send functions returned by useWebRTC.
@@ -2285,9 +2291,10 @@ myDeviceKindRef.current = myDeviceKind;
     });
   }, [incomingFiles, streamToDiskSupported, saveDirectory, handleStreamToDiskClick]);
 
-  // Persisted save-directory restore. On mount, if the browser still has a
-  // valid permission grant we silently resume; if it's in "prompt" state we
-  // surface a one-click button so the required user gesture is available.
+  // Persisted save-directory restore. Runs ONCE at mount (empty deps).
+  // Determines whether to silently resume, show the reGrant gate, or show
+  // the firstTime gate. Never re-runs during the session lifecycle to avoid
+  // triggering side-effecting permission APIs on every state change.
   const [resumeDirLabel, setResumeDirLabel] = useState<string | null>(null);
   useEffect(() => {
     if (!streamToDiskSupported) return;
@@ -2295,41 +2302,72 @@ myDeviceKindRef.current = myDeviceKind;
     void loadPersistedDirectory().then((res) => {
       if (cancelled) return;
       if (res.directory) {
+        // Silent resume: folder is ready. No toast — the gate disappears.
         setSaveDirectory(res.directory);
-        toast(`Saving incoming files to ${res.directory.label}`, {
-          description: "Resumed from your last session.",
-        });
       } else if (res.needsPrompt && res.label) {
+        // Stored handle exists but needs a user gesture to re-grant.
         setResumeDirLabel(res.label);
+        setFolderGateMode("reGrant");
+      } else {
+        // No stored handle or permission permanently denied: fresh selection.
+        setFolderGateMode("firstTime");
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [streamToDiskSupported, setSaveDirectory]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally empty: run once per session mount only
 
-  const handleResumeStreamToDisk = useCallback(async () => {
+  // handlePickFolder: called by RequireFolderModal.
+  // try/finally ensures isPickingFolder always clears even if the API throws.
+  // Cancellation (dir === null) is silent: modal stays open, no error state.
+  const handlePickFolder = useCallback(async () => {
+    if (isPickingFolder) return;
+    setIsPickingFolder(true);
     try {
-      const dir = await requestPersistedDirectoryPermission();
+      let dir = null;
+      if (folderGateMode === "reGrant") {
+        // Attempt to re-grant the stored handle. Returns null on cancel/deny/missing.
+        dir = await requestPersistedDirectoryPermission();
+        // If the stored handle is unavailable (null without the user seeing a
+        // prompt), fall through to a fresh picker so they're not stuck.
+        // We cannot distinguish "user cancelled" from "missing handle" here, so
+        // we only open a fresh picker when there is no resumeDirLabel (meaning
+        // the handle wasn't found in IDB), as a conservative heuristic.
+        if (!dir && !resumeDirLabel) {
+          dir = await pickSaveDirectory();
+        }
+      } else {
+        dir = await pickSaveDirectory();
+      }
       if (dir) {
         setSaveDirectory(dir);
+        setFolderGateMode(null);
         setResumeDirLabel(null);
-        toast.success(`Saving incoming files to ${dir.label}`, {
-          description: "Files sent to you will land here directly - no download button needed.",
-        });
-      } else {
-        setResumeDirLabel(null);
-        toast.error("Folder access denied", {
-          description: "Pick a new folder to stream files to disk.",
-        });
       }
-    } catch {
-      setResumeDirLabel(null);
-      toast.error("Folder access denied", {
-        description: "The browser blocked access to that folder. Pick a new one to continue.",
-      });
+      // No else: cancellation keeps modal open silently.
+    } finally {
+      setIsPickingFolder(false);
     }
-  }, [setSaveDirectory]);
+  }, [folderGateMode, isPickingFolder, resumeDirLabel, setSaveDirectory]);
+
+  // handlePickDifferentFolder: secondary action in reGrant mode.
+  // Always opens a fresh directory picker regardless of stored handle state.
+  const handlePickDifferentFolder = useCallback(async () => {
+    if (isPickingFolder) return;
+    setIsPickingFolder(true);
+    try {
+      const dir = await pickSaveDirectory();
+      if (dir) {
+        setSaveDirectory(dir);
+        setFolderGateMode(null);
+        setResumeDirLabel(null);
+      }
+    } finally {
+      setIsPickingFolder(false);
+    }
+  }, [isPickingFolder, setSaveDirectory]);
 
   // Labels
   const myFallback = deviceLabel(myDeviceKind, "self");
@@ -2510,6 +2548,19 @@ myDeviceKindRef.current = myDeviceKind;
 
   return (
     <div className="mx-auto w-full max-w-6xl">
+      {/* Mandatory save-folder gate: shown on FSA-capable browsers until the
+          user selects a valid writable directory. The session transport remains
+          connected underneath; only the UI and receive layer are gated. */}
+      {folderGateMode !== null && (
+        <RequireFolderModal
+          mode={folderGateMode}
+          folderLabel={resumeDirLabel}
+          isPicking={isPickingFolder}
+          onPick={() => void handlePickFolder()}
+          onPickDifferent={() => void handlePickDifferentFolder()}
+          onLeave={endBridge}
+        />
+      )}
       <div className="grid gap-4 md:grid-cols-[1fr_2fr] md:items-start">
         <div className="space-y-3 md:sticky md:top-6">
       <Card
