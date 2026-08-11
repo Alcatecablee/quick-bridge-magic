@@ -30,7 +30,7 @@ export default async function handler(
   const apiToken = process.env.CF_TURN_API_TOKEN;
 
   if (!tokenId || !apiToken) {
-    return res.status(404).json({ error: "TURN not configured" });
+    return res.status(200).json({ urls: [] });
   }
 
   try {

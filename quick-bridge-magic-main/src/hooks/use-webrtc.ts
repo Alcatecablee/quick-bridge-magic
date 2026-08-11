@@ -596,8 +596,8 @@ export function useWebRTC(
     };
   }, []);
 
-  const sendSignal = useCallback((payload: unknown) => {
-    channelRef.current?.send({ type: "broadcast", event: "signal", payload });
+  const sendSignal = useCallback((payload: Record<string, unknown>) => {
+    channelRef.current?.send({ type: "broadcast", event: "signal", payload: { ...payload, clientId: myClientIdRef.current } });
   }, []);
 
   const stopQualityPoll = useCallback(() => {
@@ -2362,11 +2362,11 @@ export function useWebRTC(
           qbLog(`[QB] presence tracked successfully as ${role}`);
           if (aborted) return;
           if (!isInitiator) {
-            qbLog("[QB] guest: scheduling hello retries in 300ms");
+            qbLog("[QB] guest: scheduling hello retries in 800ms");
             helloBootstrapTimer = setTimeout(() => {
               helloBootstrapTimer = null;
               if (!aborted) startHelloRetries();
-            }, 300);
+            }, 800);
           }
         } else if (s === "CHANNEL_ERROR" || s === "TIMED_OUT") {
           if (aborted) return;
@@ -2400,7 +2400,17 @@ export function useWebRTC(
         }
       });
     };
-    doSubscribe(channel);
+    
+    // Add a 400ms delay before subscribing to the new session channel. This
+    // ensures the phx_leave message from the Lobby's unsubscribe() call has
+    // enough time to reach the server and process before we send a phx_join
+    // for the exact same topic. Without this delay, the Phoenix channel server
+    // can process the join and leave out-of-order or concurrently, leaving
+    // the Session in a zombie state where it is deaf to WebRTC signaling.
+    let subscribeTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+      subscribeTimer = null;
+      if (!aborted) doSubscribe(channel);
+    }, 400);
 
     // Immediately remove presence when the tab is closed or navigated away so
     // the other side detects the disconnection within milliseconds rather than
@@ -2428,10 +2438,15 @@ export function useWebRTC(
     return () => {
       window.removeEventListener("pagehide", onPageHide);
       aborted = true;
+      sessionEndingRef.current = true;
       stopHelloRetries();
       if (helloBootstrapTimer) {
         clearTimeout(helloBootstrapTimer);
         helloBootstrapTimer = null;
+      }
+      if (subscribeTimer) {
+        clearTimeout(subscribeTimer);
+        subscribeTimer = null;
       }
       if (retryTimer) {
         clearTimeout(retryTimer);
