@@ -35,7 +35,7 @@ export function StatusBadge({ status, quality, attempt, maxAttempts }: Props) {
 
   return (
     <div className="inline-flex items-center gap-2">
-      <div className="inline-flex items-center gap-2 rounded-full border bg-card/60 px-3 py-1 text-xs font-medium backdrop-blur">
+      <div className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs font-medium">
         {status === "reconnecting" || status === "connecting" ? (
           <Loader2 className="h-3 w-3 animate-spin text-primary" />
         ) : (
@@ -61,7 +61,7 @@ export function QualityBadge({ quality }: { quality: ConnectionQuality }) {
           : "Relayed through a TURN server because a direct path was blocked. Still encrypted end-to-end, but slower."
       }
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-medium backdrop-blur",
+        "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-medium",
         isDirect
           ? "border-success/40 bg-success/10 text-success"
           : "border-warning/40 bg-warning/10 text-warning",

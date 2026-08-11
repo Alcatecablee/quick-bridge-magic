@@ -2428,10 +2428,8 @@ myDeviceKindRef.current = myDeviceKind;
   if (bridgeBusy) {
     return (
       <div className="mx-auto w-full max-w-md py-12">
-        <Card className="space-y-4 border-warning/40 bg-card/80 p-6 text-center">
-          <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-warning/15 text-warning">
-            <Users className="h-5 w-5" />
-          </div>
+        <Card className="space-y-4 border-border bg-card p-6 text-center">
+          <Users className="mx-auto h-6 w-6 text-muted-foreground" />
           <div className="space-y-1">
             <h1 className="text-lg font-semibold">Another device is already connected</h1>
             <p className="text-sm text-muted-foreground">
@@ -2455,10 +2453,8 @@ myDeviceKindRef.current = myDeviceKind;
     const transferred = history.items.length;
     return (
       <div className="mx-auto w-full max-w-md py-12">
-        <Card className="space-y-6 border-border bg-card/80 p-6 text-center">
-          <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 text-primary">
-            <CheckCircle2 className="h-5 w-5" />
-          </div>
+        <Card className="space-y-6 border-border bg-card p-6 text-center">
+          <CheckCircle2 className="mx-auto h-6 w-6 text-muted-foreground" />
           <div className="space-y-1">
             <h1 className="text-lg font-semibold">Bridge closed</h1>
             {transferred > 0 && (
@@ -2505,10 +2501,8 @@ myDeviceKindRef.current = myDeviceKind;
   if (hostMissing) {
     return (
       <div className="mx-auto w-full max-w-md py-12">
-        <Card className="space-y-4 border-border bg-card/80 p-6 text-center">
-          <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <HelpCircle className="h-5 w-5" aria-hidden="true" />
-          </div>
+        <Card className="space-y-4 border-border bg-card p-6 text-center">
+          <HelpCircle className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden="true" />
           <div className="space-y-1">
             <h1 className="text-lg font-semibold">{retryCount >= 3 ? "Host appears offline" : "Host not found"}</h1>
             <p className="text-sm text-muted-foreground">
@@ -2957,7 +2951,7 @@ myDeviceKindRef.current = myDeviceKind;
 
       {/* QR code + PIN share card - host only, shown while waiting */}
       {isInitiator && !connected && pairUrl && (
-        <Card className="overflow-hidden border-border/60 bg-card/70 backdrop-blur">
+        <Card className="overflow-hidden border-border/60 bg-card">
           <div className="px-4 pt-4 pb-2">
             <p className="text-[11px] font-medium text-muted-foreground/80">Share to connect</p>
           </div>
@@ -3023,7 +3017,7 @@ myDeviceKindRef.current = myDeviceKind;
 
       {/* Notification permission nudge - show when waiting and permission not yet decided */}
       {!connected && notifPermission === "default" && notificationsSupported() && (
-        <Card className="flex items-start gap-3 border-border/60 bg-card/70 p-4 backdrop-blur">
+        <Card className="flex items-start gap-3 border-border/60 bg-card p-4">
           <Bell className="h-4 w-4 shrink-0 text-primary mt-0.5" />
           <div className="min-w-0 flex-1 space-y-2">
             <div>
@@ -3066,7 +3060,7 @@ myDeviceKindRef.current = myDeviceKind;
 
       {/* Stalled connection diagnostic - shown when ICE negotiation fails */}
       {status === "ended" && endReason === "error" && (
-        <Card className="border-warning/30 bg-warning/5 p-4 backdrop-blur space-y-3">
+        <Card className="border-warning/30 bg-card p-4 space-y-3">
           <div className="flex items-start gap-2">
             <AlertTriangle className="h-4 w-4 shrink-0 text-warning mt-0.5" />
             <div>
@@ -3111,7 +3105,7 @@ myDeviceKindRef.current = myDeviceKind;
 
       {/* SAS verification */}
       {connected && (
-        <Card className="overflow-hidden border-border/60 bg-card/70 p-4 backdrop-blur">
+        <Card className="overflow-hidden border-border/60 bg-card p-4">
           <SasBadge code={sasCode} />
         </Card>
       )}
@@ -3121,7 +3115,7 @@ myDeviceKindRef.current = myDeviceKind;
           storage. Uses warning styling (not destructive) because this is
           usually a benign identity refresh rather than an impersonation. */}
       {keyResetDetected && peerNodeHello && (
-        <Card className="flex items-start gap-3 border-warning/30 bg-warning/5 p-4 backdrop-blur">
+        <Card className="flex items-start gap-3 border-warning/30 bg-card p-4">
           <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
           <div className="min-w-0 flex-1">
             <p className="mb-0.5 text-[13px] font-semibold text-foreground">
@@ -3159,18 +3153,6 @@ myDeviceKindRef.current = myDeviceKind;
         </Card>
       )}
 
-      {/* Trust prompt: shown after the first successful transfer when the
-          peer has shared their node identity and is not already trusted. */}
-      {showTrustPrompt && peerNodeHello && (
-        <TrustPrompt
-          peerNickname={peerNodeHello.nickname}
-          peerDeviceKind={peerNodeHello.deviceKind}
-          completedTransferCount={transfersCompleted}
-          onTrust={() => handleTrustDevice()}
-          onDismiss={() => setTrustPromptDismissed(true)}
-        />
-      )}
-
       {/* Stalled transfer diagnostic card */}
       {connected && (() => {
         const STALL_MS = 45_000;
@@ -3183,7 +3165,7 @@ myDeviceKindRef.current = myDeviceKind;
         const count = stalledOut.length + stalledIn.length;
         if (count === 0) return null;
         return (
-          <Card className="flex items-start gap-3 border-warning/30 bg-warning/5 p-4 backdrop-blur">
+          <Card className="flex items-start gap-3 border-warning/30 bg-card p-4">
             <HelpCircle className="h-4 w-4 shrink-0 text-warning mt-0.5" />
             <div className="min-w-0 flex-1">
               <p className="text-[11.5px] font-medium text-foreground/90">
@@ -3199,6 +3181,19 @@ myDeviceKindRef.current = myDeviceKind;
         </div>
 
         <div className="space-y-4">
+      {/* Trust prompt: shown after the first successful transfer when the
+          peer has shared their node identity and is not already trusted.
+          Placed at the top of the right column so it is immediately visible
+          after a transfer completes, without needing to scroll. */}
+      {showTrustPrompt && peerNodeHello && (
+        <TrustPrompt
+          peerNickname={peerNodeHello.nickname}
+          peerDeviceKind={peerNodeHello.deviceKind}
+          completedTransferCount={transfersCompleted}
+          onTrust={() => handleTrustDevice()}
+          onDismiss={() => setTrustPromptDismissed(true)}
+        />
+      )}
       {/* Drop zone */}
       <Card
         onDragOver={(e) => {
@@ -3228,9 +3223,9 @@ myDeviceKindRef.current = myDeviceKind;
           });
         }}
         className={cn(
-          "flex flex-col items-center justify-center gap-3 border-2 border-dashed bg-card/40 py-4 px-6 text-center backdrop-blur transition-all sm:py-10",
+          "flex flex-col items-center justify-center gap-3 border-2 border-dashed bg-card py-4 px-6 text-center transition-all sm:py-10",
           dragOver
-            ? "scale-[1.01] border-primary bg-primary/10 shadow-glow"
+            ? "scale-[1.01] border-primary bg-primary/5"
             : "border-border/60 hover:border-border/90",
         )}
       >
