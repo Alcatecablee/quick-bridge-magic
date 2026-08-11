@@ -3056,35 +3056,25 @@ export function useWebRTC(
   // Phase 2 send helpers. The DataChannel guard keeps them safe to call
   // from outside the setupDataChannel closure without stale-ref worries.
   const sendNodeHello = useCallback((hello: NodeHello) => {
-    const dc = dcRef.current;
-    if (!dc || dc.readyState !== "open") return;
-    try { dc.send(JSON.stringify({ t: "node-hello", v: QB_PROTO_VERSION, ...hello })); } catch {}
-  }, []);
+    sendDataMessage({ t: "node-hello", v: QB_PROTO_VERSION, ...hello });
+  }, [sendDataMessage]);
 
   const sendNodeChallenge = useCallback((nonce: string) => {
-    const dc = dcRef.current;
-    if (!dc || dc.readyState !== "open") return;
-    try { dc.send(JSON.stringify({ t: "node-challenge", v: QB_PROTO_VERSION, nonce })); } catch {}
-  }, []);
+    sendDataMessage({ t: "node-challenge", v: QB_PROTO_VERSION, nonce });
+  }, [sendDataMessage]);
 
   const sendNodeVerify = useCallback((nodeId: string, signature: string) => {
-    const dc = dcRef.current;
-    if (!dc || dc.readyState !== "open") return;
-    try { dc.send(JSON.stringify({ t: "node-verify", v: QB_PROTO_VERSION, nodeId, signature })); } catch {}
-  }, []);
+    sendDataMessage({ t: "node-verify", v: QB_PROTO_VERSION, nodeId, signature });
+  }, [sendDataMessage]);
 
   // Phase 3 Continuity send helpers.
   const sendContinuityIntent = useCallback((envelope: IntentEnvelope) => {
-    const dc = dcRef.current;
-    if (!dc || dc.readyState !== "open") return;
-    try { dc.send(JSON.stringify({ t: "continuity-intent", ...envelope })); } catch {}
-  }, []);
+    sendDataMessage({ t: "continuity-intent", ...envelope });
+  }, [sendDataMessage]);
 
   const sendIntentAck = useCallback((ack: IntentAck) => {
-    const dc = dcRef.current;
-    if (!dc || dc.readyState !== "open") return;
-    try { dc.send(JSON.stringify({ t: "intent-ack", ...ack })); } catch {}
-  }, []);
+    sendDataMessage({ t: "intent-ack", ...ack });
+  }, [sendDataMessage]);
 
   const outgoingList = useMemo(
     () => Object.values(outgoingFiles).sort((a, b) => a.startedAt - b.startedAt),
