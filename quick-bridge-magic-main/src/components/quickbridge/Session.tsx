@@ -64,7 +64,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useWebRTC, MAX_TEXT_BYTES, RESUME_GRACE_MS, type ConnectionQuality, type SessionEndReason } from "@/hooks/use-webrtc";
+import { useWebRTC, MAX_TEXT_BYTES, RESUME_GRACE_MS, type ConnectionQuality, type SessionEndReason, type IncomingFile } from "@/hooks/use-webrtc";
 import { useBridgeSignal } from "@/lib/bridge-signal";
 import { StatusBadge } from "./StatusBadge";
 import { Sparkline } from "./Sparkline";
@@ -1481,14 +1481,16 @@ myDeviceKindRef.current = myDeviceKind;
     notificationsSupported() ? Notification.permission : "unsupported",
   );
 
-  // Drive a low-frequency tick so live transfer rates/ETAs update smoothly.
+  // Drive a low-frequency tick so live transfer rates/ETAs update smoothly,
+  // and so reconnect countdowns tick down properly.
   useEffect(() => {
     const hasActive =
+      status === "connecting" || status === "reconnecting" || status === "ending" ||
       outgoingFiles.some((f) => f.state === "sending" || f.state === "resuming") || incomingFiles.some((f) => f.state === "receiving");
     if (!hasActive) return;
     const id = setInterval(() => setNow(Date.now()), 400);
     return () => clearInterval(id);
-  }, [outgoingFiles, incomingFiles]);
+  }, [outgoingFiles, incomingFiles, status]);
 
   // Tick once a minute for relative timestamps in history
   useEffect(() => {

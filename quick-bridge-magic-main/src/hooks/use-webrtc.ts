@@ -390,6 +390,24 @@ export function useWebRTC(
   const myDeviceKindRef = useRef<DeviceKind>("computer");
   const [myDeviceKind, setMyDeviceKind] = useState<DeviceKind>("computer");
   useEffect(() => {
+    const handleOnline = () => {
+      if (statusRef.current === "reconnecting") {
+        qbLog("[QB] Network online: resuming reconnect");
+        scheduleReconnectRef.current();
+      }
+    };
+    const handleOffline = () => {
+      qbLog("[QB] Network offline");
+    };
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
     const k = detectDeviceKind();
     myDeviceKindRef.current = k;
     setMyDeviceKind(k);
@@ -547,7 +565,8 @@ export function useWebRTC(
   // which must cancel all active operations synchronously.
   const outgoingFilesSnapshotRef = useRef<Record<string, OutgoingFile>>({});
   const incomingFilesSnapshotRef = useRef<Record<string, IncomingFile>>({}); 
-
+  const isNegotiatingRef = useRef(false);
+  const sessionDisconnectedAtRef = useRef<number | null>(null);
   // Fetch short-lived Cloudflare TURN credentials on mount and refresh every
   // 23 h (credentials TTL is 24 h). Falls back to the static ICE servers if
   // the server function is not configured.
@@ -1399,9 +1418,11 @@ export function useWebRTC(
           // Accumulate the incremental SHA-256 in the same order chunks arrive.
           // Data channel is ordered so this exactly mirrors the sender's byte stream.
           buf.hasher.update(payload);
-          setIncomingFiles((s) =>
-            s[id] ? { ...s, [id]: { ...s[id], receivedBytes: buf.received } } : s,
-          );
+          setIncomingFiles((s) => {
+            const file = s[id];
+            if (!file || file.state === "failed" || file.state === "cancelled" || file.state === "verified") return s;
+            return { ...s, [id]: { ...file, receivedBytes: buf.received } };
+          });
         }
       };
     },
@@ -1426,8 +1447,17 @@ export function useWebRTC(
     }
     if (reconnectAttemptRef.current >= MAX_RECONNECT_ATTEMPTS) {
       qbLog("[QB] scheduleReconnect: max attempts reached, ending session");
-      // Delegate to endSession so all cleanup runs in one place.
       endSessionRef.current(hasConnectedRef.current ? "timeout" : "host_not_found");
+      return;
+    }
+    if (sessionDisconnectedAtRef.current && Date.now() - sessionDisconnectedAtRef.current > 300_000) {
+      qbLog("[QB] scheduleReconnect: 5-minute absolute recovery window expired, ending session");
+      endSessionRef.current("timeout");
+      return;
+    }
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      qbLog("[QB] scheduleReconnect: offline, pausing reconnect backoff");
+      setStatus("reconnecting");
       return;
     }
     if (reconnectTimerRef.current) return; // already scheduled
@@ -1460,17 +1490,20 @@ export function useWebRTC(
         qbLog(`[QB] scheduleReconnect: ICE restart attempt ${attempt}/${ICE_RESTART_MAX}`);
         armConnectTimeoutRef.current();
         if (isInitiatorRef.current) {
-          // Initiator: generate new ICE credentials and send a restart offer.
           void (async () => {
+            if (isNegotiatingRef.current) return;
+            const gen = sessionGenerationRef.current;
+            isNegotiatingRef.current = true;
             try {
               pc.restartIce();
               const offer = await pc.createOffer({ iceRestart: true });
+              if (gen !== sessionGenerationRef.current) return;
               await pc.setLocalDescription(offer);
               sendSignal({ type: "offer", sdp: offer, iceRestart: true });
             } catch (err) {
-              qbError("[QB] ICE restart offer failed, scheduling next attempt", err);
-              // Fall through to the next scheduleReconnect cycle; the connect
-              // timeout will fire and trigger it if we don't get there first.
+              qbError("[QB] ICE restart offer failed", err);
+            } finally {
+              if (gen === sessionGenerationRef.current) isNegotiatingRef.current = false;
             }
           })();
         } else {
@@ -1702,20 +1735,30 @@ export function useWebRTC(
   const startOfferRef = useRef<(() => Promise<void>) | null>(null);
 
   const startOffer = useCallback(async () => {
-    // Terminal guard: never start a new offer once endSession() has begun.
-    if (sessionEndingRef.current) {
-      qbLog("[QB] startOffer: session is ending/ended, skipping");
+    if (sessionEndingRef.current || isNegotiatingRef.current) {
+      qbLog("[QB] startOffer: ending or negotiating, skipping");
       return;
     }
-    qbLog("[QB] startOffer: creating offer");
-    setStatus("connecting");
-    armConnectTimeout();
-    const pc = createPeerConnection();
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    void tryComputeSas();
-    qbLog("[QB] startOffer: sending offer via signaling");
-    sendSignal({ type: "offer", sdp: offer });
+    const generation = sessionGenerationRef.current;
+    isNegotiatingRef.current = true;
+    try {
+      qbLog("[QB] startOffer: creating offer");
+      setStatus("connecting");
+      armConnectTimeout();
+      const pc = createPeerConnection();
+      const offer = await pc.createOffer();
+      if (generation !== sessionGenerationRef.current) return;
+      await pc.setLocalDescription(offer);
+      void tryComputeSas();
+      qbLog("[QB] startOffer: sending offer via signaling");
+      sendSignal({ type: "offer", sdp: offer });
+    } catch (err) {
+      qbLog(`[QB] startOffer failed: ${err}`);
+    } finally {
+      if (generation === sessionGenerationRef.current) {
+        isNegotiatingRef.current = false;
+      }
+    }
   }, [armConnectTimeout, createPeerConnection, sendSignal, setupDataChannel, tryComputeSas]);
 
   startOfferRef.current = startOffer;
@@ -1730,6 +1773,7 @@ export function useWebRTC(
       qbLog(`[QB] endSession(${reason}): already ending/ended, ignoring`);
       return;
     }
+    sessionDisconnectedAtRef.current = null;
     sessionEndingRef.current = true;
     endReasonRef.current = reason;
     sessionGenerationRef.current++;
@@ -2137,47 +2181,53 @@ export function useWebRTC(
       if (msg.type === "offer" && msg.sdp) {
         const isIceRestart = !!(msg as { iceRestart?: boolean }).iceRestart;
         qbLog(`[QB] received OFFER${isIceRestart ? " (ICE restart)" : ""}`);
-        // For a normal fresh offer: tear down any existing PC so we start clean.
-        // For an ICE restart offer: the existing PC's DataChannel and transfer
-        // state are preserved - only ICE credentials/candidates are replaced.
-        // We only skip teardown when the PC is in a usable signaling state;
-        // a closed/failed PC must still be replaced even for restart offers.
+        
         const existingPc = pcRef.current;
-        const existingIsUsable =
-          existingPc !== null &&
-          existingPc.signalingState !== "closed" &&
-          existingPc.connectionState !== "closed" &&
-          existingPc.connectionState !== "failed";
-        if (!isIceRestart || !existingIsUsable) {
-          if (existingPc && existingPc.signalingState !== "stable") {
-            teardownPeer();
-          } else if (existingPc && remoteDescSetRef.current) {
-            teardownPeer();
-          }
-        }
-        if (aborted) return;
-        setStatus("connecting");
-        armConnectTimeout();
-        const pc = pcRef.current ?? createPeerConnection();
-        await pc.setRemoteDescription(msg.sdp);
-        if (aborted) return;
-        remoteDescSetRef.current = true;
-        await drainPendingCandidates(pc);
-        if (aborted) return;
-        const answer = await pc.createAnswer();
-        // Guard against the race where a concurrent signal or reconnect has
-        // already moved the PC out of have-remote-offer (e.g. back to stable).
-        // setLocalDescription(answer) is only valid in have-remote-offer state;
-        // calling it in any other state throws an InvalidStateError.
-        if (pc.signalingState !== "have-remote-offer") {
-          qbLog(`[QB] skipping setLocalDescription(answer): signalingState=${pc.signalingState}`);
+        const polite = myClientIdRef.current < ((msg as { clientId?: string }).clientId || "unknown");
+        const makingOffer = isNegotiatingRef.current;
+        const offerCollision = makingOffer || (existingPc && existingPc.signalingState !== "stable");
+        
+        if (offerCollision && !polite) {
+          qbLog("[QB] impolite peer ignoring colliding offer");
           return;
         }
-        await pc.setLocalDescription(answer);
-        if (aborted) return;
-        void tryComputeSas();
-        qbLog("[QB] sending ANSWER");
-        sendSignal({ type: "answer", sdp: answer });
+        
+        const generation = sessionGenerationRef.current;
+        try {
+          if (offerCollision && polite && existingPc) {
+            qbLog("[QB] polite peer rolling back colliding offer");
+            try {
+              await existingPc.setLocalDescription({ type: "rollback" });
+            } catch (err) {
+              qbLog("[QB] rollback failed, tearing down");
+              teardownPeer();
+            }
+          } else if (!isIceRestart || !existingPc || existingPc.signalingState === "closed") {
+            if (existingPc && remoteDescSetRef.current) teardownPeer();
+          }
+          if (aborted || generation !== sessionGenerationRef.current) return;
+          
+          setStatus("connecting");
+          armConnectTimeout();
+          const pc = pcRef.current ?? createPeerConnection();
+          await pc.setRemoteDescription(msg.sdp);
+          if (aborted || generation !== sessionGenerationRef.current) return;
+          
+          remoteDescSetRef.current = true;
+          await drainPendingCandidates(pc);
+          if (aborted || generation !== sessionGenerationRef.current) return;
+          
+          const answer = await pc.createAnswer();
+          if (pc.signalingState !== "have-remote-offer") return;
+          await pc.setLocalDescription(answer);
+          
+          if (aborted || generation !== sessionGenerationRef.current) return;
+          void tryComputeSas();
+          qbLog("[QB] sending ANSWER");
+          sendSignal({ type: "answer", sdp: answer });
+        } catch (err) {
+          qbLog(`[QB] error handling offer: ${err}`);
+        }
       } else if (msg.type === "answer" && msg.sdp) {
         qbLog("[QB] received ANSWER");
         const pc = pcRef.current;
