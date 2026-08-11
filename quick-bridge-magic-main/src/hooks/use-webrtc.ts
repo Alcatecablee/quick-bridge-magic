@@ -455,9 +455,9 @@ export function useWebRTC(
     } catch {}
   }, [sessionId]);
 
-  const sendDataMessage = useCallback((payload: any) => {
+  const sendDataMessage = useCallback((payload: any): boolean => {
     const channel = dcRef.current;
-    if (!channel || channel.readyState !== "open") return;
+    if (!channel || channel.readyState !== "open") return false;
     const msg: ProtocolEnvelope<any> = {
       v: 1,
       type: payload.t || payload.type,
@@ -468,7 +468,10 @@ export function useWebRTC(
     };
     try {
       channel.send(JSON.stringify(msg));
-    } catch {}
+      return true;
+    } catch {
+      return false;
+    }
   }, [sessionId]);
   const incomingBuffersRef = useRef<Record<string, IncomingBuffer>>({});
   const sasComputedRef = useRef(false);
@@ -2580,15 +2583,13 @@ export function useWebRTC(
       const dc = dcRef.current;
       if (!dc || dc.readyState !== "open") return { ok: false, reason: "not_open" };
       if (exceedsTextByteCap(content)) return { ok: false, reason: "too_large" };
-      try {
-        dc.send(JSON.stringify({ t: kind, content }));
-      } catch {
+      if (!sendDataMessage({ t: kind, content })) {
         return { ok: false, reason: "send_failed" };
       }
       setMessages((m) => [...m, { id: crypto.randomUUID(), from: "me", kind, content, ts: Date.now() }]);
       return { ok: true };
     },
-    [],
+    [sendDataMessage],
   );
 
   const sendQueueRef = useRef<Promise<void>>(Promise.resolve());
@@ -2672,11 +2673,11 @@ export function useWebRTC(
           // restarts cleanly. For a true resume we deliberately skip this
           // because the partial is exactly what we want to keep.
           if (idOverride && safeStart === 0) {
-            try {
-              channel.send(JSON.stringify({ t: "file-cancel", id }));
-            } catch {}
+            sendDataMessage({ t: "file-cancel", id });
           }
-          channel.send(JSON.stringify({ t: "file-start", meta }));
+          if (!sendDataMessage({ t: "file-start", meta })) {
+            throw new Error("Failed to send file-start");
+          }
         } catch {
           if (ackPromise) {
             // Cancel the timeout and drop the resolver together so neither
@@ -2809,9 +2810,7 @@ export function useWebRTC(
             }
           }
           const sha256Hex = fileHasher.digest();
-          try {
-            channel.send(JSON.stringify({ t: "file-end", id, sha256: sha256Hex }));
-          } catch {}
+          sendDataMessage({ t: "file-end", id, sha256: sha256Hex });
           setOutgoingFiles((s) => ({
             ...s,
             [id]: { ...s[id], sentBytes: file.size, state: "completed", completedAt: Date.now(), error: undefined, retryable: false },
@@ -2840,7 +2839,7 @@ export function useWebRTC(
       sendQueueRef.current = sendQueueRef.current.then(task, task);
       return id;
     },
-    [],
+    [sendDataMessage],
   );
 
   const sendFile = useCallback(
