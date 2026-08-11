@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ContactModal } from "./ContactModal";
-import { usePostTransferNudge } from "@/hooks/use-post-transfer-nudge";
+
 import { toast } from "sonner";
 import {
   Clipboard,
@@ -891,7 +891,7 @@ myDeviceKindRef.current = myDeviceKind;
 
   const [contactOpen, setContactOpen] = useState(false);
   const [bridgeEnded, setBridgeEnded] = useState(false);
-  const { maybeNudge } = usePostTransferNudge(() => setContactOpen(true));
+
 
   // Heartbeat the active session so the home page can offer "Resume bridge"
   // if the user navigates back.
@@ -1536,7 +1536,7 @@ myDeviceKindRef.current = myDeviceKind;
       // appears after the first transfer completes.
       playReceiveSound();
       if (typeof navigator !== "undefined" && "vibrate" in navigator && document.hasFocus()) navigator.vibrate?.([60, 40, 80]);
-      maybeNudge();
+
       trackFileReceived({ count: newSuccessCount, totalBytes: newSuccessBytes });
     }
   }, [incomingFiles, history, saveDirectory]);
@@ -1564,7 +1564,7 @@ myDeviceKindRef.current = myDeviceKind;
     }
     if (newSuccessCount > 0) {
       playSendSound();
-      maybeNudge();
+
       trackFileSent({ count: newSuccessCount, totalBytes: newSuccessBytes });
     }
   }, [outgoingFiles, history]);
