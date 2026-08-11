@@ -34,6 +34,25 @@ const qbWarn = import.meta.env.DEV ? console.warn.bind(console) : () => {};
 // visibility in production (connection drops, IDB writes, crypto errors).
 const qbError = console.error.bind(console);
 
+
+export type ProtocolState = "unknown" | "negotiating" | "compatible" | "incompatible";
+
+export type TransportCapabilities = {
+  protocolVersion: 1;
+  controlChannel: true;
+  fileResume: true;
+  continuity: true;
+  streamToDisk: true;
+};
+
+export type ProtocolEnvelope<T = any> = {
+  v: 1;
+  type: string;
+  sessionId: string;
+  generation: number;
+  messageId: string;
+  payload: T;
+};
 export type ConnectionStatus =
   | "waiting"
   | "connecting"
@@ -184,6 +203,8 @@ function buildIceServers(): RTCIceServer[] {
         "turn:openrelay.metered.ca:443",
         "turn:openrelay.metered.ca:443?transport=tcp",
       ];
+  // ⚠️  openrelayproject is a public rate-limited fallback for local development
+  // only. Set VITE_TURN_USERNAME + VITE_TURN_CREDENTIAL in production.
   const username = env.VITE_TURN_USERNAME ?? "openrelayproject";
   const credential = env.VITE_TURN_CREDENTIAL ?? "openrelayproject";
   return [...stuns, { urls: turnUrls, username, credential }];
@@ -326,6 +347,12 @@ export function useWebRTC(
   onIntentAck?: (ack: IntentAck) => void,
 ) {
   const [statusRaw, setStatusRaw] = useState<ConnectionStatus>("waiting");
+  const [protocolState, setProtocolState] = useState<ProtocolState>("unknown");
+  const protocolStateRef = useRef<ProtocolState>("unknown");
+  const setProtocolStateSafe = useCallback((s: ProtocolState) => {
+    protocolStateRef.current = s;
+    setProtocolState(s);
+  }, []);
   const status = statusRaw;
   const setStatus = useCallback((to: ConnectionStatus) => {
     setStatusRaw(prev => canTransition(prev, to) ? to : prev);
@@ -339,10 +366,14 @@ export function useWebRTC(
   const [bridgeBusy, setBridgeBusy] = useState(false);
   const myClientIdRef = useRef<string>("");
   if (!myClientIdRef.current) {
-    myClientIdRef.current =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    // crypto.randomUUID is available in all browsers with WebRTC support
+    // (Chrome 92+, Firefox 95+, Safari 15.4+). QuickBridge requires WebRTC,
+    // so the fallback path is unreachable in practice. Asserting rather than
+    // falling back to Math.random avoids silent collision-prone IDs.
+    if (typeof crypto === "undefined" || typeof crypto.randomUUID !== "function") {
+      throw new Error("[QB] crypto.randomUUID is required. Use a modern browser with WebRTC support.");
+    }
+    myClientIdRef.current = crypto.randomUUID();
   }
   const [peerDeviceKind, setPeerDeviceKind] = useState<DeviceKind | null>(null);
   const [peerDeviceName, setPeerDeviceName] = useState<string | null>(null);
@@ -386,7 +417,41 @@ export function useWebRTC(
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dcRef = useRef<RTCDataChannel | null>(null);
+  const controlDcRef = useRef<RTCDataChannel | null>(null);
+  const seenMessageIdsRef = useRef<Set<string>>(new Set());
+  const lastControlSequenceRef = useRef<Record<string, number>>({});
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const sendControlMessage = useCallback((payload: any) => {
+    const channel = controlDcRef.current;
+    if (!channel || channel.readyState !== "open") return;
+    const msg: ProtocolEnvelope<any> = {
+      v: 1,
+      type: payload.t || payload.type,
+      sessionId,
+      generation: sessionGenerationRef.current,
+      messageId: crypto.randomUUID(),
+      payload
+    };
+    try {
+      channel.send(JSON.stringify(msg));
+    } catch {}
+  }, [sessionId]);
+
+  const sendDataMessage = useCallback((payload: any) => {
+    const channel = dcRef.current;
+    if (!channel || channel.readyState !== "open") return;
+    const msg: ProtocolEnvelope<any> = {
+      v: 1,
+      type: payload.t || payload.type,
+      sessionId,
+      generation: sessionGenerationRef.current,
+      messageId: crypto.randomUUID(),
+      payload
+    };
+    try {
+      channel.send(JSON.stringify(msg));
+    } catch {}
+  }, [sessionId]);
   const incomingBuffersRef = useRef<Record<string, IncomingBuffer>>({});
   const sasComputedRef = useRef(false);
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
@@ -536,18 +601,25 @@ export function useWebRTC(
   }, [stopQualityPoll]);
 
   const setupDataChannel = useCallback(
-    (dc: RTCDataChannel) => {
+    (dc: RTCDataChannel, isControl: boolean) => {
       dc.binaryType = "arraybuffer";
+      if (!isControl) {
       dc.bufferedAmountLowThreshold = 1 << 20; // 1MB
+      }
 
       dc.onopen = () => {
-        hasConnectedRef.current = true;
-        qbLog("[QB] DataChannel OPEN");
+        if (!isControl) hasConnectedRef.current = true;
+        qbLog(`[QB] DataChannel ${isControl ? "CONTROL" : "DATA"} OPEN`);
+        const dataOpen = dcRef.current?.readyState === "open";
+        const controlOpen = controlDcRef.current?.readyState === "open";
+        if (dataOpen && controlOpen) {
         if (connectTimerRef.current) {
           clearTimeout(connectTimerRef.current);
           connectTimerRef.current = null;
         }
+          if (protocolStateRef.current === "compatible") {
         setStatus("connected");
+          }
         startQualityPoll();
         // Defer the reconnect-counter reset until the DataChannel has been open
         // for DC_STABLE_DURATION_MS. A brief open-then-close (e.g. the remote
@@ -560,7 +632,7 @@ export function useWebRTC(
         stableTimerRef.current = setTimeout(() => {
           if (generation !== sessionGenerationRef.current) return;
           stableTimerRef.current = null;
-          if (dcRef.current?.readyState === "open") {
+          if (dcRef.current?.readyState === "open" && controlDcRef.current?.readyState === "open") {
             reconnectAttemptRef.current = 0;
             setReconnectAttempt(0);
           }
@@ -600,6 +672,7 @@ export function useWebRTC(
           }
           if (resumed > 0) setLastAutoResume({ ts: Date.now(), count: resumed });
         }, 750);
+        }
       };
       dc.onclose = () => {
         qbLog("[QB] DataChannel CLOSED");
@@ -654,7 +727,7 @@ export function useWebRTC(
         const message =
           err instanceof Error && err.message ? err.message : "Disk write failed";
         try {
-          dcRef.current?.send(JSON.stringify({ t: "file-abort", id, reason: message }));
+                  sendControlMessage({ t: "file-abort", id: id, reason: message, sequence: Date.now() });
         } catch {}
         const writer = buf.writer;
         const cleanup = buf.cleanup;
@@ -692,14 +765,41 @@ export function useWebRTC(
 
       dc.onmessage = (ev) => {
         if (typeof ev.data === "string") {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          let msg: any;
+          let env: ProtocolEnvelope;
           try {
-            msg = JSON.parse(ev.data);
+            env = JSON.parse(ev.data);
           } catch {
             qbWarn("[QB] DataChannel: received malformed JSON from peer, discarding");
             return;
           }
+          if (env.v !== 1 || !env.type || !env.payload) {
+             qbWarn("[QB] DataChannel: missing protocol envelope", env);
+             return;
+          }
+          if (env.sessionId !== sessionId) {
+             qbWarn("[QB] DataChannel: rejecting message from invalid session", env.sessionId);
+             return;
+          }
+          if (env.generation !== sessionGenerationRef.current) {
+             qbWarn(`[QB] DataChannel: rejecting stale message gen ${env.generation}`);
+             return;
+          }
+          if (env.messageId && seenMessageIdsRef.current.has(env.messageId)) return;
+          if (env.messageId) {
+             seenMessageIdsRef.current.add(env.messageId);
+             if (seenMessageIdsRef.current.size > 1000) {
+                 const iterator = seenMessageIdsRef.current.values();
+                 for (let j = 0; j < 200; j++) { const v = iterator.next().value; if (v) seenMessageIdsRef.current.delete(v); }
+             }
+          }
+          const msg = env.payload;
+          
+          if (isControl && msg.id && typeof msg.sequence === "number") {
+             const lastSeq = lastControlSequenceRef.current[msg.id] || -1;
+             if (msg.sequence <= lastSeq) return;
+             lastControlSequenceRef.current[msg.id] = msg.sequence;
+          }
+
           if (msg.t === "text" || msg.t === "clipboard") {
               if (typeof msg.content !== "string" || exceedsTextByteCap(msg.content)) {
                 qbWarn(
@@ -730,13 +830,7 @@ export function useWebRTC(
               // before creating a new buffer.
               if (resumeFrom > 0 && cancelledIdsRef.current.has(meta.id)) {
                 try {
-                  dcRef.current?.send(
-                    JSON.stringify({
-                      t: "file-abort",
-                      id: meta.id,
-                      reason: "Cancelled by receiver",
-                    }),
-                  );
+                  sendControlMessage({ t: "file-abort", id: meta.id, reason: "Cancelled by receiver", sequence: Date.now() });
                 } catch {}
                 return;
               }
@@ -778,13 +872,7 @@ export function useWebRTC(
                       : s,
                   );
                   try {
-                    dcRef.current?.send(
-                      JSON.stringify({
-                        t: "file-resume-ack",
-                        id: meta.id,
-                        offset: existing.received,
-                      }),
-                    );
+                  sendControlMessage({ t: "file-resume-ack", id: meta.id, start: resumeFrom });
                   } catch {}
                   return;
                 }
@@ -830,23 +918,21 @@ export function useWebRTC(
                   // the existing "file.ext" partial, leaving the user with two
                   // confusing files. Best-effort: ack is sent regardless.
                   void (async () => {
-                    const record = await getInFlightTransfer(meta.id);
-                    if (!record) return;
-                    const dir = saveDirectoryRef.current;
-                    if (dir) await removeFileAtPath(dir.handle, record.finalName);
-                    void clearInFlightTransfer(meta.id).catch(err =>
-                      qbWarn("[QB] IDB: clearInFlightTransfer failed (orphan cleanup)", err),
-                    );
+                    try {
+                      const record = await getInFlightTransfer(meta.id);
+                      if (!record) return;
+                      const dir = saveDirectoryRef.current;
+                      if (dir) await removeFileAtPath(dir.handle, record.finalName);
+                      void clearInFlightTransfer(meta.id).catch(err =>
+                        qbWarn("[QB] IDB: clearInFlightTransfer failed (orphan cleanup)", err),
+                      );
+                    } catch (err) {
+                      qbWarn("[QB] orphan file cleanup failed (stale handle or directory removed)", err);
+                    }
                   })();
                 }
                 try {
-                  dcRef.current?.send(
-                    JSON.stringify({
-                      t: "file-resume-ack",
-                      id: meta.id,
-                      offset: 0,
-                    }),
-                  );
+                  sendControlMessage({ t: "file-resume-ack", id: meta.id, start: resumeFrom });
                 } catch {}
               }
               const buf: IncomingBuffer = {
@@ -892,13 +978,7 @@ export function useWebRTC(
                       live.aborted = true;
                       cancelledIdsRef.current.add(meta.id);
                       try {
-                        dcRef.current?.send(
-                          JSON.stringify({
-                            t: "file-abort",
-                            id: meta.id,
-                            reason: "Not enough space on the receiving device",
-                          }),
-                        );
+                  sendControlMessage({ t: "file-abort", id: meta.id, reason: "Memory limit exceeded", sequence: Date.now() });
                       } catch {}
                       const reason = `Not enough free space (need ${meta.size} bytes, ~${free} available)`;
                       setIncomingFiles((s) =>
@@ -1294,13 +1374,7 @@ export function useWebRTC(
               cancelledIdsRef.current.add(id);
               buf.memoryChunks = [];
               try {
-                dcRef.current?.send(
-                  JSON.stringify({
-                    t: "file-abort",
-                    id,
-                    reason: "Memory limit exceeded on the receiving device",
-                  }),
-                );
+              sendControlMessage({ t: "file-abort", id, reason: "Memory limit exceeded", sequence: Date.now() });
               } catch {}
               setIncomingFiles((s) =>
                 s[id]
@@ -1437,7 +1511,7 @@ export function useWebRTC(
         for (const id of Object.keys(next)) {
           const f = next[id];
           if (f.state !== "completed" && f.state !== "failed" && f.state !== "cancelled" && !f.error) {
-            next[id] = { ...f, error: "Connection lost", retryable: !!fileSourcesRef.current[id] };
+            next[id] = { ...f, state: "paused" };
           }
         }
         return next;
@@ -1449,7 +1523,7 @@ export function useWebRTC(
           scheduleReconnectRef.current();
         });
       } else {
-        sendSignal({ type: "hello" });
+        sendSignal({ type: "hello", protocol: 1, capabilities: { controlChannel: true, fileResume: true, continuity: true, streamToDisk: true } });
       }
     }, delay);
   }, [sendSignal]);
@@ -1474,6 +1548,12 @@ export function useWebRTC(
     const pc = new RTCPeerConnection({ iceServers: iceServersRef.current, iceTransportPolicy: forceRelayRef.current ? "relay" : "all" });
     pcRef.current = pc;
     remoteDescSetRef.current = false;
+    const dc = pc.createDataChannel("qb-data", { negotiated: true, id: 0, ordered: true });
+    const controlDc = pc.createDataChannel("qb-control", { negotiated: true, id: 1, ordered: true });
+    dcRef.current = dc;
+    controlDcRef.current = controlDc;
+    setupDataChannel(dc, false);
+    setupDataChannel(controlDc, true);
     pendingCandidatesRef.current = [];
 
     const generation = sessionGenerationRef.current;
@@ -1512,7 +1592,7 @@ export function useWebRTC(
         // on ICE restart). Keeping the two paths separate avoids the connect
         // sound, vibrate, and trust-flow effects firing before the channel is
         // actually usable.
-        if (dcRef.current?.readyState === "open") {
+          if (dcRef.current?.readyState === "open" && controlDcRef.current?.readyState === "open") {
           // ICE restart succeeded: the DataChannel survived the re-negotiation
           // and is already live. Reset the counter immediately — the channel
           // was open and stable before the restart attempt, so there is no
@@ -1520,7 +1600,9 @@ export function useWebRTC(
           // reset is deferred to the DC_STABLE_DURATION_MS timer in dc.onopen.
           reconnectAttemptRef.current = 0;
           setReconnectAttempt(0);
+          if (protocolStateRef.current === "compatible") {
           setStatus("connected");
+          }
         }
         startQualityPoll();
       } else if (st === "failed" || st === "closed") {
@@ -1556,11 +1638,6 @@ export function useWebRTC(
       if (pc.iceConnectionState === "failed") {
         scheduleReconnect();
       }
-    };
-    pc.ondatachannel = (e) => {
-      if (pc !== pcRef.current) return;
-      dcRef.current = e.channel;
-      setupDataChannel(e.channel);
     };
     return pc;
   }, [scheduleReconnect, sendSignal, setupDataChannel, startQualityPoll, stopQualityPoll]);
@@ -1634,9 +1711,6 @@ export function useWebRTC(
     setStatus("connecting");
     armConnectTimeout();
     const pc = createPeerConnection();
-    const dc = pc.createDataChannel("data", { ordered: true });
-    dcRef.current = dc;
-    setupDataChannel(dc);
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     void tryComputeSas();
@@ -1734,7 +1808,7 @@ export function useWebRTC(
     };
     try {
       if (dc && dc.readyState === "open") {
-        dc.send(JSON.stringify(payload));
+        sendControlMessage(payload);
       }
     } catch {}
 
@@ -1946,7 +2020,7 @@ export function useWebRTC(
         }
         attempts += 1;
         if (attempts === 1 || attempts % 5 === 0) qbLog(`[QB] hello attempt ${attempts}/30`);
-        sendSignal({ type: "hello" });
+        sendSignal({ type: "hello", protocol: 1, capabilities: { controlChannel: true, fileResume: true, continuity: true, streamToDisk: true } });
         helloTimer = setTimeout(tick, 1000);
       };
       tick();
@@ -2031,7 +2105,7 @@ export function useWebRTC(
           });
         } else if (!isInitiator) {
           qbLog("[QB] guest: peer appeared, sending hello");
-          sendSignal({ type: "hello" });
+          sendSignal({ type: "hello", protocol: 1, capabilities: { controlChannel: true, fileResume: true, continuity: true, streamToDisk: true } });
         }
       }
       if (!hasPeer && pcRef.current) {
@@ -2045,10 +2119,21 @@ export function useWebRTC(
       try {
       const msg = payload as {
         type: string;
+        protocol?: number;
         sdp?: RTCSessionDescriptionInit;
         candidate?: RTCIceCandidateInit;
       };
       if (sessionEndingRef.current) return;
+      
+      if (msg.type === "hello" || msg.type === "offer" || msg.type === "answer") {
+        if (msg.protocol !== 1) {
+          setProtocolStateSafe("incompatible");
+          qbLog(`[QB] Peer is incompatible (protocol: ${msg.protocol})`);
+          if (msg.type === "offer" || msg.type === "answer") return;
+        } else {
+          setProtocolStateSafe("compatible");
+        }
+      }
       if (msg.type === "offer" && msg.sdp) {
         const isIceRestart = !!(msg as { iceRestart?: boolean }).iceRestart;
         qbLog(`[QB] received OFFER${isIceRestart ? " (ICE restart)" : ""}`);
@@ -2411,18 +2496,24 @@ export function useWebRTC(
     });
   }, [deviceName, isInitiator, myDeviceKind, saveDirectory]);
 
-  const sendText = useCallback((content: string, kind: "text" | "clipboard" = "text") => {
-    const dc = dcRef.current;
-    if (!dc || dc.readyState !== "open") return false;
-    if (exceedsTextByteCap(content)) return false;
-    try {
-      dc.send(JSON.stringify({ t: kind, content }));
-    } catch {
-      return false;
-    }
-    setMessages((m) => [...m, { id: crypto.randomUUID(), from: "me", kind, content, ts: Date.now() }]);
-    return true;
-  }, []);
+  const sendText = useCallback(
+    (
+      content: string,
+      kind: "text" | "clipboard" = "text",
+    ): { ok: true } | { ok: false; reason: "not_open" | "too_large" | "send_failed" } => {
+      const dc = dcRef.current;
+      if (!dc || dc.readyState !== "open") return { ok: false, reason: "not_open" };
+      if (exceedsTextByteCap(content)) return { ok: false, reason: "too_large" };
+      try {
+        dc.send(JSON.stringify({ t: kind, content }));
+      } catch {
+        return { ok: false, reason: "send_failed" };
+      }
+      setMessages((m) => [...m, { id: crypto.randomUUID(), from: "me", kind, content, ts: Date.now() }]);
+      return { ok: true };
+    },
+    [],
+  );
 
   const sendQueueRef = useRef<Promise<void>>(Promise.resolve());
 
@@ -2725,6 +2816,21 @@ export function useWebRTC(
     });
   }, []);
 
+  // Restores a dismissed outgoing file display entry during the undo window.
+  // Only restores the display record (OutgoingFile shape) — does NOT restore
+  // fileSourcesRef or cancelled-ID bookkeeping, since dismissed entries are
+  // always in a terminal state (failed/cancelled) where the send loop cannot
+  // restart. Safe because: failed is terminal, no state change can occur after
+  // dismissal, so snapshot is always fresh.
+  const undismissOutgoing = useCallback((id: string, snapshot: OutgoingFile) => {
+    setOutgoingFiles((s) => {
+      // Guard: if somehow the id re-appeared (should never happen for terminal
+      // states), leave the current state untouched.
+      if (s[id]) return s;
+      return { ...s, [id]: snapshot };
+    });
+  }, []);
+
   // Cancel an in-flight outgoing transfer at the user's request. Marks the
   // id as cancelled (the send loop polls this and bails on the next chunk),
   // notifies the peer over the existing `file-cancel` protocol so the
@@ -2773,7 +2879,7 @@ export function useWebRTC(
       setStatus("waiting");
       // Even without presence, nudge with a hello so a host that lost its
       // socket but is still on the same channel can pick us up.
-      if (!isInitiatorRef.current) sendSignal({ type: "hello" });
+      if (!isInitiatorRef.current) sendSignal({ type: "hello", protocol: 1, capabilities: { controlChannel: true, fileResume: true, continuity: true, streamToDisk: true } });
       return;
     }
     setStatus("connecting");
@@ -2787,7 +2893,7 @@ export function useWebRTC(
       }
     } else {
       qbLog("[QB] manualReconnect: guest sending hello");
-      sendSignal({ type: "hello" });
+      sendSignal({ type: "hello", protocol: 1, capabilities: { controlChannel: true, fileResume: true, continuity: true, streamToDisk: true } });
     }
   }, [sendSignal, teardownPeer]);
 
@@ -2827,9 +2933,7 @@ export function useWebRTC(
       buf.aborted = true;
       cancelledIdsRef.current.add(id);
       try {
-        dcRef.current?.send(
-          JSON.stringify({ t: "file-abort", id, reason: "Cancelled by receiver" }),
-        );
+                  sendControlMessage({ t: "file-abort", id: id, reason: "Cancelled by receiver", sequence: Date.now() });
       } catch {}
       const writer = buf.writer;
       const cleanup = buf.cleanup;
@@ -2933,6 +3037,7 @@ export function useWebRTC(
     resumeTransfer,
     cancelOutgoing,
     dismissOutgoing,
+    undismissOutgoing,
     cancelIncoming,
     releaseIncoming,
     manualReconnect,
