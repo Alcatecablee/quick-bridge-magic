@@ -597,7 +597,7 @@ export function useWebRTC(
   }, []);
 
   const sendSignal = useCallback((payload: Record<string, unknown>) => {
-    channelRef.current?.send({ type: "broadcast", event: "signal", payload: { ...payload, clientId: myClientIdRef.current } });
+    channelRef.current?.send({ type: "broadcast", event: "signal", payload: { protocol: 1, ...payload, clientId: myClientIdRef.current } });
   }, []);
 
   const stopQualityPoll = useCallback(() => {
