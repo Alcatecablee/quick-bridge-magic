@@ -2262,6 +2262,9 @@ myDeviceKindRef.current = myDeviceKind;
       if (endReason === "session_expired") {
         return { eyebrow: "Session expired", eyebrowDot: "bg-warning", title: "Session expired.", body: "This pairing link has expired. Start a new session from the host device." };
       }
+      if (endReason === "host_not_found") {
+        return { eyebrow: "Host not found", eyebrowDot: "bg-destructive", title: "Host not found.", body: "The host session is no longer active. They may have closed their tab or refreshed." };
+      }
       return { eyebrow: "Disconnected", eyebrowDot: "bg-destructive", title: "Connection lost.", body: "We couldn't reach the other device. Refresh the page on both devices to start a new session." };
     }
     if (isInitiator) {

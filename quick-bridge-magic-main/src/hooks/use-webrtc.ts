@@ -52,7 +52,8 @@ export type SessionEndReason =
   | "key_changed"
   | "navigation"
   | "browser_closed"
-  | "error";
+  | "error"
+  | "host_not_found";
 
 export type ConnectionQuality = "direct" | "relay" | "unknown";
 
@@ -293,6 +294,12 @@ function useLatestRef<T>(value: T) {
   return ref;
 }
 
+function canTransition(from: ConnectionStatus, to: ConnectionStatus): boolean {
+  if (from === "ended") return false;
+  if (from === "ending" && to !== "ended") return false;
+  return true;
+}
+
 export function useWebRTC(
   sessionId: string,
   isInitiator: boolean,
@@ -311,7 +318,11 @@ export function useWebRTC(
   onContinuityIntent?: (envelope: IntentEnvelope) => void,
   onIntentAck?: (ack: IntentAck) => void,
 ) {
-  const [status, setStatus] = useState<ConnectionStatus>("waiting");
+  const [statusRaw, setStatusRaw] = useState<ConnectionStatus>("waiting");
+  const status = statusRaw;
+  const setStatus = useCallback((to: ConnectionStatus) => {
+    setStatusRaw(prev => canTransition(prev, to) ? to : prev);
+  }, []);
   // Ref mirror so async callbacks (scheduleReconnect, ICE handlers) can read
   // the current status synchronously without capturing a stale closure value.
   const statusRef = useLatestRef(status);
@@ -378,6 +389,8 @@ export function useWebRTC(
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const qualityTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const reconnectAttemptRef = useRef(0);
+  const sessionGenerationRef = useRef(0);
+  const hasConnectedRef = useRef(false);
   const peerPresentRef = useRef(false);
   const isInitiatorRef = useLatestRef(isInitiator);
   const teardownRef = useRef<() => void>(() => {});
@@ -517,6 +530,7 @@ export function useWebRTC(
       dc.bufferedAmountLowThreshold = 1 << 20; // 1MB
 
       dc.onopen = () => {
+        hasConnectedRef.current = true;
         qbLog("[QB] DataChannel OPEN");
         if (connectTimerRef.current) {
           clearTimeout(connectTimerRef.current);
@@ -531,7 +545,9 @@ export function useWebRTC(
         // reconnect loop runs indefinitely. The stable timer is cancelled in
         // dc.onclose if the channel closes before stability is confirmed.
         if (stableTimerRef.current) clearTimeout(stableTimerRef.current);
+        const generation = sessionGenerationRef.current;
         stableTimerRef.current = setTimeout(() => {
+          if (generation !== sessionGenerationRef.current) return;
           stableTimerRef.current = null;
           if (dcRef.current?.readyState === "open") {
             reconnectAttemptRef.current = 0;
@@ -549,7 +565,9 @@ export function useWebRTC(
           clearTimeout(autoResumeTimerRef.current);
           autoResumeTimerRef.current = null;
         }
+        const generation2 = sessionGenerationRef.current;
         autoResumeTimerRef.current = setTimeout(() => {
+          if (generation2 !== sessionGenerationRef.current) return;
           autoResumeTimerRef.current = null;
           const channel = dcRef.current;
           if (!channel || channel.readyState !== "open") return;
@@ -1239,7 +1257,7 @@ export function useWebRTC(
     if (reconnectAttemptRef.current >= MAX_RECONNECT_ATTEMPTS) {
       qbLog("[QB] scheduleReconnect: max attempts reached, ending session");
       // Delegate to endSession so all cleanup runs in one place.
-      endSessionRef.current("timeout");
+      endSessionRef.current(hasConnectedRef.current ? "timeout" : "host_not_found");
       return;
     }
     if (reconnectTimerRef.current) return; // already scheduled
@@ -1249,7 +1267,9 @@ export function useWebRTC(
     setStatus("reconnecting");
     // Exponential backoff capped at 8s
     const delay = Math.min(8000, 600 * Math.pow(1.6, attempt - 1));
+    const generation = sessionGenerationRef.current;
     reconnectTimerRef.current = setTimeout(() => {
+      if (generation !== sessionGenerationRef.current) return;
       reconnectTimerRef.current = null;
 
       const pc = pcRef.current;
@@ -1360,7 +1380,9 @@ export function useWebRTC(
     remoteDescSetRef.current = false;
     pendingCandidatesRef.current = [];
 
+    const generation = sessionGenerationRef.current;
     pc.onicecandidate = (e) => {
+      if (generation !== sessionGenerationRef.current) return;
       // Ignore candidates from an orphaned PC.
       if (pc !== pcRef.current) return;
       if (e.candidate) sendSignal({ type: "ice", candidate: e.candidate });
@@ -1373,6 +1395,7 @@ export function useWebRTC(
       const st = pc.connectionState;
       qbLog(`[QB] PC connectionState: ${st}`);
       if (st === "connected") {
+        hasConnectedRef.current = true;
         if (connectTimerRef.current) {
           clearTimeout(connectTimerRef.current);
           connectTimerRef.current = null;
@@ -1422,7 +1445,9 @@ export function useWebRTC(
         stopQualityPoll();
         setQuality("unknown");
         if (!disconnectedTimerRef.current) {
+          const generation = sessionGenerationRef.current;
           disconnectedTimerRef.current = setTimeout(() => {
+            if (generation !== sessionGenerationRef.current) return;
             disconnectedTimerRef.current = null;
             if (pc === pcRef.current) scheduleReconnect();
           }, DISCONNECTED_DEBOUNCE_MS);
@@ -1446,7 +1471,9 @@ export function useWebRTC(
 
   const armConnectTimeout = useCallback(() => {
     if (connectTimerRef.current) clearTimeout(connectTimerRef.current);
+    const generation = sessionGenerationRef.current;
     connectTimerRef.current = setTimeout(() => {
+      if (generation !== sessionGenerationRef.current) return;
       connectTimerRef.current = null;
       if (sessionEndingRef.current) return;
       // The connect timer is always cancelled by dc.onopen and
@@ -1461,7 +1488,7 @@ export function useWebRTC(
         scheduleReconnect();
       } else {
         // No peer and connect timed out: treat as a timeout end.
-        endSessionRef.current("timeout");
+        endSessionRef.current(hasConnectedRef.current ? "timeout" : "host_not_found");
       }
     }, CONNECT_TIMEOUT_MS);
   }, [scheduleReconnect]);
@@ -1535,6 +1562,7 @@ export function useWebRTC(
     }
     sessionEndingRef.current = true;
     endReasonRef.current = reason;
+    sessionGenerationRef.current++;
     qbLog(`[QB] endSession: reason=${reason}`);
     setStatus("ending");
 
@@ -2641,7 +2669,12 @@ export function useWebRTC(
     setStatus("connecting");
     if (isInitiatorRef.current) {
       qbLog("[QB] manualReconnect: host starting offer");
-      void startOfferRef.current?.();
+      if (startOfferRef.current) {
+        startOfferRef.current().catch((err) => {
+          qbError("[QB] manualReconnect: offer failed", err);
+          endSessionRef.current("transport_lost");
+        });
+      }
     } else {
       qbLog("[QB] manualReconnect: guest sending hello");
       sendSignal({ type: "hello" });
