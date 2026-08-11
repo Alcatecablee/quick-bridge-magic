@@ -28,7 +28,7 @@ import { INTENT_ENVELOPE_VERSION } from "@/lib/continuity-types";
 
 // Dev-only logger: all [QB] debug output is stripped from production builds
 // so the console is quiet for end users without losing diagnostic detail in dev.
-const qbLog = import.meta.env.DEV ? console.log.bind(console) : () => {};
+const qbLog = console.log.bind(console);
 const qbWarn = import.meta.env.DEV ? console.warn.bind(console) : () => {};
 // qbError is always active: these paths represent real failures that need
 // visibility in production (connection drops, IDB writes, crypto errors).

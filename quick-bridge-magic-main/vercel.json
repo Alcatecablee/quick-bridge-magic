@@ -18,7 +18,7 @@
     { "source": "/s/:id", "destination": "/" },
     { "source": "/session/:id", "destination": "/" },
     { "source": "/video", "destination": "/" },
-    { "source": "/(.*)", "destination": "/" }
+    { "source": "/((?!api/|assets/|_vercel/).*)", "destination": "/" }
   ],
   "headers": [
     {
