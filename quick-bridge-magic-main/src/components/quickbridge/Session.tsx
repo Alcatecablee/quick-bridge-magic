@@ -2551,7 +2551,7 @@ myDeviceKindRef.current = myDeviceKind;
       {/* Mandatory save-folder gate: shown on FSA-capable browsers until the
           user selects a valid writable directory. The session transport remains
           connected underneath; only the UI and receive layer are gated. */}
-      {folderGateMode !== null && (
+      {folderGateMode !== null && status !== "ended" && (
         <RequireFolderModal
           mode={folderGateMode}
           folderLabel={resumeDirLabel}
@@ -2561,8 +2561,16 @@ myDeviceKindRef.current = myDeviceKind;
           onLeave={endBridge}
         />
       )}
-      <div className="grid gap-4 md:grid-cols-[1fr_2fr] md:items-start">
+      
+      <div 
+        className={cn(
+          "grid gap-4 md:grid-cols-[1fr_2fr] md:items-start",
+          folderGateMode !== null && status !== "ended" && "pointer-events-none select-none"
+        )}
+        aria-hidden={folderGateMode !== null && status !== "ended"}
+      >
         <div className="space-y-3 md:sticky md:top-6">
+
       <Card
         className={cn(
           "relative overflow-hidden border-border/60 bg-card/70 backdrop-blur transition-shadow",
