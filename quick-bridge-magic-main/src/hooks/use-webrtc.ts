@@ -2347,26 +2347,33 @@ export function useWebRTC(
           subscribeRetries = 0;
           if (aborted) return;
           qbLog(`[QB] tracking presence as ${role}`);
-          await ch.track({
-            role: isInitiator ? "host" : "guest",
-            device: myDeviceKindRef.current,
-            name: deviceNameRef.current ?? "",
-            clientId: myClientIdRef.current,
-            t: Date.now(),
-            caps: {
-              stream: streamToDiskSupported(),
-              save: !!saveDirectoryRef.current,
-              memBytes: detectSafeMemoryBytes(),
-            },
-          });
-          qbLog(`[QB] presence tracked successfully as ${role}`);
-          if (aborted) return;
-          if (!isInitiator) {
-            qbLog("[QB] guest: scheduling hello retries in 800ms");
-            helloBootstrapTimer = setTimeout(() => {
-              helloBootstrapTimer = null;
-              if (!aborted) startHelloRetries();
-            }, 800);
+          try {
+            await ch.track({
+              role: isInitiator ? "host" : "guest",
+              device: myDeviceKindRef.current,
+              name: deviceNameRef.current ?? "",
+              clientId: myClientIdRef.current,
+              t: Date.now(),
+              caps: {
+                stream: streamToDiskSupported(),
+                save: !!saveDirectoryRef.current,
+                memBytes: detectSafeMemoryBytes(),
+              },
+            });
+            qbLog(`[QB] presence tracked successfully as ${role}`);
+            if (aborted) return;
+            if (!isInitiator) {
+              qbLog("[QB] guest: scheduling hello retries in 800ms");
+              helloBootstrapTimer = setTimeout(() => {
+                helloBootstrapTimer = null;
+                if (!aborted) startHelloRetries();
+              }, 800);
+            }
+          } catch (e) {
+            qbLog(`[QB] channel track failed: ${e instanceof Error ? e.message : e}`);
+            // The channel likely transitioned out of 'joined' state due to a race
+            // condition (e.g., phx_leave processing delayed). The Supabase SDK
+            // will soon trigger CHANNEL_ERROR or CLOSED which handles the retry.
           }
         } else if (s === "CHANNEL_ERROR" || s === "TIMED_OUT") {
           if (aborted) return;
