@@ -737,7 +737,7 @@ myDeviceKindRef.current = myDeviceKind;
   useEffect(() => {
     let added = false;
     for (const f of [...incomingFiles, ...outgoingFiles]) {
-      if (f.done && !f.error && !seenForTrustRef.current.has(f.id)) {
+      if ((f.state === "verified" || f.state === "completed") && !f.error && !seenForTrustRef.current.has(f.id)) {
         seenForTrustRef.current.add(f.id);
         added = true;
       }
@@ -933,7 +933,7 @@ myDeviceKindRef.current = myDeviceKind;
     const newlyResumed: string[] = [];
     for (const f of outgoingFiles) {
       const wasRetryable = !!prev[f.id];
-      const isActivelySending = !f.done && !f.error;
+      const isActivelySending = f.state === "sending" || f.state === "resuming";
       if (wasRetryable && isActivelySending) newlyResumed.push(f.id);
       nextRetryable[f.id] = !!(f.error && f.retryable);
     }
@@ -1406,7 +1406,7 @@ myDeviceKindRef.current = myDeviceKind;
   // Drive a low-frequency tick so live transfer rates/ETAs update smoothly.
   useEffect(() => {
     const hasActive =
-      outgoingFiles.some((f) => !f.done && !f.error) || incomingFiles.some((f) => !f.done);
+      outgoingFiles.some((f) => f.state === "sending" || f.state === "resuming") || incomingFiles.some((f) => f.state === "receiving");
     if (!hasActive) return;
     const id = setInterval(() => setNow(Date.now()), 400);
     return () => clearInterval(id);
@@ -1426,7 +1426,8 @@ myDeviceKindRef.current = myDeviceKind;
     let newSuccessCount = 0;
     let newSuccessBytes = 0;
     for (const f of incomingFiles) {
-      if (!f.done || seenReceivedRef.current.has(f.id)) continue;
+      if (f.state !== "verified" && f.state !== "failed" && f.state !== "cancelled") continue;
+      if (seenReceivedRef.current.has(f.id)) continue;
       seenReceivedRef.current.add(f.id);
       if (f.error) continue; // failed transfer: skip toast, sound, and history
       newSuccessCount++;
@@ -1465,7 +1466,7 @@ myDeviceKindRef.current = myDeviceKind;
     let newSuccessCount = 0;
     let newSuccessBytes = 0;
     for (const f of outgoingFiles) {
-      if (f.done && !seenSentRef.current.has(f.id)) {
+      if ((f.state === "completed" || f.state === "failed") && !seenSentRef.current.has(f.id)) {
         seenSentRef.current.add(f.id);
         if (!f.error) { newSuccessCount++; newSuccessBytes += f.size; }
         history.add({
@@ -2173,7 +2174,7 @@ myDeviceKindRef.current = myDeviceKind;
   const folderPromptedRef = useRef(false);
   useEffect(() => {
     if (!streamToDiskSupported || saveDirectory || folderPromptedRef.current) return;
-    const hasIncoming = incomingFiles.some((f) => !f.done);
+    const hasIncoming = incomingFiles.some((f) => f.state === "receiving");
     if (!hasIncoming) return;
     folderPromptedRef.current = true;
     toast("Pick a save folder", {
@@ -2796,9 +2797,13 @@ myDeviceKindRef.current = myDeviceKind;
               <AlertDialogHeader>
                 <AlertDialogTitle>End this bridge?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  {outgoingFiles.filter((f) => !f.done).length + incomingFiles.filter((f) => !f.done).length > 0
-                    ? `${outgoingFiles.filter((f) => !f.done).length + incomingFiles.filter((f) => !f.done).length} transfer${outgoingFiles.filter((f) => !f.done).length + incomingFiles.filter((f) => !f.done).length === 1 ? "" : "s"} in progress will stop. The connection closes immediately.`
-                    : "The connection will close. You can start a new bridge from the home screen at any time."}
+                  {(() => {
+                    const activeCount = outgoingFiles.filter((f) => f.state === "sending" || f.state === "resuming" || f.state === "queued").length
+                      + incomingFiles.filter((f) => f.state === "receiving").length;
+                    return activeCount > 0
+                      ? `${activeCount} transfer${activeCount === 1 ? "" : "s"} in progress will stop. The connection closes immediately.`
+                      : "The connection will close. You can start a new bridge from the home screen at any time.";
+                  })()}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -3021,10 +3026,10 @@ myDeviceKindRef.current = myDeviceKind;
       {connected && (() => {
         const STALL_MS = 45_000;
         const stalledOut = Object.values(outgoingFiles).filter(
-          (f) => !f.done && !f.error && f.sentBytes === 0 && now - f.startedAt > STALL_MS,
+          (f) => (f.state === "sending" || f.state === "resuming") && !f.error && f.sentBytes === 0 && now - f.startedAt > STALL_MS,
         );
         const stalledIn = Object.values(incomingFiles).filter(
-          (f) => !f.done && !f.error && !f.paused && f.receivedBytes === 0 && now - f.startedAt > STALL_MS,
+          (f) => f.state === "receiving" && !f.error && !f.paused && f.receivedBytes === 0 && now - f.startedAt > STALL_MS,
         );
         const count = stalledOut.length + stalledIn.length;
         if (count === 0) return null;
@@ -3210,11 +3215,11 @@ myDeviceKindRef.current = myDeviceKind;
 
       {/* Outgoing */}
       {outgoingFiles.length > 0 && (() => {
-        const allDone = outgoingFiles.every((f) => f.done);
-        const anyInFlight = outgoingFiles.some((f) => !f.done && !f.error);
+        const allDone = outgoingFiles.every((f) => f.state === "completed" || f.state === "failed" || f.state === "cancelled");
+        const anyInFlight = outgoingFiles.some((f) => f.state === "sending" || f.state === "resuming" || f.state === "queued");
         const headerLabel = allDone ? "Sent" : anyInFlight ? "Sending" : "Failed";
         const headerClass = allDone ? "text-success" : "";
-        const activeOutgoing = outgoingFiles.filter((f) => !f.done && !f.error);
+        const activeOutgoing = outgoingFiles.filter((f) => f.state === "sending" || f.state === "resuming" || f.state === "queued");
         return (
         <Card className="space-y-3 p-4">
           <div className="flex items-center justify-between gap-2">
@@ -3276,7 +3281,7 @@ myDeviceKindRef.current = myDeviceKind;
                   value={pct}
                   aria-label={`Sending ${f.name}: ${Math.round(pct)}%`}
                 />
-                {f.done ? (
+                {f.state === "completed" ? (
                   <div className="text-[11px] tabular-nums text-muted-foreground">
                     <span className="inline-flex items-center gap-1 text-success">
                       <CheckCircle2 className="h-3 w-3" /> Sent in {elapsed.toFixed(1)}s
@@ -3390,7 +3395,7 @@ myDeviceKindRef.current = myDeviceKind;
                         {formatBytes(f.receivedBytes)} / {formatBytes(f.size)}
                       </span>
                     </div>
-                    {!f.done ? (
+                    {f.state === "receiving" || f.state === "finalizing" ? (
                       <>
                         <Progress
                           value={pct}

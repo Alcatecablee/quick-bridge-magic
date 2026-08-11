@@ -57,6 +57,8 @@ export type SessionEndReason =
 
 export type ConnectionQuality = "direct" | "relay" | "unknown";
 
+export type IncomingFileState = "receiving" | "finalizing" | "verified" | "failed" | "cancelled";
+
 export interface IncomingFile {
   id: string;
   name: string;
@@ -64,7 +66,7 @@ export interface IncomingFile {
   type: string;
   receivedBytes: number;
   url?: string;
-  done: boolean;
+  state: IncomingFileState;
   startedAt: number;
   completedAt?: number;
   savedToDisk?: boolean;
@@ -93,6 +95,8 @@ export interface IncomingFile {
   resumedAt?: number;
 }
 
+export type OutgoingFileState = "queued" | "sending" | "paused" | "resuming" | "completed" | "failed" | "cancelled";
+
 export interface OutgoingFile {
   id: string;
   name: string;
@@ -104,7 +108,7 @@ export interface OutgoingFile {
   // of sentBytes / elapsed, which would spike to astronomical values right after
   // a resume because elapsed is near zero but sentBytes is already large.
   resumeFromBytes: number;
-  done: boolean;
+  state: OutgoingFileState;
   error?: string;
   retryable?: boolean;
   startedAt: number;
@@ -161,6 +165,7 @@ interface IncomingBuffer {
   // the hash is computed in a single pass without keeping a second copy of
   // the data in memory.
   hasher: IncrementalSha256;
+  createWritableInflight?: Promise<void>;
 }
 
 // Default TURN: Open Relay Project (free, public). Override via env vars below.
@@ -188,6 +193,8 @@ const CHUNK_SIZE = 64 * 1024; // 64KB payload (header adds 16 bytes)
 const HEADER_SIZE = 16; // 16-byte file id (hex of UUID without dashes)
 const CONNECT_TIMEOUT_MS = 12000;
 export const MAX_TEXT_BYTES = 512 * 1024; // 512 KB hard cap on text channel messages (UTF-8 bytes)
+export const MAX_IN_MEMORY_FILE_BYTES = 512 * 1024 * 1024;
+export const MAX_TOTAL_IN_MEMORY_TRANSFER_BYTES = 1024 * 1024 * 1024;
 
 /**
  * Returns true when a string's UTF-8 byte length exceeds MAX_TEXT_BYTES.
@@ -403,6 +410,10 @@ export function useWebRTC(
   // polls this and bails out without marking the row as a retryable error,
   // since the cancel is intentional and the row is removed from the UI.
   const cancelledOutgoingIdsRef = useRef<Set<string>>(new Set());
+  // Running total of bytes held in in-memory incoming transfer buffers.
+  // Incremented on every memoryChunks push, decremented when buffers are
+  // flushed to disk or released on completion/abort/cancel.
+  const incomingMemoryBytesRef = useRef(0);
   // One-shot timers per partial incoming transfer. Scheduled when the
   // connection drops mid-transfer; on fire we run the same destructive
   // cleanup teardown used to do immediately. Cleared if the sender resumes
@@ -579,6 +590,7 @@ export function useWebRTC(
             // synchronously, so a click between "timer scheduled" and
             // "timer fires" is honored here, not silently overridden.
             if (cancelledOutgoingIdsRef.current.has(id)) continue;
+            if (file.state === "cancelled" || file.state === "completed") continue;
             if (!file.retryable) continue;
             if (!fileSourcesRef.current[id]) continue;
             if (attemptedAutoResumeIdsRef.current.has(id)) continue;
@@ -665,7 +677,7 @@ export function useWebRTC(
           s[id]
             ? {
                 ...s,
-                [id]: { ...s[id], error: message, done: true, completedAt: Date.now() },
+                [id]: { ...s[id], error: message, state: "failed", completedAt: Date.now() },
               }
             : s,
         );
@@ -859,7 +871,7 @@ export function useWebRTC(
                   size: meta.size,
                   type: meta.type,
                   receivedBytes: 0,
-                  done: false,
+                  state: "receiving",
                   startedAt: Date.now(),
                 },
               }));
@@ -896,7 +908,7 @@ export function useWebRTC(
                               [meta.id]: {
                                 ...s[meta.id],
                                 error: reason,
-                                done: true,
+                                state: "failed",
                                 completedAt: Date.now(),
                               },
                             }
@@ -907,53 +919,52 @@ export function useWebRTC(
                     }
                   }
                   try {
-                    const { writable, finalName, cleanup } = await createWritableForName(
-                      dir.handle,
-                      meta.name,
-                    );
                     const live = incomingBuffersRef.current[meta.id];
-                    if (!live || live.aborted) {
-                      // Already cancelled/aborted - discard and clean up.
-                      try {
-                        await (writable as unknown as { abort?: () => Promise<void> })
-                          .abort?.();
-                      } catch {}
-                      try {
-                        await writable.close();
-                      } catch {}
-                      try {
-                        await cleanup();
-                      } catch {}
-                      return;
-                    }
-                    const queued = live.memoryChunks;
-                    live.memoryChunks = []; // free memory
-                    live.writer = writable;
-                    live.finalName = finalName;
-                    live.savedToDisk = true;
-                    live.cleanup = cleanup;
-                    // Record this transfer so we can locate and remove the
-                    // partial on-disk file if the receiver refreshes before
-                    // the transfer completes (see file-start resume handler).
-                    void persistInFlightTransfer(meta.id, finalName, meta.size).catch(err =>
-                      qbError("[QB] IDB: persistInFlightTransfer failed - resume will restart from 0 if disconnected", err),
-                    );
-                    // Flush any chunks that arrived before the writable opened.
-                    // Errors here go through the same abort path as live writes.
-                    live.writeQueue = live.writeQueue.then(async () => {
-                      for (const c of queued) {
-                        if (live.aborted) return;
+                    if (!live || live.aborted) return;
+                    live.createWritableInflight = (async () => {
+                      const { writable, finalName, cleanup } = await createWritableForName(
+                        dir.handle,
+                        meta.name,
+                      );
+                      const currentLive = incomingBuffersRef.current[meta.id];
+                      if (!currentLive || currentLive.aborted) {
                         try {
-                          await writable.write(c as BufferSource);
-                        } catch (err) {
-                          abortIncomingDueToWriteError(meta.id, err);
-                          return;
-                        }
+                          await (writable as unknown as { abort?: () => Promise<void> }).abort?.();
+                        } catch {}
+                        try {
+                          await writable.close();
+                        } catch {}
+                        try {
+                          await cleanup();
+                        } catch {}
+                        return;
                       }
-                    });
+                      const queued = currentLive.memoryChunks;
+                      currentLive.memoryChunks = []; // free memory
+                      incomingMemoryBytesRef.current -= queued.reduce((acc, c) => acc + c.byteLength, 0);
+                      currentLive.writer = writable;
+                      currentLive.finalName = finalName;
+                      currentLive.savedToDisk = true;
+                      currentLive.cleanup = cleanup;
+                      void persistInFlightTransfer(meta.id, finalName, meta.size).catch(err =>
+                        qbError("[QB] IDB: persistInFlightTransfer failed - resume will restart from 0 if disconnected", err),
+                      );
+                      currentLive.writeQueue = currentLive.writeQueue.then(async () => {
+                        for (const c of queued) {
+                          if (currentLive.aborted) return;
+                          try {
+                            await writable.write(c as BufferSource);
+                          } catch (err) {
+                            abortIncomingDueToWriteError(meta.id, err);
+                            return;
+                          }
+                        }
+                      });
+                    })();
+                    await live.createWritableInflight;
                     setIncomingFiles((s) =>
                       s[meta.id]
-                        ? { ...s, [meta.id]: { ...s[meta.id], savedToDisk: true, savedAs: finalName } }
+                        ? { ...s, [meta.id]: { ...s[meta.id], savedToDisk: true, savedAs: live.finalName ?? undefined } }
                         : s,
                     );
                   } catch (err) {
@@ -977,6 +988,12 @@ export function useWebRTC(
               const buf = incomingBuffersRef.current[id];
               if (buf) {
                 buf.aborted = true;
+                // Release memory accounting for any buffered in-memory chunks.
+                if (!buf.writer && buf.memoryChunks.length > 0) {
+                  const freed = buf.memoryChunks.reduce((acc, c) => acc + c.byteLength, 0);
+                  incomingMemoryBytesRef.current = Math.max(0, incomingMemoryBytesRef.current - freed);
+                  buf.memoryChunks = [];
+                }
                 if (buf.writer) {
                   const writer = buf.writer;
                   const cleanup = buf.cleanup;
@@ -1032,6 +1049,7 @@ export function useWebRTC(
                       ...s,
                       [id]: {
                         ...s[id],
+                        state: "failed",
                         error: reason,
                         retryable: !!fileSourcesRef.current[id],
                       },
@@ -1042,12 +1060,24 @@ export function useWebRTC(
               // Receiver tells us the actual byte offset they have. We
               // always honor their number, even if it's lower than ours,
               // so the file can never contain a hole.
+              // Delete the resolver before calling it to guarantee idempotency:
+              // a duplicate or late ACK will find no resolver and be ignored
+              // safely, preventing double-resume or state corruption.
               if (typeof msg.id !== "string" || !msg.id) return;
               const id = msg.id;
               const offset: number =
                 typeof msg.offset === "number" && msg.offset >= 0 ? msg.offset : 0;
               const resolver = resumeAckResolversRef.current[id];
-              if (resolver) resolver(offset);
+              if (resolver) {
+                delete resumeAckResolversRef.current[id];
+                // Cancel the timeout so it doesn't fire a redundant failure
+                // after the ACK has already been successfully processed.
+                if (resumeAckTimersRef.current[id]) {
+                  clearTimeout(resumeAckTimersRef.current[id]);
+                  delete resumeAckTimersRef.current[id];
+                }
+                resolver(offset);
+              }
             } else if (msg.t === "file-end") {
               if (typeof msg.id !== "string" || !msg.id) return;
               const id = msg.id;
@@ -1062,41 +1092,65 @@ export function useWebRTC(
               const receivedDigest = buf.hasher.digest();
               const verified: boolean | undefined =
                 senderSha256 !== undefined ? senderSha256 === receivedDigest : undefined;
-              if (buf.writer) {
-                const writer = buf.writer;
-                const finalName = buf.finalName;
-                buf.writeQueue
-                  .then(async () => {
-                    try {
+              void (async () => {
+                if (buf.createWritableInflight) {
+                  await buf.createWritableInflight;
+                }
+                if (buf.writer) {
+                  const writer = buf.writer;
+                  const finalName = buf.finalName;
+                  buf.writeQueue
+                    .then(async () => {
                       await writer.close();
-                    } catch {}
-                  })
-                  .finally(() => {
-                    setIncomingFiles((s) =>
-                      s[id]
-                        ? {
-                            ...s,
-                            [id]: {
-                              ...s[id],
-                              receivedBytes: buf.meta.size,
-                              done: true,
-                              savedToDisk: true,
-                              savedAs: finalName ?? s[id].name,
-                              completedAt: Date.now(),
-                              sha256: senderSha256,
-                              verified,
-                            },
-                          }
-                        : s,
-                    );
-                    delete incomingBuffersRef.current[id];
-                    // Remove the in-flight IndexedDB record now that the file
-                    // is fully written and closed on disk.
-                    void clearInFlightTransfer(id).catch(err =>
-                      qbError("[QB] IDB: clearInFlightTransfer failed after file-end", err),
-                    );
-                  });
+                    })
+                    .then(() => {
+                      setIncomingFiles((s) =>
+                        s[id]
+                          ? {
+                              ...s,
+                              [id]: {
+                                ...s[id],
+                                receivedBytes: buf.meta.size,
+                                state: verified ? "verified" : "finalizing",
+                                savedToDisk: true,
+                                savedAs: finalName ?? undefined,
+                                completedAt: Date.now(),
+                                sha256: senderSha256,
+                                verified,
+                              },
+                            }
+                          : s,
+                      );
+                      delete incomingBuffersRef.current[id];
+                      void clearInFlightTransfer(id).catch(err =>
+                        qbError("[QB] IDB: clearInFlightTransfer failed after file-end", err),
+                      );
+                    })
+                    .catch((err) => {
+                      setIncomingFiles((s) =>
+                        s[id]
+                          ? {
+                              ...s,
+                              [id]: {
+                                ...s[id],
+                                state: "failed",
+                                error: "Disk write failed",
+                                completedAt: Date.now(),
+                              },
+                            }
+                          : s,
+                      );
+                      delete incomingBuffersRef.current[id];
+                      void clearInFlightTransfer(id).catch(err =>
+                        qbError("[QB] IDB: clearInFlightTransfer failed after write error", err),
+                      );
+                    });
               } else {
+                // Release the memory accounting before building the Blob
+                // so the counter doesn't remain elevated while the Blob
+                // itself uses its own (separate) managed heap.
+                const freedBytes = buf.memoryChunks.reduce((acc, c) => acc + c.byteLength, 0);
+                incomingMemoryBytesRef.current = Math.max(0, incomingMemoryBytesRef.current - freedBytes);
                 const blob = new Blob(buf.memoryChunks as BlobPart[], { type: buf.meta.type });
                 const url = URL.createObjectURL(blob);
                 objectUrlsRef.current.push(url);
@@ -1106,7 +1160,7 @@ export function useWebRTC(
                     ...s[id],
                     receivedBytes: buf.meta.size,
                     url,
-                    done: true,
+                    state: verified ? "verified" : "finalizing",
                     completedAt: Date.now(),
                     sha256: senderSha256,
                     verified,
@@ -1114,6 +1168,7 @@ export function useWebRTC(
                 }));
                 delete incomingBuffersRef.current[id];
               }
+            })();
             } else if (msg.t === "node-hello") {
               const hello = validateNodeHello(msg);
               if (hello) {
@@ -1223,6 +1278,47 @@ export function useWebRTC(
               }
             });
           } else {
+            // Memory-only path: enforce per-file and total limits before
+            // buffering. Exceeding either triggers a hard abort so a large
+            // transfer (or several concurrent ones) can't OOM the browser tab.
+            const newFileBytes = buf.received + payload.byteLength;
+            const newTotalBytes = incomingMemoryBytesRef.current + payload.byteLength;
+            if (
+              newFileBytes > MAX_IN_MEMORY_FILE_BYTES ||
+              newTotalBytes > MAX_TOTAL_IN_MEMORY_TRANSFER_BYTES
+            ) {
+              // Release already-buffered bytes before aborting.
+              const alreadyBuffered = buf.memoryChunks.reduce((acc, c) => acc + c.byteLength, 0);
+              incomingMemoryBytesRef.current = Math.max(0, incomingMemoryBytesRef.current - alreadyBuffered);
+              buf.aborted = true;
+              cancelledIdsRef.current.add(id);
+              buf.memoryChunks = [];
+              try {
+                dcRef.current?.send(
+                  JSON.stringify({
+                    t: "file-abort",
+                    id,
+                    reason: "Memory limit exceeded on the receiving device",
+                  }),
+                );
+              } catch {}
+              setIncomingFiles((s) =>
+                s[id]
+                  ? {
+                      ...s,
+                      [id]: {
+                        ...s[id],
+                        state: "failed",
+                        error: "File too large to receive in memory. Use a browser with File System Access API (e.g. Chrome) to receive large files.",
+                        completedAt: Date.now(),
+                      },
+                    }
+                  : s,
+              );
+              delete incomingBuffersRef.current[id];
+              return;
+            }
+            incomingMemoryBytesRef.current += payload.byteLength;
             buf.memoryChunks.push(payload);
           }
           buf.received += payload.byteLength;
@@ -1340,7 +1436,7 @@ export function useWebRTC(
         const next = { ...s };
         for (const id of Object.keys(next)) {
           const f = next[id];
-          if (!f.done && !f.error) {
+          if (f.state !== "completed" && f.state !== "failed" && f.state !== "cancelled" && !f.error) {
             next[id] = { ...f, error: "Connection lost", retryable: !!fileSourcesRef.current[id] };
           }
         }
@@ -1574,7 +1670,7 @@ export function useWebRTC(
       const next = { ...s };
       for (const id of Object.keys(next)) {
         const f = next[id];
-        if (!f.done && !f.error) {
+        if (f.state !== "completed" && f.state !== "failed" && f.state !== "cancelled" && !f.error) {
           // Tell the peer we are stopping so they don't wait indefinitely.
           try {
             if (dc && dc.readyState === "open") {
@@ -1593,7 +1689,7 @@ export function useWebRTC(
       const next = { ...s };
       for (const id of Object.keys(next)) {
         const f = next[id];
-        if (!f.done && !f.error) {
+        if (f.state !== "verified" && f.state !== "failed" && f.state !== "cancelled" && !f.error) {
           const buf = incomingBuffersRef.current[id];
           if (buf && !buf.aborted) {
             buf.aborted = true;
@@ -1611,7 +1707,7 @@ export function useWebRTC(
             delete incomingBuffersRef.current[id];
             void clearInFlightTransfer(id).catch(() => {});
           }
-          next[id] = { ...f, error: "Bridge ended", done: false };
+          next[id] = { ...f, error: "Bridge ended", state: "failed" };
         }
       }
       return next;
@@ -1715,6 +1811,12 @@ export function useWebRTC(
       live.aborted = true;
       const writer = live.writer;
       const cleanup = live.cleanup;
+      // Release memory accounting for in-memory chunks on teardown.
+      if (!writer && live.memoryChunks.length > 0) {
+        const freed = live.memoryChunks.reduce((acc, c) => acc + c.byteLength, 0);
+        incomingMemoryBytesRef.current = Math.max(0, incomingMemoryBytesRef.current - freed);
+        live.memoryChunks = [];
+      }
       if (writer) {
         live.writeQueue
           .then(async () => {
@@ -1745,7 +1847,7 @@ export function useWebRTC(
       // Resumable: only when there's actual progress worth saving.
       if (buf.received > 0) {
         setIncomingFiles((s) =>
-          s[id] && !s[id].done
+          s[id] && s[id].state === "receiving"
             ? { ...s, [id]: { ...s[id], paused: true, pausedAt: Date.now(), error: undefined } }
             : s,
         );
@@ -1756,7 +1858,7 @@ export function useWebRTC(
           performHardCleanup(id);
           setIncomingFiles((s) => {
             const cur = s[id];
-            if (!cur || cur.done) return s;
+            if (!cur || cur.state === "verified" || cur.state === "failed" || cur.state === "cancelled") return s;
             return {
               ...s,
               [id]: {
@@ -1764,7 +1866,7 @@ export function useWebRTC(
                 paused: false,
                 pausedAt: undefined,
                 error: "Connection lost - sender did not return in time",
-                done: true,
+                state: "failed",
                 completedAt: Date.now(),
               },
             };
@@ -1777,13 +1879,13 @@ export function useWebRTC(
       performHardCleanup(id);
       setIncomingFiles((s) => {
         const cur = s[id];
-        if (!cur || cur.done) return s;
+        if (!cur || cur.state === "verified" || cur.state === "failed" || cur.state === "cancelled") return s;
         return {
           ...s,
           [id]: {
             ...cur,
             error: "Connection interrupted - partial file removed",
-            done: true,
+            state: "failed",
             completedAt: Date.now(),
           },
         };
@@ -2362,7 +2464,7 @@ export function useWebRTC(
           // sentBytes / elapsed, which spikes astronomically right after a
           // resume because elapsed is near zero but sentBytes is large.
           resumeFromBytes: safeStart,
-          done: false,
+          state: "sending",
           startedAt: Date.now(),
           error: undefined,
           retryable: false,
@@ -2545,7 +2647,7 @@ export function useWebRTC(
           } catch {}
           setOutgoingFiles((s) => ({
             ...s,
-            [id]: { ...s[id], sentBytes: file.size, done: true, completedAt: Date.now(), error: undefined, retryable: false },
+            [id]: { ...s[id], sentBytes: file.size, state: "completed", completedAt: Date.now(), error: undefined, retryable: false },
           }));
           // Successful: drop the cached source to free memory
           delete fileSourcesRef.current[id];
@@ -2555,8 +2657,12 @@ export function useWebRTC(
           // and notified the peer. Don't resurrect the row or mark retryable.
           if (!cancelledOutgoingIdsRef.current.has(id)) {
             setOutgoingFiles((s) =>
-              s[id] ? { ...s, [id]: { ...s[id], error: message, retryable: true } } : s,
+              s[id] ? { ...s, [id]: { ...s[id], state: "failed", error: message, retryable: true } } : s,
             );
+          } else {
+            // Cancelled by user: clean up the ID so it can never re-poison
+            // a future transfer with the same ID.
+            cancelledOutgoingIdsRef.current.delete(id);
           }
           try {
             reader.cancel();
@@ -2626,6 +2732,7 @@ export function useWebRTC(
   // source so a stale Retry can't resurrect it, and removes the row from
   // the UI immediately so the cancel feels instant.
   const cancelOutgoing = useCallback((id: string) => {
+    // Signal the send loop to bail out on the next chunk boundary.
     cancelledOutgoingIdsRef.current.add(id);
     delete fileSourcesRef.current[id];
     peerAbortedSendIdsRef.current.delete(id);
@@ -2635,6 +2742,9 @@ export function useWebRTC(
         dc.send(JSON.stringify({ t: "file-cancel", id }));
       }
     } catch {}
+    // Remove the row immediately and transition to the cancelled terminal
+    // state. The send loop will also see cancelledOutgoingIdsRef and
+    // delete the ID from the set once it exits, preventing ID poisoning.
     setOutgoingFiles((s) => {
       if (!s[id]) return s;
       const next = { ...s };
