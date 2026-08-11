@@ -317,6 +317,10 @@ function Home() {
               "Close other QuickBridge tabs then reload to enable trusted devices.",
             duration: 8000,
           });
+        } else {
+          toast.error("Could not load device identity", {
+            description: "Trusted device features may not be available.",
+          });
         }
       });
   }, [browserSupported]);
@@ -404,7 +408,14 @@ function Home() {
     channel.on("broadcast", { event: "lookup" }, () => {
       channel.send({ type: "broadcast", event: "match", payload: { sessionId } });
     });
-    channel.subscribe();
+    channel.subscribe((status, err) => {
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        console.warn("[QB] PIN channel subscribe failed", status, err);
+        toast.error("PIN lookup unavailable", {
+          description: "Signaling connection failed. Ask your peer to share a link instead.",
+        });
+      }
+    });
     return () => {
       try {
         supabase.removeChannel(channel);
@@ -595,9 +606,12 @@ function Home() {
               className="h-8 gap-1.5 px-2.5 text-[11px]"
               onClick={() => {
                 if (typeof document !== "undefined") {
-                  document
-                    .getElementById("qr")
-                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  setPairingOpen(true);
+                  requestAnimationFrame(() => {
+                    const el = document.getElementById("qr");
+                    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    el?.focus({ preventScroll: true });
+                  });
                 }
               }}
               title="Go to QR code"
@@ -610,7 +624,11 @@ function Home() {
       />
       <main className="relative mx-auto max-w-6xl px-4 pb-28 pt-8 sm:px-6 sm:pt-14">
         {resumeTarget && (
-          <div className="mx-auto mb-8 flex max-w-5xl flex-col items-start gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div
+            role="region"
+            aria-label="Active session"
+            className="mx-auto mb-8 flex max-w-5xl flex-col items-start gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
+          >
             <div className="min-w-0">
               <p className="text-sm font-semibold text-foreground">
                 You have an active bridge
@@ -624,9 +642,32 @@ function Home() {
               <Button onClick={goResume} className="h-9 flex-1 sm:flex-none">
                 Resume bridge
               </Button>
-              <Button onClick={dismissResume} variant="ghost" className="h-9 text-muted-foreground">
-                Dismiss
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" className="h-9 text-muted-foreground">
+                    Dismiss
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Abandon active bridge?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will end your current session. Your peer will be disconnected.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Keep session</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => {
+                        clearActiveSession();
+                        setResumeTarget(null);
+                      }}
+                    >
+                      End session
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         )}
@@ -635,9 +676,12 @@ function Home() {
         <HeroSection
           onScrollToQR={() => {
             if (typeof document !== "undefined") {
-              document
-                .getElementById("qr")
-                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              setPairingOpen(true);
+              requestAnimationFrame(() => {
+                const el = document.getElementById("qr");
+                el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                el?.focus({ preventScroll: true });
+              });
             }
           }}
         />
@@ -661,9 +705,11 @@ function Home() {
                 const opening = !pairingOpen;
                 setPairingOpen(opening);
                 if (opening && typeof document !== "undefined") {
-                  setTimeout(() => {
-                    document.getElementById("qr")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }, 80);
+                  requestAnimationFrame(() => {
+                    const el = document.getElementById("qr");
+                    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    el?.focus({ preventScroll: true });
+                  });
                 }
               }}
             />
@@ -690,12 +736,19 @@ function Home() {
 
         {/* Cards - pairing UI. Hidden for returning users until they expand
             "Add another device". First-time visitors see it immediately once
-            IDB confirms they have no trusted devices (pairingOpen auto-sets). */}
-        {(!hasTrustedDevices || pairingOpen) && (
+            IDB confirms they have no trusted devices (pairingOpen auto-sets).
+            Guard also waits for trustedLoading to complete to prevent CLS:
+            showing then immediately hiding the QR card when IDB confirms
+            the user has trusted devices. */}
+        {((!hasTrustedDevices && !trustedLoading) || pairingOpen) ? (
         <Reveal as="section" id="pair" className={hasTrustedDevices ? "mt-8" : "mt-24 scroll-mt-24 sm:mt-32"}>
           <div className="mx-auto grid max-w-5xl gap-5 sm:gap-6 lg:grid-cols-5">
             {/* QR / pair card */}
-            <Card id="qr" className="relative overflow-hidden border-border/80 bg-card/90 p-5 shadow-lg shadow-black/10 sm:p-7 lg:col-span-3 scroll-mt-24">
+            <Card
+              id="qr"
+              tabIndex={-1}
+              className="relative overflow-hidden border-border/80 bg-card/90 p-5 shadow-lg shadow-black/10 sm:p-7 lg:col-span-3 scroll-mt-24"
+            >
               {/* Card header - stacks on mobile */}
               <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -765,12 +818,12 @@ function Home() {
                 <div className="flex w-full min-w-0 flex-1 flex-col gap-3">
                   {/* Mobile-first action row: Share + Copy */}
                   <div className="grid grid-cols-2 gap-2 sm:hidden">
-                    <Button onClick={sharePairLink} className="h-11">
-                      <Share2 className="mr-2 h-4 w-4" />
+                    <Button onClick={sharePairLink} disabled={!pairUrl} className="h-11">
+                      <Share2 className="mr-2 h-4 w-4" aria-hidden="true" />
                       {canShare ? "Share link" : "Copy link"}
                     </Button>
-                    <Button onClick={copyPairLink} variant="outline" className="h-11">
-                      <Copy className="mr-2 h-4 w-4" /> Copy
+                    <Button onClick={copyPairLink} disabled={!pairUrl} variant="outline" className="h-11">
+                      <Copy className="mr-2 h-4 w-4" aria-hidden="true" /> Copy
                     </Button>
                   </div>
 
@@ -860,13 +913,18 @@ function Home() {
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2">
+                      <div
+                        role="status"
+                        aria-live="polite"
+                        aria-atomic="true"
+                        className="flex items-center gap-2"
+                      >
                         {waitingPing ? (
-                          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />
+                          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" aria-hidden="true" />
                         ) : (
-                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/60 animate-pulse" />
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/60 animate-pulse" aria-hidden="true" />
                         )}
-                        <span>{waitingPing ? "Device detected. Opening session…" : "Waiting for a device to scan…"}</span>
+                        <span>{waitingPing ? "Device detected. Opening session..." : "Waiting for a device to scan..."}</span>
                       </div>
                     )}
                   </div>
@@ -886,10 +944,18 @@ function Home() {
                     setScanning(false);
                     try {
                       const url = new URL(text);
-                      if (typeof window !== "undefined" && url.origin === window.location.origin) {
+                      const isSameOrigin =
+                        typeof window !== "undefined" &&
+                        url.origin === window.location.origin;
+                      const isValidQBRoute =
+                        url.pathname.startsWith("/s/") ||
+                        url.pathname.startsWith("/session/");
+                      if (isSameOrigin && isValidQBRoute) {
                         navigate({ to: url.pathname + url.search + url.hash });
                       } else {
-                        window.location.href = url.toString();
+                        toast.error("QR code links to an unsupported page", {
+                          description: "Only QuickBridge session QR codes are supported.",
+                        });
                       }
                     } catch {
                       toast.error("Invalid QR");
@@ -922,16 +988,22 @@ function Home() {
             </Card>
           </div>
         </Reveal>
-        )}
+        ) : trustedLoading ? (
+          // Skeleton placeholder: reserves space while IDB resolves trusted devices,
+          // preventing layout shift for returning users.
+          <div className="mt-24 sm:mt-32">
+            <div className="mx-auto max-w-5xl">
+              <div className="h-72 animate-pulse rounded-2xl bg-muted/30" />
+            </div>
+          </div>
+        ) : null}
 
-        {/* Compatibility and Features sections removed */}
 
         {/* FAQ */}
         <Reveal as="section" id="faq" className="mt-24 scroll-mt-24 sm:mt-32">
           <FaqSection />
         </Reveal>
 
-        {/* Cross-promo & CTA removed */}
 
         {/* Site-wide footer (shared with /why-quickbridge, /airdrop-alternative,
             and forthcoming /compare/* and /use/* pages). Single source of truth
@@ -939,7 +1011,6 @@ function Home() {
         <SiteFooter />
       </main>
 
-      {/* Sticky CTA removed */}
     </>
   );
 }

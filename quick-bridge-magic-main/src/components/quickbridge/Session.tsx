@@ -247,6 +247,51 @@ function PausedTransferToast({
   );
 }
 
+function IosDownloadButton({ f }: { f: IncomingFile }) {
+  const [isSaving, setIsSaving] = useState(false);
+  return (
+    <Button
+      size="sm"
+      variant="secondary"
+      disabled={isSaving}
+      onClick={async () => {
+        const isiOS =
+          typeof navigator !== "undefined" &&
+          /iphone|ipad|ipod/i.test(navigator.userAgent);
+        if (isiOS && navigator.share) {
+          setIsSaving(true);
+          try {
+            const res = await fetch(f.url!);
+            const blob = await res.blob();
+            const file = new File([blob], f.name, { type: f.type || blob.type });
+            if (navigator.canShare?.({ files: [file] })) {
+              await navigator.share({ files: [file], title: f.name });
+              return;
+            }
+          } catch {
+            // fall through to anchor download
+          } finally {
+            setIsSaving(false);
+          }
+        }
+        const a = document.createElement("a");
+        a.href = f.url!;
+        a.download = f.name;
+        a.click();
+      }}
+    >
+      {isSaving ? (
+        <Loader2 className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />
+      ) : (
+        <Download className="mr-1 h-4 w-4" aria-hidden="true" />
+      )}
+      {typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent)
+        ? "Save"
+        : "Download"}
+    </Button>
+  );
+}
+
 export function Session({ sessionId, isInitiator }: Props) {
   // Persisted device name
   const [deviceName, setDeviceName] = useState<string>(() => readString(StorageKeys.deviceName) ?? "");
@@ -258,6 +303,8 @@ export function Session({ sessionId, isInitiator }: Props) {
   // diagnostic card to bypass strict firewalls. Cleared automatically when the
   // connection succeeds so it doesn't persist into the next session.
   const [forceRelay, setForceRelay] = useState(false);
+  const [isTrustingReset, setIsTrustingReset] = useState(false);
+  const [isRequestingNotif, setIsRequestingNotif] = useState(false);
 
   // Phase 2: node identity and trusted device state.
   // Drive the TrustPrompt card shown after the first successful transfer.
@@ -465,6 +512,7 @@ export function Session({ sessionId, isInitiator }: Props) {
     retryFile,
     cancelOutgoing,
     dismissOutgoing,
+    undismissOutgoing,
     cancelIncoming,
     releaseIncoming,
     peerCaps,
@@ -974,7 +1022,20 @@ myDeviceKindRef.current = myDeviceKind;
   // found" at 6 s almost guarantees a false-positive dead-end on those
   // networks; 30 s gives the host ample time to be ready.
   const [hostMissing, setHostMissing] = useState(false);
+  const [retryCount, setRetryCount] = useState(() => {
+    try {
+      return parseInt(sessionStorage.getItem(`qb:retry:${sessionId}`) || "0", 10);
+    } catch {
+      return 0;
+    }
+  });
   const [stillTrying, setStillTrying] = useState(false);
+  useEffect(() => {
+    if (status === "connected") {
+      try { sessionStorage.removeItem(`qb:retry:${sessionId}`); } catch {}
+    }
+  }, [status, sessionId]);
+
   useEffect(() => {
     if (isInitiator) return;
     if (peerPresent || status !== "waiting") {
@@ -1239,7 +1300,12 @@ myDeviceKindRef.current = myDeviceKind;
         .then(() => toast.success("Link copied to clipboard"))
         .catch(() => toast.error("Could not copy link"));
     if (typeof navigator !== "undefined" && navigator.share) {
-      navigator.share({ title: "QuickBridge", text, url }).catch(copyFallback);
+      navigator.share({ title: "QuickBridge", text, url }).catch((err: unknown) => {
+        // User deliberately dismissed the share sheet: do nothing.
+        // DOMException check is more robust than relying on err.name across browsers.
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        copyFallback();
+      });
     } else {
       copyFallback();
     }
@@ -1253,12 +1319,24 @@ myDeviceKindRef.current = myDeviceKind;
     toast(`Discarded ${dropped} queued file${dropped === 1 ? "" : "s"}`);
   }, []);
 
-  const discardPendingFile = useCallback((index: number) => {
+  const reinsertPendingFile = useCallback((f: File, index: number) => {
+    pendingFilesRef.current.splice(index, 0, f);
+    setPendingFiles([...pendingFilesRef.current]);
+  }, []);
+
+  const discardPendingFile = useCallback((index: number, showUndo = true) => {
     const f = pendingFilesRef.current[index];
     if (!f) return;
     pendingFilesRef.current.splice(index, 1);
     setPendingFiles([...pendingFilesRef.current]);
-    toast(`Removed "${f.name}" from queue`);
+    if (showUndo) {
+      toast(`Removed "${f.name}" from queue`, {
+        duration: 5000,
+        action: { label: "Undo", onClick: () => reinsertPendingFile(f, index) },
+      });
+    } else {
+      toast(`Removed "${f.name}" from queue`);
+    }
   }, []);
 
   // One-time hint shown the first time a touch user opens the file picker:
@@ -1891,27 +1969,38 @@ myDeviceKindRef.current = myDeviceKind;
       const tag = target?.tagName?.toLowerCase();
       if (tag === "input" || tag === "textarea" || target?.isContentEditable) return;
       if (!e.clipboardData) return;
-      const { files, text: pastedText, hadContent } = await readPaste(e);
-      if (files.length > 0) {
-        e.preventDefault();
-        await handleFiles(files);
-        return;
-      }
-      if (pastedText && pastedText.trim()) {
-        e.preventDefault();
-        if (sendText(pastedText, "clipboard")) {
-          toast.success("Pasted clipboard sent");
+      try {
+        const { files, text: pastedText, hadContent } = await readPaste(e);
+        if (files.length > 0) {
+          e.preventDefault();
+          await handleFiles(files);
+          return;
         }
-        return;
-      }
-      // The user pressed Cmd/Ctrl+V but the clipboard contained something
-      // we can't send (e.g. a rich-text table, HTML, or a browser-internal
-      // type). Let them know instead of silently ignoring the gesture.
-      if (hadContent) {
-        e.preventDefault();
-        toast("Nothing to send", {
-          description: "That clipboard content can't be transferred. Try copying plain text or an image.",
-        });
+        if (pastedText && pastedText.trim()) {
+          e.preventDefault();
+          const result = sendText(pastedText, "clipboard");
+          if (result.ok) {
+            toast.success("Pasted clipboard sent");
+          } else if (result.reason === "too_large") {
+            toast.error("Message too large to send");
+          } else if (result.reason === "not_open") {
+            toast.error("Not connected");
+          } else {
+            toast.error("Failed to send");
+          }
+          return;
+        }
+        // The user pressed Cmd/Ctrl+V but the clipboard contained something
+        // we can't send (e.g. a rich-text table, HTML, or a browser-internal
+        // type). Let them know instead of silently ignoring the gesture.
+        if (hadContent) {
+          e.preventDefault();
+          toast("Nothing to send", {
+            description: "That clipboard content can't be transferred. Try copying plain text or an image.",
+          });
+        }
+      } catch {
+        toast.error("Could not read clipboard");
       }
     };
     document.addEventListener("paste", onPaste);
@@ -1946,7 +2035,7 @@ myDeviceKindRef.current = myDeviceKind;
       toast.error("Clipboard is empty");
       return;
     }
-    if (sendText(t, "clipboard")) toast.success("Clipboard sent");
+    if (sendText(t, "clipboard").ok) toast.success("Clipboard sent");
     else toast.error("Not connected");
   }, [readClipboardSafe, sendText]);
 
@@ -2157,14 +2246,18 @@ myDeviceKindRef.current = myDeviceKind;
       });
       return;
     }
-    const dir = await pickSaveDirectory();
-    if (dir) {
-      setSaveDirectory(dir);
-      setResumeDirLabel(null);
-      toast.success(`Saving incoming files to ${dir.label}`, {
-        description: "Files sent to you will land here directly - no download button needed.",
-      });
-    } else {
+    try {
+      const dir = await pickSaveDirectory();
+      if (dir) {
+        setSaveDirectory(dir);
+        setResumeDirLabel(null);
+        toast.success(`Saving incoming files to ${dir.label}`, {
+          description: "Files sent to you will land here directly - no download button needed.",
+        });
+      } else {
+        toast.error("Couldn't open folder picker");
+      }
+    } catch {
       toast.error("Couldn't open folder picker");
     }
   }, [saveDirectory, setSaveDirectory]);
@@ -2214,17 +2307,24 @@ myDeviceKindRef.current = myDeviceKind;
   }, [streamToDiskSupported, setSaveDirectory]);
 
   const handleResumeStreamToDisk = useCallback(async () => {
-    const dir = await requestPersistedDirectoryPermission();
-    if (dir) {
-      setSaveDirectory(dir);
-      setResumeDirLabel(null);
-      toast.success(`Saving incoming files to ${dir.label}`, {
-        description: "Files sent to you will land here directly - no download button needed.",
-      });
-    } else {
+    try {
+      const dir = await requestPersistedDirectoryPermission();
+      if (dir) {
+        setSaveDirectory(dir);
+        setResumeDirLabel(null);
+        toast.success(`Saving incoming files to ${dir.label}`, {
+          description: "Files sent to you will land here directly - no download button needed.",
+        });
+      } else {
+        setResumeDirLabel(null);
+        toast.error("Folder access denied", {
+          description: "Pick a new folder to stream files to disk.",
+        });
+      }
+    } catch {
       setResumeDirLabel(null);
       toast.error("Folder access denied", {
-        description: "Pick a new folder to stream files to disk.",
+        description: "The browser blocked access to that folder. Pick a new one to continue.",
       });
     }
   }, [setSaveDirectory]);
@@ -2367,26 +2467,35 @@ myDeviceKindRef.current = myDeviceKind;
       <div className="mx-auto w-full max-w-md py-12">
         <Card className="space-y-4 border-border bg-card/80 p-6 text-center">
           <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <HelpCircle className="h-5 w-5" />
+            <HelpCircle className="h-5 w-5" aria-hidden="true" />
           </div>
           <div className="space-y-1">
-            <h1 className="text-lg font-semibold">Host not found</h1>
+            <h1 className="text-lg font-semibold">{retryCount >= 3 ? "Host appears offline" : "Host not found"}</h1>
             <p className="text-sm text-muted-foreground">
-              We couldn't find an open QuickBridge session. Ask them to open QuickBridge on their device first, then try again.
+              {retryCount >= 3 ? "The host device has not responded after multiple attempts. It may be offline or the session has ended." : "We couldn't find an open QuickBridge session. Ask them to open QuickBridge on their device first, then try again."}
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-            <Button onClick={() => { setHostMissing(false); window.location.reload(); }} className="h-10">
-              <RotateCw className="mr-2 h-4 w-4" /> Retry
-            </Button>
+            {retryCount < 3 && (
+              <Button onClick={() => {
+                const next = retryCount + 1;
+                setRetryCount(next);
+                try { sessionStorage.setItem(`qb:retry:${sessionId}`, next.toString()); } catch {}
+                setHostMissing(false);
+                window.location.reload();
+              }} className="h-10">
+                <RotateCw className="mr-2 h-4 w-4" aria-hidden="true" /> Retry
+              </Button>
+            )}
             {/* Navigate home without firing "Bridge ended": no bridge ever existed */}
             <Button
               onClick={() => {
+                try { sessionStorage.removeItem(`qb:retry:${sessionId}`); } catch {}
                 clearActiveSession();
                 suspendAudio();
                 navigate({ to: "/" });
               }}
-              variant="outline"
+              variant={retryCount >= 3 ? "default" : "outline"}
               className="h-10"
             >
               Go home
@@ -2488,14 +2597,14 @@ myDeviceKindRef.current = myDeviceKind;
             </Button>
           )}
           {status === "ended" && (endReason === "error" || endReason === "timeout" || endReason === "transport_lost") && (
-            <a
-              href="/help#troubleshooting"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 inline-block text-[11px] font-medium text-primary underline-offset-2 hover:underline"
-            >
-              Troubleshooting guide
-            </a>
+            <details className="mt-2 text-[11px] text-muted-foreground">
+              <summary className="cursor-pointer font-medium hover:text-foreground">Troubleshooting tips</summary>
+              <ul className="mt-1.5 list-inside list-disc space-y-0.5 text-muted-foreground/80">
+                <li>Both devices need an active internet connection.</li>
+                <li>Try "Force relay" below to bypass strict firewalls.</li>
+                <li>If on a corporate network, use a personal hotspot.</li>
+              </ul>
+            </details>
           )}
           {status === "reconnecting" && reconnectStartedAtRef.current && (() => {
             const attempt = Math.max(1, reconnectAttempt);
@@ -2584,7 +2693,7 @@ myDeviceKindRef.current = myDeviceKind;
                     onClick={() => commitName(draftName)}
                     aria-label="Save name"
                   >
-                    <CheckIcon className="h-3 w-3" />
+                    <CheckIcon className="h-3 w-3" aria-hidden="true" />
                   </Button>
                 </div>
               ) : (
@@ -2598,7 +2707,7 @@ myDeviceKindRef.current = myDeviceKind;
                   <span className="max-w-[80px] truncate text-[11.5px] font-semibold text-foreground group-hover:text-primary transition-colors">
                     {myShown}
                   </span>
-                  <Pencil className="h-2.5 w-2.5 text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100 shrink-0" />
+                  <Pencil className="h-2.5 w-2.5 text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100 shrink-0" aria-hidden="true" />
                 </button>
               )}
               <span className="text-[9.5px] uppercase tracking-widest text-muted-foreground/50">You</span>
@@ -2708,7 +2817,7 @@ myDeviceKindRef.current = myDeviceKind;
                 aria-label="Toggle clipboard auto-share"
                 aria-pressed={autoClip}
               >
-                <Clipboard className="h-3.5 w-3.5" />
+                <Clipboard className="h-3.5 w-3.5" aria-hidden="true" />
               </Button>
               <Button
                 size="sm"
@@ -2722,7 +2831,7 @@ myDeviceKindRef.current = myDeviceKind;
                 aria-label="Toggle zip multi-file"
                 aria-pressed={zipMode}
               >
-                <Archive className="h-3.5 w-3.5" />
+                <Archive className="h-3.5 w-3.5" aria-hidden="true" />
               </Button>
               {streamToDiskSupported && (
                 <Button
@@ -2743,7 +2852,7 @@ myDeviceKindRef.current = myDeviceKind;
                   aria-label="Toggle save to folder"
                   aria-pressed={!!saveDirectory}
                 >
-                  <HardDriveDownload className="h-3.5 w-3.5" />
+                  <HardDriveDownload className="h-3.5 w-3.5" aria-hidden="true" />
                 </Button>
               )}
               <div className="mx-0.5 h-4 w-px shrink-0 bg-border/50 sm:mx-1" aria-hidden="true" />
@@ -2899,15 +3008,21 @@ myDeviceKindRef.current = myDeviceKind;
               <Button
                 size="sm"
                 variant="outline"
+                disabled={isRequestingNotif}
                 className="h-7 gap-1.5 px-2.5 text-[10.5px]"
                 onClick={async () => {
-                  const granted = await ensureNotificationPermission();
-                  setNotifPermission(granted ? "granted" : "denied");
-                  if (granted) toast.success("Notifications on", { description: "You'll be notified when the other device connects." });
-                  else toast.error("Permission denied", { description: "Enable notifications in your browser settings to use this feature." });
+                  setIsRequestingNotif(true);
+                  try {
+                    const granted = await ensureNotificationPermission();
+                    setNotifPermission(granted ? "granted" : "denied");
+                    if (granted) toast.success("Notifications on", { description: "You'll be notified when the other device connects." });
+                    else toast.error("Permission denied", { description: "Enable notifications in your browser settings to use this feature." });
+                  } finally {
+                    setIsRequestingNotif(false);
+                  }
                 }}
               >
-                <Bell className="h-3 w-3" />
+                {isRequestingNotif ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Bell className="h-3 w-3" aria-hidden="true" />}
                 Allow
               </Button>
               <Button
@@ -2964,7 +3079,7 @@ myDeviceKindRef.current = myDeviceKind;
             <Globe className="h-3.5 w-3.5" />
             {forceRelay ? "Relay active - reconnecting..." : "Force relay (bypass firewall)"}
           </Button>
-          <span id="relay-status-announce" className="sr-only" aria-hidden="true" />
+          <span id="relay-status-announce" className="sr-only" />
         </Card>
       )}
 
@@ -2993,9 +3108,17 @@ myDeviceKindRef.current = myDeviceKind;
               <Button
                 size="sm"
                 className="h-7 px-3 text-[12px]"
-                onClick={() => void handleKeyResetTrust()}
+                disabled={isTrustingReset}
+                onClick={async () => {
+                  try {
+                    setIsTrustingReset(true);
+                    await handleKeyResetTrust();
+                  } finally {
+                    setIsTrustingReset(false);
+                  }
+                }}
               >
-                Trust again
+                {isTrustingReset ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : "Trust again"}
               </Button>
               <Button
                 size="sm"
@@ -3137,13 +3260,30 @@ myDeviceKindRef.current = myDeviceKind;
                 </span>
               </span>
               {pendingCount > 1 && (
-                <button
-                  type="button"
-                  onClick={discardQueued}
-                  className="shrink-0 font-medium text-foreground/80 underline-offset-2 hover:underline"
-                >
-                  Discard all
-                </button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button
+                      type="button"
+                      className="shrink-0 font-medium text-foreground/80 underline-offset-2 hover:underline"
+                    >
+                      Discard all
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Discard queued files?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will remove all {pendingCount} queued files. They won't be sent.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Keep</AlertDialogCancel>
+                      <AlertDialogAction onClick={discardQueued}>
+                        Discard all
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -3156,10 +3296,10 @@ myDeviceKindRef.current = myDeviceKind;
                   <button
                     type="button"
                     aria-label={`Remove ${f.name} from queue`}
-                    onClick={() => discardPendingFile(i)}
+                    onClick={() => discardPendingFile(i, true)}
                     className="shrink-0 rounded hover:text-destructive transition-colors"
                   >
-                    <X className="h-2.5 w-2.5" />
+                    <X className="h-2.5 w-2.5" aria-hidden="true" />
                   </button>
                 </span>
               ))}
@@ -3318,9 +3458,17 @@ myDeviceKindRef.current = myDeviceKind;
                         size="sm"
                         variant="ghost"
                         className="h-6 px-2 text-[11px]"
-                        onClick={() => dismissOutgoing(f.id)}
+                        onClick={() => {
+                          const snapshot = { ...f };
+                          dismissOutgoing(f.id);
+                          toast(`Removed "${f.name}"`, {
+                            duration: 5000,
+                            action: { label: "Undo", onClick: () => undismissOutgoing(f.id, snapshot) },
+                          });
+                        }}
+                        aria-label={`Dismiss ${f.name}`}
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-3 w-3" aria-hidden="true" />
                       </Button>
                     </div>
                   </div>
@@ -3480,7 +3628,10 @@ myDeviceKindRef.current = myDeviceKind;
                           </span>
                         )}
                         {f.savedToDisk && (
-                          <span className="inline-flex items-center gap-1 rounded border border-border/60 bg-muted/30 px-1.5 py-0.5 text-[10.5px] text-muted-foreground">
+                          <span
+                            className="inline-flex items-center gap-1 rounded border border-border/60 bg-muted/30 px-1.5 py-0.5 text-[10.5px] text-muted-foreground"
+                            title={f.savedAs ? `Saved as: ${f.savedAs}` : `Saved to: ${saveDirectory?.label ?? "folder"}`}
+                          >
                             <FolderOpen className="h-3 w-3" />
                             Saved to {saveDirectory?.label ?? "folder"}
                             {f.savedAs && f.savedAs !== f.name ? ` · ${f.savedAs}` : ""}
@@ -3493,49 +3644,13 @@ myDeviceKindRef.current = myDeviceKind;
                             rel="noopener noreferrer"
                             className="basis-full mt-1 flex items-center gap-1.5 rounded border border-border/60 bg-muted/20 px-2 py-1 text-[10.5px] text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors"
                           >
-                            <img src="/calmclip-logo.png" alt="" aria-hidden height="16" style={{ width: 'auto', objectFit: 'contain', flexShrink: 0 }} />
+                            <img src="/calmclip-logo.png" alt="" aria-hidden height="16" style={{ width: 'auto', objectFit: 'contain', flexShrink: 0 }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                             <span>Edit in <strong className="font-semibold text-foreground">CalmClip</strong>: trim, captions, silence cut. No upload.</span>
                           </a>
                         )}
                         <div className="ml-auto flex items-center gap-2">
                           {!f.savedToDisk && f.url && (
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={async () => {
-                                // On iOS Safari the `download` attribute on blob
-                                // URLs is silently ignored - use the Web Share
-                                // API with a File object instead, which opens the
-                                // native share sheet so the user can Save Image /
-                                // Save to Files. Fall back to anchor click on
-                                // every other platform.
-                                const isiOS =
-                                  typeof navigator !== "undefined" &&
-                                  /iphone|ipad|ipod/i.test(navigator.userAgent);
-                                if (isiOS && navigator.share) {
-                                  try {
-                                    const res = await fetch(f.url!);
-                                    const blob = await res.blob();
-                                    const file = new File([blob], f.name, { type: f.type || blob.type });
-                                    if (navigator.canShare?.({ files: [file] })) {
-                                      await navigator.share({ files: [file], title: f.name });
-                                      return;
-                                    }
-                                  } catch {
-                                    // fall through to anchor download
-                                  }
-                                }
-                                const a = document.createElement("a");
-                                a.href = f.url!;
-                                a.download = f.name;
-                                a.click();
-                              }}
-                            >
-                              <Download className="mr-1 h-4 w-4" />
-                              {typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent)
-                                ? "Save"
-                                : "Download"}
-                            </Button>
+                            <IosDownloadButton f={f} />
                           )}
                           {/* Confirm before clearing a file the user hasn't downloaded
                               yet. Once releaseIncoming() revokes the blob URL the file
@@ -3827,7 +3942,7 @@ function HistoryRow({
             }}
             title="Copy to clipboard"
           >
-            <Copy className="h-3 w-3" />
+            <Copy className="h-3 w-3" aria-hidden="true" />
           </Button>
         )}
         <Button
@@ -3837,8 +3952,9 @@ function HistoryRow({
           onClick={() => onResend(item)}
           disabled={!canResend}
           title={resendTitle}
+          aria-label={resendTitle}
         >
-          <RotateCw className="mr-1 h-3 w-3" />
+          <RotateCw className="mr-1 h-3 w-3" aria-hidden="true" />
           {resendLabel}
         </Button>
         <Button
