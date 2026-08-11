@@ -60,8 +60,8 @@ export function TrustPrompt({
   };
 
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3.5">
-      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+    <div className="flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3.5">
+      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
         <div className="mb-0.5 flex items-center gap-1.5">
           <PeerIcon kind={peerDeviceKind} />

@@ -34,9 +34,8 @@ export function RequireFolderModal({
   const isFirstTime = mode === "firstTime";
 
   return (
-    // Full-screen overlay, pointer-events block the session UI beneath.
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/98"
       aria-modal="true"
       role="dialog"
       aria-labelledby="folder-gate-title"
@@ -48,10 +47,7 @@ export function RequireFolderModal({
           "flex flex-col gap-5",
         )}
       >
-        {/* Icon */}
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-          <FolderOpen className="h-6 w-6 text-primary" aria-hidden="true" />
-        </div>
+
 
         {/* Copy */}
         <div className="flex flex-col gap-1.5">

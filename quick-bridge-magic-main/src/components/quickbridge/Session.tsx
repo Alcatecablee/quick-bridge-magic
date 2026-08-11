@@ -2571,54 +2571,19 @@ myDeviceKindRef.current = myDeviceKind;
       >
         <div className="space-y-3 md:sticky md:top-6">
 
-      <Card
-        className={cn(
-          "relative overflow-hidden border-border/60 bg-card/70 backdrop-blur transition-shadow",
-          connected && "shadow-[0_0_0_1px_oklch(0.7_0.18_220/0.45),0_0_30px_-6px_oklch(0.7_0.18_220/0.55)]",
-          reconnecting && "shadow-[0_0_0_1px_oklch(0.78_0.14_75/0.45),0_0_28px_-6px_oklch(0.78_0.14_75/0.55)]",
-        )}
-      >
-        {connectBurst > 0 && (
-          <span
-            key={connectBurst}
-            aria-hidden
-            className="pointer-events-none absolute inset-0 rounded-xl ring-2 ring-primary/60 animate-[ping_900ms_ease-out_1]"
-          />
-        )}
-
-        {/* Status orb */}
+      <Card className="relative overflow-hidden border-border/60 bg-card transition-shadow">
+        {/* Status indicator */}
         <div className="flex flex-col items-center px-6 pt-8 pb-5 text-center">
-          <div className="relative mb-5">
-            <div
-              className={cn(
-                "absolute -inset-4 rounded-full blur-xl transition-all duration-700",
-                connected ? "bg-success/25 opacity-100" :
-                reconnecting ? "bg-warning/25 opacity-100" :
-                status === "connecting" ? "bg-primary/20 opacity-100" :
-                status === "ended" ? "bg-destructive/20 opacity-100" :
-                "opacity-0"
-              )}
-            />
-            <div
-              className={cn(
-                "relative flex h-[72px] w-[72px] items-center justify-center rounded-full border-2 transition-all duration-500",
-                connected ? "border-success/50 bg-success/10" :
-                reconnecting ? "border-warning/50 bg-warning/10" :
-                status === "connecting" ? "border-primary/50 bg-primary/10" :
-                status === "ended" ? "border-destructive/50 bg-destructive/10" :
-                "border-border/60 bg-muted/20"
-              )}
-            >
-              {(status === "connecting" || status === "reconnecting") ? (
-                <Loader2 className={cn("h-7 w-7 animate-spin", reconnecting ? "text-warning" : "text-primary")} />
-              ) : connected ? (
-                <ArrowLeftRight className="h-7 w-7 text-success" />
-              ) : status === "ended" ? (
-                <AlertTriangle className="h-7 w-7 text-destructive" />
-              ) : (
-                <Loader2 className="h-7 w-7 animate-spin text-muted-foreground/30" />
-              )}
-            </div>
+          <div className="relative mb-5 flex h-[48px] w-[48px] items-center justify-center">
+            {(status === "connecting" || status === "reconnecting") ? (
+              <Loader2 className={cn("h-7 w-7 animate-spin", reconnecting ? "text-warning" : "text-primary")} />
+            ) : connected ? (
+              <ArrowLeftRight className="h-7 w-7 text-success" />
+            ) : status === "ended" ? (
+              <AlertTriangle className="h-7 w-7 text-destructive" />
+            ) : (
+              <Loader2 className="h-7 w-7 animate-spin text-muted-foreground/30" />
+            )}
           </div>
 
           {/* Visually hidden live region: announces connection status changes
