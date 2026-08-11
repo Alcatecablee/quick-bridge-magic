@@ -60,27 +60,45 @@ export function TrustPrompt({
   };
 
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3.5">
-      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-      <div className="min-w-0 flex-1">
-        <div className="mb-0.5 flex items-center gap-1.5">
-          <PeerIcon kind={peerDeviceKind} />
-          <p className="text-[13px] font-semibold text-foreground">
-            Trust &ldquo;{peerNickname}&rdquo;?
-          </p>
+    <div className="flex flex-col gap-4 rounded-xl border border-border bg-card px-5 py-5 sm:px-6">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-background/50">
+          <ShieldCheck className="h-5 w-5 text-primary" />
         </div>
-        <p className="text-[12px] leading-relaxed text-muted-foreground">
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+            Trust Device
+          </p>
+          <div className="mt-1 flex items-center gap-1.5">
+            <PeerIcon kind={peerDeviceKind} />
+            <h3 className="text-[16px] font-bold tracking-tight text-foreground truncate">
+              Trust &ldquo;{peerNickname}&rdquo;?
+            </h3>
+          </div>
+        </div>
+        <button
+          onClick={onDismiss}
+          disabled={trusting}
+          className="shrink-0 rounded-md p-1.5 text-muted-foreground/40 transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none"
+          aria-label="Dismiss"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      
+      <div>
+        <p className="text-[13px] leading-relaxed text-muted-foreground">
           {transferText} Save this device to connect with one tap next time.
         </p>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
           <Button
             size="sm"
-            className="h-7 px-3 text-[12px]"
+            className="h-8 px-4 text-[12px] font-medium"
             disabled={trusting}
             onClick={() => void handleTrust()}
           >
             {trusting ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               "Trust this device"
             )}
@@ -88,7 +106,7 @@ export function TrustPrompt({
           <Button
             size="sm"
             variant="ghost"
-            className="h-7 px-3 text-[12px] text-muted-foreground"
+            className="h-8 px-4 text-[12px] font-medium text-muted-foreground"
             disabled={trusting}
             onClick={onDismiss}
           >
@@ -96,14 +114,6 @@ export function TrustPrompt({
           </Button>
         </div>
       </div>
-      <button
-        onClick={onDismiss}
-        disabled={trusting}
-        className="shrink-0 rounded-md p-0.5 text-muted-foreground/40 transition-colors hover:text-muted-foreground disabled:pointer-events-none"
-        aria-label="Dismiss"
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
     </div>
   );
 }

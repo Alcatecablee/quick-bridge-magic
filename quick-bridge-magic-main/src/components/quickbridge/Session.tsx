@@ -2590,10 +2590,10 @@ myDeviceKindRef.current = myDeviceKind;
           >
             {headerCopy.title}
           </div>
-          <h1 className="text-[17px] font-bold tracking-tight leading-snug">
+          <h1 className="text-[22px] font-black tracking-tight leading-snug sm:text-[28px]">
             {headerCopy.title}
           </h1>
-          <p className="mt-1.5 max-w-[200px] text-[11.5px] leading-relaxed text-muted-foreground">
+          <p className="mt-2 max-w-[240px] text-[12.5px] leading-relaxed text-muted-foreground">
             {headerCopy.body}
           </p>
           {/* Resend invite: shown when a trusted-connect invite timed out.
@@ -2730,7 +2730,7 @@ myDeviceKindRef.current = myDeviceKind;
                   <Pencil className="h-2.5 w-2.5 text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100 shrink-0" aria-hidden="true" />
                 </button>
               )}
-              <span className="text-[9.5px] uppercase tracking-widest text-muted-foreground/50">You</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/60">You</span>
             </div>
 
             <div className="flex shrink-0 flex-col items-center gap-1">
@@ -2762,12 +2762,12 @@ myDeviceKindRef.current = myDeviceKind;
                 {peerShown}
               </span>
               {peerTrustVerified ? (
-                <span className="flex items-center gap-0.5 text-[9.5px] text-success">
-                  <ShieldCheck className="h-2.5 w-2.5 shrink-0" />
+                <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-success">
+                  <ShieldCheck className="h-3 w-3 shrink-0" />
                   Verified
                 </span>
               ) : (
-                <span className="text-[9.5px] uppercase tracking-widest text-muted-foreground/50">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/60">
                   {peerDeviceKind ? "Peer" : "Waiting"}
                 </span>
               )}
@@ -2784,14 +2784,14 @@ myDeviceKindRef.current = myDeviceKind;
           return (
             <div className="mx-4 mb-3 flex items-center justify-around gap-1 rounded-lg border border-border/40 bg-background/30 px-3 py-2">
               <div className="flex flex-col items-center gap-0.5">
-                <span className="text-[13px] font-semibold tabular-nums text-foreground">{sentItems.length}</span>
-                <span className="text-[9.5px] uppercase tracking-widest text-muted-foreground/60">Sent</span>
+                <span className="text-[14px] font-bold tracking-tight tabular-nums text-foreground">{sentItems.length}</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">Sent</span>
                 {sentBytes > 0 && <span className="text-[9.5px] tabular-nums text-muted-foreground/50">{formatBytes(sentBytes)}</span>}
               </div>
               <div className="h-6 w-px bg-border/40" />
               <div className="flex flex-col items-center gap-0.5">
-                <span className="text-[13px] font-semibold tabular-nums text-foreground">{recvItems.length}</span>
-                <span className="text-[9.5px] uppercase tracking-widest text-muted-foreground/60">Received</span>
+                <span className="text-[14px] font-bold tracking-tight tabular-nums text-foreground">{recvItems.length}</span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">Received</span>
                 {recvBytes > 0 && <span className="text-[9.5px] tabular-nums text-muted-foreground/50">{formatBytes(recvBytes)}</span>}
               </div>
             </div>
@@ -2953,7 +2953,7 @@ myDeviceKindRef.current = myDeviceKind;
       {isInitiator && !connected && pairUrl && (
         <Card className="overflow-hidden border-border/60 bg-card">
           <div className="px-4 pt-4 pb-2">
-            <p className="text-[11px] font-medium text-muted-foreground/80">Share to connect</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Pair this device</p>
           </div>
           <div className="flex justify-center px-4 pb-3">
             <QrDisplay text={pairUrl} size={160} pulse={false} />
@@ -3238,7 +3238,7 @@ myDeviceKindRef.current = myDeviceKind;
           <Upload className={cn("h-6 w-6 transition-transform duration-200", dragOver && "scale-110")} />
         </div>
         <div className="space-y-1">
-          <p className="text-[15px] font-semibold hidden sm:block">
+          <p className="text-[16px] font-bold tracking-tight hidden sm:block">
             {dragOver ? "Release to send" : "Drop files or folders to send"}
           </p>
           <p className="text-[15px] font-semibold sm:hidden">Send files</p>
@@ -3379,12 +3379,12 @@ myDeviceKindRef.current = myDeviceKind;
         const allDone = outgoingFiles.every((f) => f.state === "completed" || f.state === "failed" || f.state === "cancelled");
         const anyInFlight = outgoingFiles.some((f) => f.state === "sending" || f.state === "resuming" || f.state === "queued");
         const headerLabel = allDone ? "Sent" : anyInFlight ? "Sending" : "Failed";
-        const headerClass = allDone ? "text-success" : "";
+        const headerClass = allDone ? "text-success" : "text-primary";
         const activeOutgoing = outgoingFiles.filter((f) => f.state === "sending" || f.state === "resuming" || f.state === "queued");
         return (
         <Card className="space-y-3 p-4">
           <div className="flex items-center justify-between gap-2">
-            <h3 className={`text-sm font-semibold ${headerClass}`}>{headerLabel}</h3>
+            <h3 className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${headerClass}`}>{headerLabel}</h3>
             {activeOutgoing.length >= 2 && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -3531,7 +3531,7 @@ myDeviceKindRef.current = myDeviceKind;
       {/* Incoming */}
       {incomingFiles.length > 0 && (
         <Card className="space-y-3 p-4">
-          <h3 className="text-sm font-semibold">Received</h3>
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Received</h3>
           {incomingFiles.map((f) => {
             const isImage = f.type.startsWith("image/");
             // Use the resume timestamp as the elapsed baseline when available so
