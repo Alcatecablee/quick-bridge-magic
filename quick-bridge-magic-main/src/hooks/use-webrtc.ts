@@ -1793,11 +1793,7 @@ export function useWebRTC(
         const f = next[id];
         if (f.state !== "completed" && f.state !== "failed" && f.state !== "cancelled" && !f.error) {
           // Tell the peer we are stopping so they don't wait indefinitely.
-          try {
-            if (dc && dc.readyState === "open") {
-              dc.send(JSON.stringify({ t: "file-cancel", id }));
-            }
-          } catch {}
+          sendDataMessage({ t: "file-cancel", id });
           next[id] = { ...f, error: "Bridge ended", retryable: false };
         }
       }
@@ -2435,9 +2431,8 @@ export function useWebRTC(
       // remains the authoritative fallback. Never call endSessionRef here because
       // the page is already tearing down and React state updates won't commit.
       try {
-        const dc = dcRef.current;
         const exitPayload = { t: "session-ended", sessionId, reason: "browser_closed" };
-        if (dc && dc.readyState === "open") dc.send(JSON.stringify(exitPayload));
+        sendDataMessage(exitPayload);
         channelRef.current?.send({ type: "broadcast", event: "signal", payload: { type: "session-ended", sessionId, reason: "browser_closed" } });
       } catch {}
       try { void channelRef.current?.untrack(); } catch {}
@@ -2917,12 +2912,7 @@ export function useWebRTC(
     cancelledOutgoingIdsRef.current.add(id);
     delete fileSourcesRef.current[id];
     peerAbortedSendIdsRef.current.delete(id);
-    try {
-      const dc = dcRef.current;
-      if (dc && dc.readyState === "open") {
-        dc.send(JSON.stringify({ t: "file-cancel", id }));
-      }
-    } catch {}
+    sendDataMessage({ t: "file-cancel", id });
     // Remove the row immediately and transition to the cancelled terminal
     // state. The send loop will also see cancelledOutgoingIdsRef and
     // delete the ID from the set once it exits, preventing ID poisoning.
