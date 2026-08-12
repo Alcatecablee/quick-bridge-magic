@@ -2610,13 +2610,15 @@ myDeviceKindRef.current = myDeviceKind;
             );
           })()}
 
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-2" title={quality === "direct" ? "Peer-to-peer connection between devices." : undefined}>
-            <StatusBadge
-              status={status}
-              quality={quality}
-              attempt={reconnectAttempt}
-              maxAttempts={maxReconnectAttempts}
-            />
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <div title={quality === "direct" ? "Peer-to-peer connection between devices." : undefined}>
+              <StatusBadge
+                status={status}
+                quality={quality}
+                attempt={reconnectAttempt}
+                maxAttempts={maxReconnectAttempts}
+              />
+            </div>
             {connected && throughputSamples.length > 1 && (
               <Sparkline samples={throughputSamples} className="opacity-90" ariaLabel="Live throughput" />
             )}
@@ -2625,92 +2627,98 @@ myDeviceKindRef.current = myDeviceKind;
 
         {/* Device pair */}
         <div className="px-4 pb-2">
-          <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-background/30 px-4 py-3">
-            <div className="flex flex-1 min-w-0 flex-col items-center gap-1.5">
-              <div className="flex h-9 w-9 items-center justify-center text-muted-foreground">
-                {deviceIcon(myDeviceKind, "h-4 w-4")}
-              </div>
-              {editingName ? (
-                <div className="flex items-center gap-1">
-                  <Input
-                    autoFocus
-                    value={draftName}
-                    placeholder={myFallback}
-                    maxLength={40}
-                    onChange={(e) => setDraftName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") commitName(draftName);
-                      else if (e.key === "Escape") {
-                        setDraftName(deviceName);
-                        setEditingName(false);
-                      }
-                    }}
-                    className="h-6 w-20 px-1.5 text-[10px]"
-                  />
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-6 w-6 p-0"
-                    onClick={() => commitName(draftName)}
-                    aria-label="Save name"
-                  >
-                    <CheckIcon className="h-3 w-3" aria-hidden="true" />
-                  </Button>
+          <div className="flex flex-col gap-2 rounded-xl border border-border/50 bg-background/30 px-4 py-3">
+            <div className="flex justify-between w-full px-1">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60">This Device</span>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60">Peer Device</span>
+            </div>
+            <div className="flex items-center gap-3 w-full">
+              <div className="flex flex-1 min-w-0 flex-col items-center gap-1.5">
+                <div className="flex h-9 w-9 items-center justify-center text-muted-foreground">
+                  {deviceIcon(myDeviceKind, "h-4 w-4")}
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => { setDraftName(deviceName); setEditingName(true); }}
-                  className="group flex items-center gap-1 text-center"
-                  title="Edit device name"
-                  aria-label="Edit device name"
-                >
-                  <span className="max-w-[80px] truncate text-[11.5px] font-semibold text-foreground group-hover:text-primary transition-colors">
-                    {myShown}
+                {editingName ? (
+                  <div className="flex items-center gap-1">
+                    <Input
+                      autoFocus
+                      value={draftName}
+                      placeholder={myFallback}
+                      maxLength={40}
+                      onChange={(e) => setDraftName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitName(draftName);
+                        else if (e.key === "Escape") {
+                          setDraftName(deviceName);
+                          setEditingName(false);
+                        }
+                      }}
+                      className="h-6 w-20 px-1.5 text-[10px]"
+                    />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 w-6 p-0"
+                      onClick={() => commitName(draftName)}
+                      aria-label="Save name"
+                    >
+                      <CheckIcon className="h-3 w-3" aria-hidden="true" />
+                    </Button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => { setDraftName(deviceName); setEditingName(true); }}
+                    className="group flex items-center gap-1 text-center"
+                    title="Edit device name"
+                    aria-label="Edit device name"
+                  >
+                    <span className="max-w-[80px] truncate text-[11.5px] font-semibold text-foreground group-hover:text-primary transition-colors">
+                      {myShown}
+                    </span>
+                    <Pencil className="h-2.5 w-2.5 text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100 shrink-0" aria-hidden="true" />
+                  </button>
+                )}
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/60">You</span>
+              </div>
+
+              <div className="flex shrink-0 flex-col items-center gap-1">
+                <div className="flex gap-1">
+                  {[0, 1, 2].map((i) => (
+                    <span
+                      key={i}
+                      style={{ animationDelay: `${i * 220}ms` }}
+                      className={cn(
+                        "h-1.5 w-1.5 rounded-full transition-colors duration-500",
+                        connected ? "bg-success animate-pulse" : "bg-border/60"
+                      )}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-1 min-w-0 flex-col items-center gap-1.5">
+                <div className={cn(
+                  "flex h-9 w-9 items-center justify-center transition-all duration-500",
+                  peerDeviceKind ? "text-foreground" : "text-muted-foreground/25"
+                )}>
+                  {deviceIcon(peerDeviceKind, "h-4 w-4")}
+                </div>
+                <span className={cn(
+                  "max-w-[80px] truncate text-[11.5px] font-semibold transition-colors duration-500",
+                  peerDeviceKind ? "text-foreground" : "text-muted-foreground/30"
+                )}>
+                  {peerShown}
+                </span>
+                {peerTrustVerified ? (
+                  <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-success">
+                    ✓ Verified
                   </span>
-                  <Pencil className="h-2.5 w-2.5 text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100 shrink-0" aria-hidden="true" />
-                </button>
-              )}
-              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/60">You</span>
-            </div>
-
-            <div className="flex shrink-0 flex-col items-center gap-1">
-              <div className="flex gap-1">
-                {[0, 1, 2].map((i) => (
-                  <span
-                    key={i}
-                    style={{ animationDelay: `${i * 220}ms` }}
-                    className={cn(
-                      "h-1.5 w-1.5 rounded-full transition-colors duration-500",
-                      connected ? "bg-success animate-pulse" : "bg-border/60"
-                    )}
-                  />
-                ))}
+                ) : (
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/60">
+                    {peerDeviceKind ? "Peer" : "Waiting"}
+                  </span>
+                )}
               </div>
-            </div>
-
-            <div className="flex flex-1 min-w-0 flex-col items-center gap-1.5">
-              <div className={cn(
-                "flex h-9 w-9 items-center justify-center transition-all duration-500",
-                peerDeviceKind ? "text-foreground" : "text-muted-foreground/25"
-              )}>
-                {deviceIcon(peerDeviceKind, "h-4 w-4")}
-              </div>
-              <span className={cn(
-                "max-w-[80px] truncate text-[11.5px] font-semibold transition-colors duration-500",
-                peerDeviceKind ? "text-foreground" : "text-muted-foreground/30"
-              )}>
-                {peerShown}
-              </span>
-              {peerTrustVerified ? (
-                <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-success">
-                  ✓ Verified
-                </span>
-              ) : (
-                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/60">
-                  {peerDeviceKind ? "Peer" : "Waiting"}
-                </span>
-              )}
             </div>
           </div>
           
@@ -3582,7 +3590,7 @@ myDeviceKindRef.current = myDeviceKind;
                         </div>
                       </div>
                     ) : (
-                      <div className="flex flex-col gap-1.5 pt-1 text-xs">
+                      <div className="flex flex-col gap-0.5 pt-0.5 text-xs">
                         <span className="inline-flex items-center gap-1 text-muted-foreground">
                           <span className="text-success font-bold">✓</span> Received in {elapsed.toFixed(1)}s
                         </span>
@@ -3596,12 +3604,67 @@ myDeviceKindRef.current = myDeviceKind;
                             <span className="font-bold">✕</span> Integrity check failed
                           </span>
                         )}
-                        {f.savedToDisk && (
-                          <span className="inline-flex items-center gap-1 text-muted-foreground" title={f.savedAs ? `Saved as: ${f.savedAs}` : undefined}>
-                            <span className="text-success font-bold">✓</span> 
-                            <span className="truncate max-w-[240px]">Saved to {saveDirectory?.label || "folder"}</span>
-                          </span>
-                        )}
+                        
+                        <div className="flex items-center justify-between gap-2 w-full pt-0.5">
+                          {f.savedToDisk ? (
+                            <span className="inline-flex items-center gap-1 text-muted-foreground" title={f.savedAs ? `Saved as: ${f.savedAs}` : undefined}>
+                              <span className="text-success font-bold">✓</span> 
+                              <span className="truncate max-w-[240px]">Saved to {saveDirectory?.label || "folder"}</span>
+                            </span>
+                          ) : <span />}
+                          
+                          <div className="flex items-center gap-2 shrink-0">
+                            {!f.savedToDisk && f.url && (
+                              <IosDownloadButton f={f} />
+                            )}
+                            {/* Confirm before clearing a file the user hasn't downloaded
+                                yet. Once releaseIncoming() revokes the blob URL the file
+                                is gone with no recovery path. Saved-to-disk files and
+                                files with no blob are safe to clear without a dialog. */}
+                            {!f.savedToDisk && f.url ? (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-5 gap-1 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+                                    title="Remove from this list"
+                                  >
+                                    Clear
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Clear this file?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      "{f.name}" has not been downloaded yet. Clearing removes it from this list permanently.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Keep</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      className={buttonVariants({ variant: "destructive" })}
+                                      onClick={() => releaseIncoming(f.id)}
+                                    >
+                                      Clear anyway
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-5 gap-1 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+                                onClick={() => releaseIncoming(f.id)}
+                                title="Remove from this list"
+                              >
+                                Clear
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+
                         {(f.type || "").startsWith("video/") && (
                           <a
                             href="https://calmclip.video?ref=quickbridge"
@@ -3613,54 +3676,6 @@ myDeviceKindRef.current = myDeviceKind;
                             <span>Edit in <strong className="font-semibold text-foreground">CalmClip</strong>: trim, captions, silence cut. No upload.</span>
                           </a>
                         )}
-                        <div className="ml-auto flex items-center gap-2">
-                          {!f.savedToDisk && f.url && (
-                            <IosDownloadButton f={f} />
-                          )}
-                          {/* Confirm before clearing a file the user hasn't downloaded
-                              yet. Once releaseIncoming() revokes the blob URL the file
-                              is gone with no recovery path. Saved-to-disk files and
-                              files with no blob are safe to clear without a dialog. */}
-                          {!f.savedToDisk && f.url ? (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  title="Remove from this list"
-                                >
-                                  Clear
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Clear this file?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    "{f.name}" has not been downloaded yet. Clearing removes it from this list permanently.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Keep</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    className={buttonVariants({ variant: "destructive" })}
-                                    onClick={() => releaseIncoming(f.id)}
-                                  >
-                                    Clear anyway
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => releaseIncoming(f.id)}
-                              title="Remove from this list"
-                            >
-                              Clear
-                            </Button>
-                          )}
-                        </div>
                       </div>
                     )}
                   </div>
