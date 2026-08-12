@@ -237,7 +237,7 @@ class OversizedFrameError extends Error {
  *
  * RTCSctpTransport.maxMessageSize defines the absolute upper bound on the
  * size of a message passed to DataChannel.send(). If a frame exceeds this,
- * send() will throw synchronously — not because the SCTP buffer is full (that
+ * send() will throw synchronously - not because the SCTP buffer is full (that
  * is a backpressure problem), but because the individual message is illegal.
  *
  * Special cases per the WebRTC spec and MDN:
@@ -996,7 +996,7 @@ export function useWebRTC(
                   }
                   delete incomingBuffersRef.current[meta.id];
                 } else {
-                  // No in-memory buffer exists — the receiver likely refreshed
+                  // No in-memory buffer exists - the receiver likely refreshed
                   // mid-transfer while streaming to disk. Look up any orphaned
                   // partial file in IndexedDB and remove it now, before the
                   // fresh writable opens. Without this, collision detection in
@@ -1215,7 +1215,7 @@ export function useWebRTC(
                 typeof msg.reason === "string" && msg.reason ? msg.reason : "Receiver aborted";
               // Terminal-state guard: if the outgoing transfer is already in a
               // terminal state (completed, failed, cancelled), discard the
-              // late abort — we must not resurrect or corrupt a settled entry.
+              // late abort - we must not resurrect or corrupt a settled entry.
               const existingOutgoing = outgoingFilesRef.current[id];
               if (existingOutgoing && (existingOutgoing.state === "completed" || existingOutgoing.state === "failed" || existingOutgoing.state === "cancelled")) {
                 return;
@@ -1552,7 +1552,7 @@ export function useWebRTC(
       qbLog("[QB] scheduleReconnect: session is ending/ended, skipping");
       return;
     }
-    // If already waiting with no peer in signaling, stay there — no WebRTC
+    // If already waiting with no peer in signaling, stay there - no WebRTC
     // reconnect is possible. In all other cases (reconnecting, connected, etc.)
     // proceed even if presence has dropped, because transport state is
     // authoritative (Rule 8/9: WebRTC state drives session, not Supabase).
@@ -1646,7 +1646,7 @@ export function useWebRTC(
       //
       // onAutoRelayRef.current() triggers setForceRelay(true) in the parent,
       // which schedules a React re-render. That render will call useLatestRef
-      // and set forceRelayRef.current = true — but only after this synchronous
+      // and set forceRelayRef.current = true - but only after this synchronous
       // code finishes and the React scheduler runs. To guarantee that
       // createPeerConnection (called below via doRestart) reads the correct
       // relay flag, we eagerly set forceRelayRef.current = true here. The
@@ -1740,7 +1740,7 @@ export function useWebRTC(
         }
         // Only surface "connected" status here when the DataChannel is already
         // open. For the initial connection the DataChannel state is still
-        // "connecting" when the PC reaches "connected" — dc.onopen handles the
+        // "connecting" when the PC reaches "connected" - dc.onopen handles the
         // status transition a few milliseconds later. For ICE restarts the
         // existing DataChannel stays open through the re-negotiation, so
         // readyState is already "open" here and this is the only place that
@@ -1750,7 +1750,7 @@ export function useWebRTC(
         // actually usable.
           if (dcRef.current?.readyState === "open" && controlDcRef.current?.readyState === "open") {
           // ICE restart succeeded: the DataChannel survived the re-negotiation
-          // and is already live. Reset the counter immediately — the channel
+          // and is already live. Reset the counter immediately - the channel
           // was open and stable before the restart attempt, so there is no
           // risk of brief-open credit loss. For fresh connections the counter
           // reset is deferred to the DC_STABLE_DURATION_MS timer in dc.onopen.
@@ -1768,7 +1768,7 @@ export function useWebRTC(
           disconnectedTimerRef.current = null;
         }
         // Mark the first disconnect timestamp for the 5-minute absolute
-        // recovery window. Only set once — the earliest timestamp is authoritative.
+        // recovery window. Only set once - the earliest timestamp is authoritative.
         if (sessionDisconnectedAtRef.current === null && !sessionEndingRef.current) {
           sessionDisconnectedAtRef.current = Date.now();
         }
@@ -2857,27 +2857,6 @@ export function useWebRTC(
           }
         }
 
-        qbLog("[QB transfer] file source", {
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          lastModified: file.lastModified,
-        });
-
-        const testReader = file.stream().getReader();
-        try {
-          const first = await testReader.read();
-          qbLog("[QB transfer] local file read OK", {
-            done: first.done,
-            bytes: first.value?.byteLength ?? 0,
-          });
-        } catch (err) {
-          qbError("[QB transfer] LOCAL FILE READ FAILED", err);
-          throw new Error("Couldn't read the selected file. It may have been moved, modified, unavailable offline, or locked by another application.");
-        } finally {
-          void testReader.cancel().catch(() => {});
-        }
-
         let offset = actualOffset;
 
         // SHA-256 integrity: compute the hash of the entire file so the
@@ -3139,7 +3118,7 @@ export function useWebRTC(
   }, []);
 
   // Restores a dismissed outgoing file display entry during the undo window.
-  // Only restores the display record (OutgoingFile shape) — does NOT restore
+  // Only restores the display record (OutgoingFile shape) - does NOT restore
   // fileSourcesRef or cancelled-ID bookkeeping, since dismissed entries are
   // always in a terminal state (failed/cancelled) where the send loop cannot
   // restart. Safe because: failed is terminal, no state change can occur after
