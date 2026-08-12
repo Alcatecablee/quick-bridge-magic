@@ -211,21 +211,54 @@ function buildIceServers(): RTCIceServer[] {
   return [...stuns, { urls: turnUrls, username, credential }];
 }
 
-function getSafeChunkSize(pc: RTCPeerConnection | null): number {
-  if (!pc) return 16 * 1024 - HEADER_SIZE;
-  const maxMessageSize = pc.sctp?.maxMessageSize;
-  if (maxMessageSize === undefined || maxMessageSize === null) {
-    return 16 * 1024 - HEADER_SIZE;
-  }
-  if (maxMessageSize === 0) {
-    return 16 * 1024;
-  }
-  return Math.max(1, Math.min(16 * 1024, maxMessageSize - HEADER_SIZE));
-}
 const DATA_CHANNEL_BUFFER_HIGH_WATERMARK = 64 * 1024;
 const DATA_CHANNEL_BUFFER_LOW_WATERMARK = 16 * 1024;
 const UI_UPDATE_INTERVAL = 100;
 const HEADER_SIZE = 16; // 16-byte file id (hex of UUID without dashes)
+// Maximum payload per chunk that we *want* to send as an application limit.
+// The actual limit is capped at the connection's negotiated SCTP maxMessageSize.
+const MAX_DESIRED_CHUNK_PAYLOAD = 16 * 1024;
+
+/**
+ * Thrown when a constructed frame exceeds the negotiated SCTP maxMessageSize.
+ * This is a hard protocol error, not a transient buffer-full condition. The
+ * transfer engine must NOT retry the same frame without resizing it.
+ */
+class OversizedFrameError extends Error {
+  constructor(readonly frameByteLength: number, readonly limit: number) {
+    super(`Frame exceeds negotiated SCTP message limit: ${frameByteLength} > ${limit}`);
+    this.name = "OversizedFrameError";
+  }
+}
+
+/**
+ * Returns the maximum safe payload size (excluding the HEADER_SIZE) for a
+ * single RTCDataChannel.send() frame on the given PeerConnection.
+ *
+ * RTCSctpTransport.maxMessageSize defines the absolute upper bound on the
+ * size of a message passed to DataChannel.send(). If a frame exceeds this,
+ * send() will throw synchronously — not because the SCTP buffer is full (that
+ * is a backpressure problem), but because the individual message is illegal.
+ *
+ * Special cases per the WebRTC spec and MDN:
+ *   - undefined/null (SCTP transport not yet attached): conservative fallback.
+ *   - 0: means the endpoint accepts messages of arbitrary size (memory only).
+ *        Treat as unlimited and apply our desired application cap.
+ */
+function getSafeChunkSize(pc: RTCPeerConnection | null): number {
+  if (!pc) return MAX_DESIRED_CHUNK_PAYLOAD - HEADER_SIZE;
+  const maxMessageSize = pc.sctp?.maxMessageSize;
+  if (maxMessageSize === undefined || maxMessageSize === null) {
+    // SCTP transport not ready yet. Conservative fallback.
+    return MAX_DESIRED_CHUNK_PAYLOAD - HEADER_SIZE;
+  }
+  if (maxMessageSize === 0) {
+    // maxMessageSize === 0 means unlimited. Use our desired application cap.
+    return MAX_DESIRED_CHUNK_PAYLOAD;
+  }
+  // Normal case: cap payload so that (payload + HEADER_SIZE) <= maxMessageSize.
+  return Math.max(1, Math.min(MAX_DESIRED_CHUNK_PAYLOAD, maxMessageSize - HEADER_SIZE));
+}
 const CONNECT_TIMEOUT_MS = 12000;
 export const MAX_TEXT_BYTES = 512 * 1024; // 512 KB hard cap on text channel messages (UTF-8 bytes)
 export const MAX_IN_MEMORY_FILE_BYTES = 512 * 1024 * 1024;
@@ -2747,7 +2780,7 @@ export function useWebRTC(
         qbLog(`[QB transfer] negotiated maxMessageSize=${maxMessageSize}`);
         qbLog(`[QB transfer] headerSize=${HEADER_SIZE}`);
         qbLog(`[QB transfer] chunkSize=${chunkSize}`);
-        qbLog(`[QB transfer] frameSizeLimit=${frameSizeLimit}`);
+        qbLog(`[QB transfer] frameSize<=${frameSizeLimit} (header=${HEADER_SIZE} + payload<=${chunkSize})`);
         qbLog(`[QB transfer] bufferedAmount=${channel.bufferedAmount}`);
         let actualOffset = safeStart;
         // For resume attempts we register the ack resolver BEFORE sending
@@ -2932,7 +2965,7 @@ export function useWebRTC(
               frame.set(slice, HEADER_SIZE);
               
               if (maxMessageSize !== undefined && maxMessageSize > 0 && frame.byteLength > maxMessageSize) {
-                throw new Error(`Frame exceeds negotiated SCTP message limit: ${frame.byteLength} > ${maxMessageSize}`);
+                throw new OversizedFrameError(frame.byteLength, maxMessageSize);
               }
               
               // We rely on backpressure to prevent buffer overflow. If send() throws here,
@@ -2968,7 +3001,10 @@ export function useWebRTC(
           delete fileSourcesRef.current[id];
         } catch (err) {
           const message = err instanceof Error ? err.message : "Transfer aborted";
-          const isOversized = message.includes("Frame exceeds negotiated SCTP message limit");
+          // An oversized frame is a hard protocol error: the frame itself is too
+          // large for this session's negotiated SCTP message limit. Retrying the
+          // same frame unconditionally accomplishes nothing.
+          const isOversized = err instanceof OversizedFrameError;
           const isRetryable = !isOversized;
 
           // User-cancelled transfers: cancelOutgoing already removed the row
