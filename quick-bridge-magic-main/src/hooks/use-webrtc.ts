@@ -600,7 +600,10 @@ export function useWebRTC(
   }, []);
 
   const sendSignal = useCallback((payload: Record<string, unknown>) => {
-    channelRef.current?.send({ type: "broadcast", event: "signal", payload: { protocol: 1, ...payload, clientId: myClientIdRef.current } });
+    const p = channelRef.current?.send({ type: "broadcast", event: "signal", payload: { protocol: 1, ...payload, clientId: myClientIdRef.current } });
+    if (p && typeof p.catch === "function") {
+      p.catch(() => {});
+    }
   }, []);
 
   const stopQualityPoll = useCallback(() => {
@@ -613,10 +616,14 @@ export function useWebRTC(
   const startQualityPoll = useCallback(() => {
     stopQualityPoll();
     const tick = async () => {
-      const pc = pcRef.current;
-      if (!pc || pc.connectionState !== "connected") return;
-      const q = await detectQuality(pc);
-      setQuality(q);
+      try {
+        const pc = pcRef.current;
+        if (!pc || pc.connectionState !== "connected") return;
+        const q = await detectQuality(pc);
+        setQuality(q);
+      } catch (err) {
+        // ignore quality poll errors
+      }
     };
     void tick();
     qualityTimerRef.current = setInterval(tick, QUALITY_POLL_MS);
@@ -2808,13 +2815,13 @@ export function useWebRTC(
               // Check for cancellation during the pre-hash pass so a user
               // cancel doesn't wait through the entire read before responding.
               if (cancelledOutgoingIdsRef.current.has(id)) {
-                try { preReader.cancel(); } catch {}
+                preReader.cancel().catch(() => {});
                 throw new Error("Cancelled");
               }
               fileHasher.update(value);
             }
           } catch (err) {
-            try { preReader.cancel(); } catch {}
+            preReader.cancel().catch(() => {});
             throw err;
           }
         }
@@ -2894,9 +2901,7 @@ export function useWebRTC(
             // a future transfer with the same ID.
             cancelledOutgoingIdsRef.current.delete(id);
           }
-          try {
-            reader.cancel();
-          } catch {}
+          reader.cancel().catch(() => {});
         }
       };
 
