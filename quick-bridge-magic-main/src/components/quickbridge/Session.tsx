@@ -2363,7 +2363,7 @@ myDeviceKindRef.current = myDeviceKind;
   }, [isPickingFolder, setSaveDirectory]);
 
   // Labels
-  const myFallback = deviceLabel(myDeviceKind, "self");
+  const myFallback = detectOsName();
   const myShown = deviceName.trim() || myFallback;
   const peerFallback = peerDeviceKind ? deviceLabel(peerDeviceKind, "peer") : "Other device";
   const peerShown = resolvedPeerName;
@@ -2611,14 +2611,12 @@ myDeviceKindRef.current = myDeviceKind;
           })()}
 
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-            <div title={quality === "direct" ? "Peer-to-peer connection between devices." : undefined}>
-              <StatusBadge
-                status={status}
-                quality={quality}
-                attempt={reconnectAttempt}
-                maxAttempts={maxReconnectAttempts}
-              />
-            </div>
+            <StatusBadge
+              status={status}
+              quality={quality}
+              attempt={reconnectAttempt}
+              maxAttempts={maxReconnectAttempts}
+            />
             {connected && throughputSamples.length > 1 && (
               <Sparkline samples={throughputSamples} className="opacity-90" ariaLabel="Live throughput" />
             )}
@@ -3688,26 +3686,30 @@ myDeviceKindRef.current = myDeviceKind;
 
       {/* Messages */}
       {messages.length > 0 && (
-        <Card className="min-w-0 overflow-hidden space-y-2 p-4">
-          <h3 className="text-sm font-semibold">Messages</h3>
-          <div className="space-y-2">
+        <Collapsible className="min-w-0 mx-2">
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="w-full flex justify-between items-center text-xs font-semibold text-muted-foreground/70 tracking-widest uppercase mb-1">
+              <span>Messages <span className="ml-1 text-foreground tabular-nums">{messages.length}</span></span>
+              <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-2 px-1 pb-4">
             {messages.map((m) => (
               <div
                 key={m.id}
                 className={cn(
-                  "flex min-w-0 flex-col overflow-hidden rounded-lg border p-3 text-sm",
-                  m.from === "me" ? "bg-primary/5" : "bg-muted/40",
+                  "flex min-w-0 flex-col overflow-hidden text-sm",
                 )}
               >
-                <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-                  <span className="truncate pr-2">
+                <div className="mb-0.5 flex items-center justify-between text-xs text-muted-foreground">
+                  <span className="truncate pr-2 font-medium">
                     {m.from === "me" ? "You" : resolvedPeerName}
-                    {m.kind === "clipboard" ? " · clipboard" : ""}
+                    <span className="font-normal opacity-70">{m.kind === "clipboard" ? " · clipboard" : ""}</span>
                   </span>
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-6 shrink-0 px-2"
+                    className="h-5 shrink-0 px-1 text-[10px]"
                     onClick={() => {
                       navigator.clipboard
                         .writeText(m.content)
@@ -3715,14 +3717,14 @@ myDeviceKindRef.current = myDeviceKind;
                         .catch(() => toast.error("Could not copy to clipboard"));
                     }}
                   >
-                    <Copy className="mr-1 h-3 w-3" /> Copy
+                    Copy
                   </Button>
                 </div>
-                <span className="min-w-0 whitespace-pre-wrap break-words">{m.content}</span>
+                <div className="whitespace-pre-wrap break-words border-b border-border/20 pb-3">{m.content}</div>
               </div>
             ))}
-          </div>
-        </Card>
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
       {/* History */}
@@ -3772,7 +3774,7 @@ function HistoryPanel({
               className="flex flex-1 items-center gap-2 text-left text-sm font-semibold"
             >
               <HistoryIcon className="h-4 w-4 text-muted-foreground" />
-              <span>Recent</span>
+              <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/80">SESSION HISTORY</span>
               <span className="rounded-full border bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                 {items.length}
               </span>

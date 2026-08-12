@@ -57,7 +57,7 @@ export function QualityBadge({ quality }: { quality: ConnectionQuality }) {
     <span
       title={
         isDirect
-          ? "Direct peer-to-peer connection - fastest path."
+          ? "Peer-to-peer connection between devices."
           : "Relayed through a TURN server because a direct path was blocked. Still encrypted end-to-end, but slower."
       }
       className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-1 text-[11px] font-medium text-muted-foreground"
