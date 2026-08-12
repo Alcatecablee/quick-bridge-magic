@@ -2704,8 +2704,7 @@ myDeviceKindRef.current = myDeviceKind;
               </span>
               {peerTrustVerified ? (
                 <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-success">
-                  <ShieldCheck className="h-3 w-3 shrink-0" />
-                  Verified
+                  ✓ Verified
                 </span>
               ) : (
                 <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/60">
@@ -3404,7 +3403,7 @@ myDeviceKindRef.current = myDeviceKind;
                 {f.state === "completed" ? (
                   <div className="text-xs tabular-nums text-muted-foreground pt-1">
                     <span className="inline-flex items-center gap-1">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-success" /> Sent in {elapsed.toFixed(1)}s
+                      <span className="text-success font-bold">✓</span> Sent in {elapsed.toFixed(1)}s
                     </span>
                   </div>
                 ) : f.error ? (
@@ -3585,21 +3584,21 @@ myDeviceKindRef.current = myDeviceKind;
                     ) : (
                       <div className="flex flex-col gap-1.5 pt-1 text-xs">
                         <span className="inline-flex items-center gap-1 text-muted-foreground">
-                          <CheckCircle2 className="h-3.5 w-3.5 text-success" /> Received in {elapsed.toFixed(1)}s
+                          <span className="text-success font-bold">✓</span> Received in {elapsed.toFixed(1)}s
                         </span>
                         {f.verified === true && (
                           <span className="inline-flex items-center gap-1 text-muted-foreground" title={`SHA-256 verified: ${f.sha256 ?? ""}`}>
-                            <CheckCircle2 className="h-3.5 w-3.5 text-success" /> Verified
+                            <span className="text-success font-bold">✓</span> Verified
                           </span>
                         )}
                         {f.verified === false && (
                           <span className="inline-flex items-center gap-1 text-destructive" title="SHA-256 mismatch: file may be corrupted.">
-                            <ShieldX className="h-3.5 w-3.5" /> Integrity check failed
+                            <span className="font-bold">✕</span> Integrity check failed
                           </span>
                         )}
                         {f.savedToDisk && (
                           <span className="inline-flex items-center gap-1 text-muted-foreground" title={f.savedAs ? `Saved as: ${f.savedAs}` : undefined}>
-                            <CheckCircle2 className="h-3.5 w-3.5 text-success" /> 
+                            <span className="text-success font-bold">✓</span> 
                             <span className="truncate max-w-[240px]">Saved to {saveDirectory?.label || "folder"}</span>
                           </span>
                         )}
