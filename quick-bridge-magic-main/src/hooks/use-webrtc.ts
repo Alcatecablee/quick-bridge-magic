@@ -185,6 +185,7 @@ interface IncomingBuffer {
   // the data in memory.
   hasher: IncrementalSha256;
   createWritableInflight?: Promise<void>;
+  lastUiUpdate: number;
 }
 
 // Default TURN: Open Relay Project (free, public). Override via env vars below.
@@ -211,6 +212,9 @@ function buildIceServers(): RTCIceServer[] {
 }
 
 const CHUNK_SIZE = 16 * 1024; // 16KB payload (header adds 16 bytes)
+const DATA_CHANNEL_BUFFER_HIGH_WATERMARK = 64 * 1024;
+const DATA_CHANNEL_BUFFER_LOW_WATERMARK = 16 * 1024;
+const UI_UPDATE_INTERVAL = 100;
 const HEADER_SIZE = 16; // 16-byte file id (hex of UUID without dashes)
 const CONNECT_TIMEOUT_MS = 12000;
 export const MAX_TEXT_BYTES = 512 * 1024; // 512 KB hard cap on text channel messages (UTF-8 bytes)
@@ -998,6 +1002,7 @@ export function useWebRTC(
                 writeQueue: Promise.resolve(),
                 cleanup: null,
                 aborted: false,
+      lastUiUpdate: 0,
                 hasher: new IncrementalSha256(),
               };
               incomingBuffersRef.current[meta.id] = buf;
@@ -1479,11 +1484,17 @@ export function useWebRTC(
           // Accumulate the incremental SHA-256 in the same order chunks arrive.
           // Data channel is ordered so this exactly mirrors the sender's byte stream.
           buf.hasher.update(payload);
-          setIncomingFiles((s) => {
-            const file = s[id];
-            if (!file || file.state === "failed" || file.state === "cancelled" || file.state === "verified") return s;
-            return { ...s, [id]: { ...file, receivedBytes: buf.received } };
-          });
+          
+          const now = Date.now();
+          const isTerminal = buf.received === buf.meta.size;
+          if (now - buf.lastUiUpdate >= UI_UPDATE_INTERVAL || isTerminal) {
+            setIncomingFiles((s) => {
+              const file = s[id];
+              if (!file || file.state === "failed" || file.state === "cancelled" || file.state === "verified") return s;
+              return { ...s, [id]: { ...file, receivedBytes: buf.received } };
+            });
+            buf.lastUiUpdate = now;
+          }
         }
       };
     },
@@ -2711,6 +2722,7 @@ export function useWebRTC(
       }));
 
       const task = async () => {
+        const generation = sessionGenerationRef.current;
         const channel = dcRef.current;
         if (!channel || channel.readyState !== "open") {
           setOutgoingFiles((s) => ({ ...s, [id]: { ...s[id], error: "Not connected", retryable: true } }));
@@ -2832,52 +2844,89 @@ export function useWebRTC(
         const sourceStream =
           actualOffset > 0 ? file.slice(actualOffset).stream() : file.stream();
         const reader = sourceStream.getReader();
+        let uiLastUpdate = 0;
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
             let chunkOffset = 0;
             while (chunkOffset < value.byteLength) {
-              if (cancelledOutgoingIdsRef.current.has(id)) {
-                throw new Error("Cancelled");
-              }
-              if (peerAbortedSendIdsRef.current.has(id)) {
-                throw new Error("Receiver aborted");
-              }
+              // 2. Check transfer terminal state
+              if (cancelledOutgoingIdsRef.current.has(id)) throw new Error("Cancelled");
+              if (peerAbortedSendIdsRef.current.has(id)) throw new Error("Receiver aborted");
+
+              // 3. Extract exactly one chunk
               const slice = value.subarray(chunkOffset, Math.min(chunkOffset + CHUNK_SIZE, value.byteLength));
-              while (channel.readyState === "open" && channel.bufferedAmount > 256 * 1024) {
-                // Escape on close/error as well: if the channel closes while we
-                // are parked here, "bufferedamountlow" will never fire and the
-                // send-queue promise chain would hang permanently. Resolving on
-                // close lets the outer "readyState !== open" guard throw and
-                // surface a clean retryable error instead.
-                await new Promise<void>((resolve) => {
+
+              // 4 & 5 & 6: Check readyState and bufferedAmount, wait if needed
+              if (channel.readyState === "open" && channel.bufferedAmount > DATA_CHANNEL_BUFFER_HIGH_WATERMARK) {
+                // Temporarily set the low threshold to our watermark so the event fires precisely
+                channel.bufferedAmountLowThreshold = DATA_CHANNEL_BUFFER_LOW_WATERMARK;
+                await new Promise<void>((resolve, reject) => {
+                  let timeoutTimer: ReturnType<typeof setTimeout>;
+                  let pollTimer: ReturnType<typeof setInterval>;
+                  
                   const cleanup = () => {
-                    channel.removeEventListener("bufferedamountlow", cleanup);
-                    channel.removeEventListener("close", cleanup);
-                    channel.removeEventListener("error", cleanup);
-                    resolve();
+                    channel.removeEventListener("bufferedamountlow", onLow);
+                    channel.removeEventListener("close", onClose);
+                    channel.removeEventListener("error", onError);
+                    clearTimeout(timeoutTimer);
+                    clearInterval(pollTimer);
                   };
-                  channel.addEventListener("bufferedamountlow", cleanup);
-                  channel.addEventListener("close", cleanup);
-                  channel.addEventListener("error", cleanup);
+                  
+                  const onLow = () => { cleanup(); resolve(); };
+                  const onClose = () => { cleanup(); reject(new Error("Channel closed")); };
+                  const onError = () => { cleanup(); reject(new Error("Channel error")); };
+                  
+                  channel.addEventListener("bufferedamountlow", onLow);
+                  channel.addEventListener("close", onClose);
+                  channel.addEventListener("error", onError);
+                  
+                  // Poll for cancellation or stale generation while parked
+                  pollTimer = setInterval(() => {
+                    if (sessionGenerationRef.current !== generation ||
+                        cancelledOutgoingIdsRef.current.has(id) ||
+                        peerAbortedSendIdsRef.current.has(id)) {
+                      cleanup();
+                      reject(new Error("Cancelled"));
+                    }
+                  }, 100);
+                  
+                  // Failsafe: if we wait 10s and nothing drains, the connection is effectively dead
+                  timeoutTimer = setTimeout(() => {
+                    cleanup();
+                    reject(new Error("Backpressure timeout"));
+                  }, 10_000);
                 });
               }
+
               if (channel.readyState !== "open") throw new Error("Channel closed");
+
+              // Re-check terminal states after the possible await!
+              if (cancelledOutgoingIdsRef.current.has(id)) throw new Error("Cancelled");
+              if (peerAbortedSendIdsRef.current.has(id)) throw new Error("Receiver aborted");
+
+              // 7. Send exactly one chunk
               const frame = new Uint8Array(HEADER_SIZE + slice.byteLength);
               frame.set(idHeader, 0);
               frame.set(slice, HEADER_SIZE);
-              try {
-                channel.send(frame);
-              } catch (err) {
-                throw err instanceof Error ? err : new Error("send failed");
-              }
-              // Hash the payload slice (not the full frame - receiver hashes
-              // the same payload bytes after stripping the 16-byte header).
+              
+              // We rely on backpressure to prevent buffer overflow. If send() throws here,
+              // it's a catastrophic protocol failure, not just a transient full buffer.
+              channel.send(frame);
+              
+              // 8. Update internal progress
               fileHasher.update(slice);
               chunkOffset += slice.byteLength;
               offset += slice.byteLength;
-              setOutgoingFiles((s) => ({ ...s, [id]: { ...s[id], sentBytes: offset } }));
+              
+              // 9. Throttle React publication to ~100 ms
+              const now = Date.now();
+              const isTerminal = offset === file.size;
+              if (now - uiLastUpdate >= UI_UPDATE_INTERVAL || isTerminal) {
+                setOutgoingFiles((s) => ({ ...s, [id]: { ...s[id], sentBytes: offset } }));
+                uiLastUpdate = now;
+              }
             }
           }
           const sha256Hex = fileHasher.digest();
