@@ -900,7 +900,7 @@ export function useWebRTC(
                       : s,
                   );
                   try {
-                  sendControlMessage({ t: "file-resume-ack", id: meta.id, start: resumeFrom });
+                    sendControlMessage({ t: "file-resume-ack", id: meta.id, offset: resumeFrom, sequence: Date.now() });
                   } catch {}
                   return;
                 }
@@ -960,7 +960,7 @@ export function useWebRTC(
                   })();
                 }
                 try {
-                  sendControlMessage({ t: "file-resume-ack", id: meta.id, start: resumeFrom });
+                  sendControlMessage({ t: "file-resume-ack", id: meta.id, offset: resumeFrom, sequence: Date.now() });
                 } catch {}
               }
               // FSA receiving invariant: if this browser supports the File
