@@ -186,6 +186,8 @@ interface IncomingBuffer {
   hasher: IncrementalSha256;
   createWritableInflight?: Promise<void>;
   lastUiUpdate: number;
+  writeBuffer: Uint8Array[];
+  writeBufferLength: number;
 }
 
 // Default TURN: Open Relay Project (free, public). Override via env vars below.
@@ -211,6 +213,7 @@ function buildIceServers(): RTCIceServer[] {
   return [...stuns, { urls: turnUrls, username, credential }];
 }
 
+const DISK_WRITE_BATCH_SIZE = 4 * 1024 * 1024;
 const DATA_CHANNEL_BUFFER_HIGH_WATERMARK = 64 * 1024;
 const DATA_CHANNEL_BUFFER_LOW_WATERMARK = 16 * 1024;
 const UI_UPDATE_INTERVAL = 100;
@@ -1047,6 +1050,8 @@ export function useWebRTC(
                 aborted: false,
       lastUiUpdate: 0,
                 hasher: new IncrementalSha256(),
+                writeBuffer: [],
+                writeBufferLength: 0,
               };
               incomingBuffersRef.current[meta.id] = buf;
               cancelledIdsRef.current.delete(meta.id);
@@ -1303,9 +1308,37 @@ export function useWebRTC(
                   if (buf.writer) {
                     const writer = buf.writer;
                     const finalName = buf.finalName;
+
+                    if (buf.writeBuffer.length > 0) {
+                      const batch = buf.writeBuffer;
+                      const batchSize = buf.writeBufferLength;
+                      buf.writeBuffer = [];
+                      buf.writeBufferLength = 0;
+                      qbLog(`[QB disk] final batch queued bytes=${batchSize}`);
+                      
+                      buf.writeQueue = buf.writeQueue.then(async () => {
+                        if (buf.aborted) return;
+                        try {
+                          const blob = new Blob(batch as BlobPart[]);
+                          await writer.write(blob);
+                          qbLog(`[QB disk] final batch written bytes=${batchSize}`);
+                        } catch (err) {
+                          qbError("[QB disk] final batch write failed", err);
+                          abortIncomingDueToWriteError(id, err);
+                          throw err;
+                        }
+                      });
+                    }
+
                     try {
+                      qbLog("[QB disk] finalizing...");
+                      const t0 = performance.now();
                       await buf.writeQueue;
+                      if (buf.aborted) throw new Error("Aborted during write queue");
+                      
+                      const t1 = performance.now();
                       await writer.close();
+                      qbLog(`[QB disk] writer closed. Finalization took ${(t1 - t0).toFixed(1)}ms, Close took ${(performance.now() - t1).toFixed(1)}ms`);
                       setIncomingFiles((s) =>
                         s[id]
                           ? {
@@ -1473,18 +1506,34 @@ export function useWebRTC(
           if (!buf || buf.aborted) return;
           if (buf.writer) {
             const writer = buf.writer;
-            buf.writeQueue = buf.writeQueue.then(async () => {
-              if (buf.aborted) return;
-              try {
-                // The writable's write() promise resolves only once the
-                // chunk is accepted, which gives us natural backpressure
-                // since the queue is serialized - fast network + slow disk
-                // can't blow up memory the way an unawaited write would.
-                await writer.write(payload as BufferSource);
-              } catch (err) {
-                abortIncomingDueToWriteError(id, err);
-              }
-            });
+            buf.writeBuffer.push(payload);
+            buf.writeBufferLength += payload.byteLength;
+
+            if (buf.writeBufferLength > DISK_WRITE_BATCH_SIZE * 5) {
+               qbWarn(`[QB disk] writeBuffer growing unusually large: ${buf.writeBufferLength} bytes`);
+            }
+
+            if (buf.writeBufferLength >= DISK_WRITE_BATCH_SIZE) {
+              const batch = buf.writeBuffer;
+              const batchSize = buf.writeBufferLength;
+              buf.writeBuffer = [];
+              buf.writeBufferLength = 0;
+
+              qbLog(`[QB disk] batch queued bytes=${batchSize}`);
+
+              buf.writeQueue = buf.writeQueue.then(async () => {
+                if (buf.aborted) return;
+                try {
+                  const blob = new Blob(batch as BlobPart[]);
+                  await writer.write(blob);
+                  qbLog(`[QB disk] batch written bytes=${batchSize}`);
+                } catch (err) {
+                  qbError("[QB disk] batch write failed", err);
+                  abortIncomingDueToWriteError(id, err);
+                  throw err; // Stop subsequent writes and trigger file-end catch
+                }
+              });
+            }
           } else {
             // Memory-only path: enforce per-file and total limits before
             // buffering. Exceeding either triggers a hard abort so a large
