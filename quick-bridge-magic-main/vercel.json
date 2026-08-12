@@ -1,19 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cd quick-bridge-magic-main && npm install --include=dev --package-lock=false --registry=https://registry.npmjs.org && npm run build",
-  "outputDirectory": "quick-bridge-magic-main/dist/client",
-  "installCommand": "echo done",
+  "buildCommand": "npm install --include=dev && npm run build",
+  "outputDirectory": "dist/client",
+  "installCommand": "npm install --include=dev",
   "framework": null,
   "trailingSlash": false,
   "cleanUrls": true,
-  "redirects": [
-    {
-      "source": "/",
-      "has": [{ "type": "query", "key": "ref" }],
-      "destination": "/",
-      "permanent": true
-    }
-  ],
   "rewrites": [
     { "source": "/s/:id", "destination": "/" },
     { "source": "/session/:id", "destination": "/" },

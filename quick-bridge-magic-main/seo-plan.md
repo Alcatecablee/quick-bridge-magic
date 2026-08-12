@@ -43,10 +43,11 @@ You do not need to edit this file yourself. Just tell the agent what you observe
 ## Priority 1 — Blocking or Actively Misleading Google
 
 ### P1.1 Fix the 3 "Page with redirect" (GSC Coverage FAILED)
-- **Status:** [x] Resolved — no code change needed, dismissed
-- **Root cause confirmed (from GSC CSV):** The 3 pages are domain consolidation redirects — `https://www.quickbridge.app/`, `http://quickbridge.app/`, and `http://www.quickbridge.app/`. All three correctly 308 to `https://quickbridge.app/`. This is standard canonical domain hygiene, not a content or routing problem. Google flags them as "redirect" because they are — the canonical target is indexed and ranking correctly.
-- **Action taken:** None required for the redirects. `video.tsx` was separately fixed with `noindex, nofollow` (stray crawlable route with no metadata).
-- **Optional:** In GSC Coverage, click "Validate Fix" on this group — it will not pass (the redirects are permanent by design), but it will reset the FAILED badge to PASSED or EXCLUDED once Google re-crawls and understands the pattern.
+- **Status:** [x] Resolved
+- **Root cause 1 (Domain Consolidation):** URLs like `http://quickbridge.app/` and `https://www.quickbridge.app/` correctly 308 to `https://quickbridge.app/`. This is standard canonical domain hygiene.
+- **Root cause 2 (Vercel Index Redirects):** The recent "Validation Failed" report (since 7/1/26) includes multiple `/how-to` pages like `https://quickbridge.app/how-to/send-videos-phone-to-pc`. These returned a 308 redirect because `gen-static-routes.mjs` was generating `.../index.html` files. Vercel's standard web behavior redirects requests for `/folder` to `/folder/` when it contains an `index.html`. Since we also have `"trailingSlash": false`, Vercel immediately redirects `/folder/` back to `/folder`. This directory index + cleanUrls conflict causes continuous 308s. The URLs with query params (`/?utm_content=...`, `/?q=...`) are also 308ing, either due to being crawled on HTTP initially or stripped by the client-side router.
+- **Fix applied:** Modified `scripts/gen-static-routes.mjs` to generate flat `.html` files (e.g. `how-to.html` instead of `how-to/index.html`). When `cleanUrls: true` is on, Vercel natively serves `foo.html` cleanly at `/foo` without triggering the directory index 308 redirect. `seo-lint.mjs` was verified to already support flat `.html` paths.
+- **Action:** In GSC Coverage, click "Validate Fix" on this group. It will reset the FAILED badge and gradually process the corrected routing for the `how-to` URLs.
 
 ### P1.2 Remove fake `SearchAction` from site-wide JSON-LD
 - **Status:** [x] Done
@@ -59,6 +60,17 @@ You do not need to edit this file yourself. Just tell the agent what you observe
 - **Root cause:** `about.tsx` had zero `og:image` or `twitter:image` tags. Social shares and link preview crawlers fell back to the root's generic fallback with no explicit declaration.
 - **Fix applied:** Added `og:image`, `og:image:alt`, `og:image:width`, `og:image:height`, and `twitter:image` to the route `head()`.
 - **File:** `src/routes/about.tsx`
+
+### P1.4 Dismiss "Alternate page with proper canonical tag" (www URLs)
+- **Status:** [x] Resolved — no code change needed, dismissed
+- **Root cause confirmed (from GSC CSV):** A validation failure was reported for `Alternate page with proper canonical tag` on several `https://www.quickbridge.app/...` URLs. This is standard domain consolidation. Google correctly crawls the `www` versions, sees they canonicalize (and 308 redirect) to the root `https://quickbridge.app/` domain, and correctly marks them as alternates so they aren't indexed twice.
+- **Action taken:** None required. Validation "fails" in GSC because the status (being an alternate) remains permanently true. This is exactly what we want. You can safely ignore this warning.
+
+### P1.5 Fix "Redirect error" (Infinite loops on ?ref=)
+- **Status:** [x] Done
+- **Root cause:** `vercel.json` contained a `redirects` block attempting to strip `?ref=` query parameters by redirecting `/` to `/`. However, Vercel preserves query parameters by default during redirects. This created an infinite 308 redirect loop (`/?ref=calmpc` -> `/?ref=calmpc` -> ...), which Google correctly flagged as a "Redirect error". The `http://www.quickbridge.app/` URL in the same report was likely caught in a transient 2-hop domain consolidation chain, but is not structurally broken.
+- **Fix applied:** Removed the broken `redirects` block from `vercel.json`. The client-side router (TanStack Router) already naturally strips unknown search parameters via `replaceState`, so the server-side redirect was unnecessary.
+- **Action:** In GSC, click "Validate Fix" for the "Redirect error" report.
 
 ---
 

@@ -10,9 +10,9 @@
  * not just after JS loads.
  *
  * TanStack Router flat-file naming:
- *   about.tsx                    -> /about/index.html
- *   compare.index.tsx            -> /compare/index.html
- *   compare.quickbridge-vs-x.tsx -> /compare/quickbridge-vs-x/index.html
+ *   about.tsx                    -> /about.html
+ *   compare.index.tsx            -> /compare.html
+ *   compare.quickbridge-vs-x.tsx -> /compare/quickbridge-vs-x.html
  *   s.$id.tsx                    -> skipped (dynamic)
  *   __root.tsx                   -> skipped (layout)
  *   index.tsx                    -> skipped (already dist/client/index.html)
@@ -180,10 +180,10 @@ for (const { route, file } of routes) {
 
   const html = injectMeta(indexHtml, { title, description, url, ogImage });
 
-  const dir = join(DIST_DIR, route);
-  await mkdir(dir, { recursive: true });
-  await writeFile(join(dir, "index.html"), html);
-  console.log(`  generated ${route}/index.html${title ? ` -- "${title.slice(0, 55)}"` : ""}`);
+  const dest = join(DIST_DIR, route + ".html");
+  await mkdir(dirname(dest), { recursive: true });
+  await writeFile(dest, html);
+  console.log(`  generated ${route}.html${title ? ` -- "${title.slice(0, 55)}"` : ""}`);
   count++;
 }
 
