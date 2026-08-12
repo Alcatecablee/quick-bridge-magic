@@ -684,6 +684,10 @@ export function useWebRTC(
             // synchronously, so a click between "timer scheduled" and
             // "timer fires" is honored here, not silently overridden.
             if (cancelledOutgoingIdsRef.current.has(id)) continue;
+            // Skip ids that the receiver previously aborted: they have cleared
+            // their partial buffer and will reject a resume with another abort,
+            // causing an unnecessary reset cycle. The user must Retry manually.
+            if (peerAbortedSendIdsRef.current.has(id)) continue;
             if (file.state === "cancelled" || file.state === "completed") continue;
             if (!file.retryable) continue;
             if (!fileSourcesRef.current[id]) continue;
@@ -1110,8 +1114,10 @@ export function useWebRTC(
               const buf = incomingBuffersRef.current[id];
               if (buf) {
                 buf.aborted = true;
-                // Release memory accounting for any buffered in-memory chunks.
-                if (!buf.writer && buf.memoryChunks.length > 0) {
+                // Release in-memory accounting. Without this the running total
+                // never decrements, and subsequent large transfers will be
+                // incorrectly rejected as "Memory limit exceeded".
+                if (buf.memoryChunks.length > 0) {
                   const freed = buf.memoryChunks.reduce((acc, c) => acc + c.byteLength, 0);
                   incomingMemoryBytesRef.current = Math.max(0, incomingMemoryBytesRef.current - freed);
                   buf.memoryChunks = [];
@@ -2964,7 +2970,25 @@ export function useWebRTC(
     cancelledOutgoingIdsRef.current.add(id);
     delete fileSourcesRef.current[id];
     peerAbortedSendIdsRef.current.delete(id);
-    sendDataMessage({ t: "file-cancel", id });
+    // If a resume-ack is currently in-flight (the sender is waiting for the
+    // receiver's acknowledgement), immediately resolve it with -1 so the
+    // parked ackPromise wakes up and exits rather than waiting the full 5 s
+    // timeout before setState on a row that has already been removed. Without
+    // this guard, ackPromise's catch branch would call setOutgoingFiles and
+    // resurrect a ghost row for the cancelled file.
+    const ackResolver = resumeAckResolversRef.current[id];
+    if (ackResolver) {
+      delete resumeAckResolversRef.current[id];
+      const pendingTimer = resumeAckTimersRef.current[id];
+      if (pendingTimer) {
+        clearTimeout(pendingTimer);
+        delete resumeAckTimersRef.current[id];
+      }
+      ackResolver(-1);
+    }
+    // Best-effort: if the channel is gone the peer will time-out the receive
+    // side anyway, so swallow any send error gracefully.
+    try { sendDataMessage({ t: "file-cancel", id }); } catch {}
     // Remove the row immediately and transition to the cancelled terminal
     // state. The send loop will also see cancelledOutgoingIdsRef and
     // delete the ID from the set once it exits, preventing ID poisoning.
@@ -3049,8 +3073,15 @@ export function useWebRTC(
     if (buf && !buf.aborted) {
       buf.aborted = true;
       cancelledIdsRef.current.add(id);
+      // Release in-memory accounting so subsequent large transfers are not
+      // incorrectly blocked by a "Memory limit exceeded" guard.
+      if (buf.memoryChunks.length > 0) {
+        const freed = buf.memoryChunks.reduce((acc, c) => acc + c.byteLength, 0);
+        incomingMemoryBytesRef.current = Math.max(0, incomingMemoryBytesRef.current - freed);
+        buf.memoryChunks = [];
+      }
       try {
-                  sendControlMessage({ t: "file-abort", id: id, reason: "Cancelled by receiver", sequence: Date.now() });
+        sendControlMessage({ t: "file-abort", id: id, reason: "Cancelled by receiver", sequence: Date.now() });
       } catch {}
       const writer = buf.writer;
       const cleanup = buf.cleanup;
