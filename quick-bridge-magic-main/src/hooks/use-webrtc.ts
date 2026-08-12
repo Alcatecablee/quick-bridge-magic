@@ -210,7 +210,7 @@ function buildIceServers(): RTCIceServer[] {
   return [...stuns, { urls: turnUrls, username, credential }];
 }
 
-const CHUNK_SIZE = 64 * 1024; // 64KB payload (header adds 16 bytes)
+const CHUNK_SIZE = 16 * 1024; // 16KB payload (header adds 16 bytes)
 const HEADER_SIZE = 16; // 16-byte file id (hex of UUID without dashes)
 const CONNECT_TIMEOUT_MS = 12000;
 export const MAX_TEXT_BYTES = 512 * 1024; // 512 KB hard cap on text channel messages (UTF-8 bytes)
