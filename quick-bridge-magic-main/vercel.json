@@ -1,17 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm install --include=dev && npm run build",
-  "outputDirectory": "dist/client",
-  "installCommand": "npm install --include=dev",
-  "framework": null,
   "trailingSlash": false,
   "cleanUrls": true,
-  "rewrites": [
-    { "source": "/s/:id", "destination": "/index.html" },
-    { "source": "/session/:id", "destination": "/index.html" },
-    { "source": "/video", "destination": "/index.html" },
-    { "source": "/((?!api/|assets/|_vercel/).*)", "destination": "/index.html" }
-  ],
   "headers": [
     {
       "source": "/(.*)",
