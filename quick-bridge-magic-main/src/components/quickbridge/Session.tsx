@@ -149,12 +149,13 @@ const STREAMED_MAX_FILE_LABEL = "10 GB";
 const MAX_QUEUED_BYTES = 2 * 1024 * 1024 * 1024;
 
 function fileTypeIcon(type: string, className = "h-5 w-5") {
-  if (type.startsWith("image/")) return <ImageIcon className={className} />;
-  if (type.startsWith("video/")) return <Video className={className} />;
-  if (type.startsWith("audio/")) return <Music className={className} />;
-  if (type.startsWith("text/") || type.includes("pdf") || type.includes("document"))
+  const t = type || "";
+  if (t.startsWith("image/")) return <ImageIcon className={className} />;
+  if (t.startsWith("video/")) return <Video className={className} />;
+  if (t.startsWith("audio/")) return <Music className={className} />;
+  if (t.startsWith("text/") || t.includes("pdf") || t.includes("document"))
     return <FileText className={className} />;
-  if (type.includes("zip") || type.includes("compressed") || type.includes("tar") || type.includes("rar"))
+  if (t.includes("zip") || t.includes("compressed") || t.includes("tar") || t.includes("rar"))
     return <Archive className={className} />;
   return <FileIcon className={className} />;
 }
@@ -3537,7 +3538,7 @@ myDeviceKindRef.current = myDeviceKind;
         <Card className="space-y-3 p-4">
           <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Received</h3>
           {incomingFiles.map((f) => {
-            const isImage = f.type.startsWith("image/");
+            const isImage = (f.type || "").startsWith("image/");
             // Use the resume timestamp as the elapsed baseline when available so
             // the rate reflects the current attempt only (mirrors the outgoing
             // resumeFromBytes pattern). Without this, a 400 MB resume that adds
@@ -3662,7 +3663,7 @@ myDeviceKindRef.current = myDeviceKind;
                             {f.savedAs && f.savedAs !== f.name ? ` · ${f.savedAs}` : ""}
                           </span>
                         )}
-                        {f.type.startsWith("video/") && (
+                        {(f.type || "").startsWith("video/") && (
                           <a
                             href="https://calmclip.video?ref=quickbridge"
                             target="_blank"
