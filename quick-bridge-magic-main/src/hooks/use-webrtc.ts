@@ -1235,17 +1235,22 @@ export function useWebRTC(
               const verified: boolean | undefined =
                 senderSha256 !== undefined ? senderSha256 === receivedDigest : undefined;
               void (async () => {
-                if (buf.createWritableInflight) {
-                  await buf.createWritableInflight;
-                }
-                if (buf.writer) {
-                  const writer = buf.writer;
-                  const finalName = buf.finalName;
-                  buf.writeQueue
-                    .then(async () => {
+                // Top-level catch: FileSystemWritableFileStream.close() in Chrome
+                // throws "TypeError: network error" when the stream was aborted
+                // (e.g. disk full, permission revoked, or the connection dropped
+                // mid-transfer). Without this outer catch the rejection surfaces as
+                // an uncaught promise rejection in the console even when the inner
+                // .catch() on writeQueue already handles the disk-path failure.
+                try {
+                  if (buf.createWritableInflight) {
+                    await buf.createWritableInflight;
+                  }
+                  if (buf.writer) {
+                    const writer = buf.writer;
+                    const finalName = buf.finalName;
+                    try {
+                      await buf.writeQueue;
                       await writer.close();
-                    })
-                    .then(() => {
                       setIncomingFiles((s) =>
                         s[id]
                           ? {
@@ -1267,8 +1272,9 @@ export function useWebRTC(
                       void clearInFlightTransfer(id).catch(err =>
                         qbError("[QB] IDB: clearInFlightTransfer failed after file-end", err),
                       );
-                    })
-                    .catch((err) => {
+                    } catch (err) {
+                      // writer.close() or writeQueue rejection (disk full, aborted stream, etc.)
+                      qbError("[QB] file-end: disk write/close failed", err);
                       setIncomingFiles((s) =>
                         s[id]
                           ? {
@@ -1283,34 +1289,39 @@ export function useWebRTC(
                           : s,
                       );
                       delete incomingBuffersRef.current[id];
-                      void clearInFlightTransfer(id).catch(err =>
-                        qbError("[QB] IDB: clearInFlightTransfer failed after write error", err),
+                      void clearInFlightTransfer(id).catch(cleanErr =>
+                        qbError("[QB] IDB: clearInFlightTransfer failed after write error", cleanErr),
                       );
-                    });
-              } else {
-                // Release the memory accounting before building the Blob
-                // so the counter doesn't remain elevated while the Blob
-                // itself uses its own (separate) managed heap.
-                const freedBytes = buf.memoryChunks.reduce((acc, c) => acc + c.byteLength, 0);
-                incomingMemoryBytesRef.current = Math.max(0, incomingMemoryBytesRef.current - freedBytes);
-                const blob = new Blob(buf.memoryChunks as BlobPart[], { type: buf.meta.type });
-                const url = URL.createObjectURL(blob);
-                objectUrlsRef.current.push(url);
-                setIncomingFiles((s) => ({
-                  ...s,
-                  [id]: {
-                    ...s[id],
-                    receivedBytes: buf.meta.size,
-                    url,
-                    state: verified ? "verified" : "finalizing",
-                    completedAt: Date.now(),
-                    sha256: senderSha256,
-                    verified,
-                  },
-                }));
-                delete incomingBuffersRef.current[id];
-              }
-            })();
+                    }
+                  } else {
+                    // Release the memory accounting before building the Blob
+                    // so the counter doesn't remain elevated while the Blob
+                    // itself uses its own (separate) managed heap.
+                    const freedBytes = buf.memoryChunks.reduce((acc, c) => acc + c.byteLength, 0);
+                    incomingMemoryBytesRef.current = Math.max(0, incomingMemoryBytesRef.current - freedBytes);
+                    const blob = new Blob(buf.memoryChunks as BlobPart[], { type: buf.meta.type });
+                    const url = URL.createObjectURL(blob);
+                    objectUrlsRef.current.push(url);
+                    setIncomingFiles((s) => ({
+                      ...s,
+                      [id]: {
+                        ...s[id],
+                        receivedBytes: buf.meta.size,
+                        url,
+                        state: verified ? "verified" : "finalizing",
+                        completedAt: Date.now(),
+                        sha256: senderSha256,
+                        verified,
+                      },
+                    }));
+                    delete incomingBuffersRef.current[id];
+                  }
+                } catch (outerErr) {
+                  // Should not normally reach here, but guards against any
+                  // unexpected rejection escaping the inner blocks above.
+                  qbError("[QB] file-end: unexpected error in finalisation", outerErr);
+                }
+              })();
             } else if (msg.t === "node-hello") {
               const hello = validateNodeHello(msg);
               if (hello) {
