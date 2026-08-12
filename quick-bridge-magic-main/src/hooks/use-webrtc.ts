@@ -1478,9 +1478,9 @@ export function useWebRTC(
       qbLog("[QB] scheduleReconnect: no peer present and already waiting, staying");
       return;
     }
-    if (reconnectAttemptRef.current >= MAX_RECONNECT_ATTEMPTS) {
-      qbLog("[QB] scheduleReconnect: max attempts reached, ending session");
-      endSessionRef.current(hasConnectedRef.current ? "timeout" : "host_not_found");
+    if (!hasConnectedRef.current && reconnectAttemptRef.current >= MAX_RECONNECT_ATTEMPTS) {
+      qbLog("[QB] scheduleReconnect: max initial attempts reached, ending session");
+      endSessionRef.current("host_not_found");
       return;
     }
     if (sessionDisconnectedAtRef.current && Date.now() - sessionDisconnectedAtRef.current > 300_000) {
@@ -1535,6 +1535,7 @@ export function useWebRTC(
               sendSignal({ type: "offer", sdp: offer, iceRestart: true });
             } catch (err) {
               qbError("[QB] ICE restart offer failed", err);
+              scheduleReconnectRef.current();
             } finally {
               if (gen === sessionGenerationRef.current) isNegotiatingRef.current = false;
             }
