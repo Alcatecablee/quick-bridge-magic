@@ -2857,6 +2857,27 @@ export function useWebRTC(
           }
         }
 
+        qbLog("[QB transfer] file source", {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          lastModified: file.lastModified,
+        });
+
+        const testReader = file.stream().getReader();
+        try {
+          const first = await testReader.read();
+          qbLog("[QB transfer] local file read OK", {
+            done: first.done,
+            bytes: first.value?.byteLength ?? 0,
+          });
+        } catch (err) {
+          qbError("[QB transfer] LOCAL FILE READ FAILED", err);
+          throw new Error("Couldn't read the selected file. It may have been moved, modified, unavailable offline, or locked by another application.");
+        } finally {
+          void testReader.cancel().catch(() => {});
+        }
+
         let offset = actualOffset;
 
         // SHA-256 integrity: compute the hash of the entire file so the
@@ -2898,9 +2919,28 @@ export function useWebRTC(
           actualOffset > 0 ? file.slice(actualOffset).stream() : file.stream();
         const reader = sourceStream.getReader();
         let uiLastUpdate = 0;
+        let loggedFirstSend = false;
         try {
           while (true) {
-            const { done, value } = await reader.read();
+            let done: boolean;
+            let value: Uint8Array;
+            try {
+              if (offset === 0) qbLog("[QB transfer] read.start");
+              const res = await reader.read();
+              done = res.done;
+              value = res.value as Uint8Array;
+              if (offset === 0) qbLog(`[QB transfer] read.success bytes=${value?.byteLength ?? 0}`);
+            } catch (err) {
+              qbError("[QB transfer] read.failed", {
+                transferId: id,
+                file: file.name,
+                fileSize: file.size,
+                bytesRead: offset,
+                errorName: err instanceof Error ? err.name : "Unknown",
+                errorMessage: err instanceof Error ? err.message : String(err),
+              });
+              throw new Error("Couldn't read the selected file. It may have been moved, modified, unavailable offline, or locked by another application.");
+            }
             if (done) break;
             let chunkOffset = 0;
             while (chunkOffset < value.byteLength) {
@@ -2971,9 +3011,29 @@ export function useWebRTC(
               // We rely on backpressure to prevent buffer overflow. If send() throws here,
               // it's a catastrophic protocol failure, not just a transient full buffer.
               try {
+                if (!loggedFirstSend) {
+                  qbLog(`[QB transfer] send.start bytes=${frame.byteLength}`);
+                }
+                
                 channel.send(frame);
+                
+                if (!loggedFirstSend) {
+                  qbLog(`[QB transfer] send.success bytes=${frame.byteLength}`);
+                  loggedFirstSend = true;
+                }
               } catch (err) {
-                qbError(`[QB transfer] send failed reason=${err instanceof Error ? err.message : String(err)} readyState=${channel.readyState} chunkSize=${chunkSize} frameSize=${frame.byteLength} maxMessageSize=${maxMessageSize} bufferedAmount=${channel.bufferedAmount}`);
+                qbError("[QB transfer] send.failed", {
+                  transferId: id,
+                  bytesRead: offset,
+                  frameBytes: frame.byteLength,
+                  readyState: channel.readyState,
+                  bufferedAmount: channel.bufferedAmount,
+                  connectionState: pcRef.current?.connectionState,
+                  iceConnectionState: pcRef.current?.iceConnectionState,
+                  maxMessageSize: pcRef.current?.sctp?.maxMessageSize,
+                  errorName: err instanceof Error ? err.name : "Unknown",
+                  errorMessage: err instanceof Error ? err.message : String(err),
+                });
                 throw err;
               }
               
@@ -3000,6 +3060,7 @@ export function useWebRTC(
           // Successful: drop the cached source to free memory
           delete fileSourcesRef.current[id];
         } catch (err) {
+          qbError("[QB transfer] Fatal error in task():", err);
           const message = err instanceof Error ? err.message : "Transfer aborted";
           // An oversized frame is a hard protocol error: the frame itself is too
           // large for this session's negotiated SCTP message limit. Retrying the
