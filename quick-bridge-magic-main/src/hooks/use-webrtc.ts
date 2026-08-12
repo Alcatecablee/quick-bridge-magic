@@ -2870,7 +2870,8 @@ export function useWebRTC(
               try {
                 channel.send(frame);
               } catch (err) {
-                throw err instanceof Error ? err : new Error("send failed");
+                const cause = err instanceof Error ? err.message : String(err);
+                throw new Error(`transport:${cause}`);
               }
               // Hash the payload slice (not the full frame - receiver hashes
               // the same payload bytes after stripping the 16-byte header).
@@ -2889,12 +2890,16 @@ export function useWebRTC(
           // Successful: drop the cached source to free memory
           delete fileSourcesRef.current[id];
         } catch (err) {
-          const message = err instanceof Error ? err.message : "Transfer aborted";
+          const rawMessage = err instanceof Error ? err.message : "Transfer aborted";
+          const isTransport = rawMessage.startsWith("transport:");
+          const message = isTransport ? rawMessage.replace("transport:", "") : rawMessage;
+          const retryable = isTransport;
+
           // User-cancelled transfers: cancelOutgoing already removed the row
           // and notified the peer. Don't resurrect the row or mark retryable.
           if (!cancelledOutgoingIdsRef.current.has(id)) {
             setOutgoingFiles((s) =>
-              s[id] ? { ...s, [id]: { ...s[id], state: "failed", error: message, retryable: true } } : s,
+              s[id] ? { ...s, [id]: { ...s[id], state: "failed", error: isTransport ? message : `File read error: ${message}`, retryable } } : s,
             );
           } else {
             // Cancelled by user: clean up the ID so it can never re-poison
