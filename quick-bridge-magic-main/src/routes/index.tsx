@@ -686,8 +686,6 @@ function Home() {
           }}
         />
 
-        {/* Two-mode explainer removed */}
-
 
 
         {/* Trusted devices panel: for returning users this is the primary
