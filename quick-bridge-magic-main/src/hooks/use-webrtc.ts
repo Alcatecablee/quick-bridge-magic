@@ -541,7 +541,7 @@ export function useWebRTC(
   const cancelledIdsRef = useRef<Set<string>>(new Set());
   // Outgoing file ids that the receiver has asked us to abort mid-stream.
   // The send loop polls this and bails out with a retryable error.
-  const peerAbortedSendIdsRef = useRef<Set<string>>(new Set());
+  const peerAbortedSendIdsRef = useRef<Map<string, string>>(new Map());
   // Outgoing file ids the local user has cancelled mid-stream. The send loop
   // polls this and bails out without marking the row as a retryable error,
   // since the cancel is intentional and the row is removed from the UI.
@@ -1225,7 +1225,7 @@ export function useWebRTC(
               if (existingOutgoing && (existingOutgoing.state === "completed" || existingOutgoing.state === "failed" || existingOutgoing.state === "cancelled")) {
                 return;
               }
-              peerAbortedSendIdsRef.current.add(id);
+              peerAbortedSendIdsRef.current.set(id, reason);
               // If a resume attempt is parked waiting for an ack, fail it
               // now so the user sees the real abort reason instead of the
               // misleading "did not acknowledge resume" timeout 5s later.
@@ -2974,7 +2974,7 @@ export function useWebRTC(
             while (chunkOffset < value.byteLength) {
               // 2. Check transfer terminal state
               if (cancelledOutgoingIdsRef.current.has(id)) throw new Error("Cancelled");
-              if (peerAbortedSendIdsRef.current.has(id)) throw new Error("Receiver aborted");
+              if (peerAbortedSendIdsRef.current.has(id)) throw new Error(`Receiver aborted: ${peerAbortedSendIdsRef.current.get(id) ?? "Unknown reason"}`);
 
               // 3. Extract exactly one chunk
               const slice = value.subarray(chunkOffset, Math.min(chunkOffset + chunkSize, value.byteLength));
@@ -3025,7 +3025,7 @@ export function useWebRTC(
 
               // Re-check terminal states after the possible await!
               if (cancelledOutgoingIdsRef.current.has(id)) throw new Error("Cancelled");
-              if (peerAbortedSendIdsRef.current.has(id)) throw new Error("Receiver aborted");
+              if (peerAbortedSendIdsRef.current.has(id)) throw new Error(`Receiver aborted: ${peerAbortedSendIdsRef.current.get(id) ?? "Unknown reason"}`);
 
               // 7. Send exactly one chunk
               const frame = new Uint8Array(HEADER_SIZE + slice.byteLength);
