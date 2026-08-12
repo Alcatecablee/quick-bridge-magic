@@ -1181,6 +1181,10 @@ export function useWebRTC(
                         state: "failed",
                         error: reason,
                         retryable: !!fileSourcesRef.current[id],
+                        // The receiver has destroyed the partial file buffer.
+                        // We must reset progress so any retry starts fresh.
+                        sentBytes: 0,
+                        resumeFromBytes: 0,
                       },
                     }
                   : s,
