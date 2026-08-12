@@ -37,5 +37,5 @@ export function resolveDeviceName({
   if (deviceKind === "tablet") return "Tablet";
   if (deviceKind === "computer") return "Computer";
   
-  return "Other device";
+  return "Computer";
 }

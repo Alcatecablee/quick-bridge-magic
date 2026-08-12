@@ -33,6 +33,31 @@ export function detectDeviceKind(): DeviceKind {
  * Android is more forgiving at around 500 MB. Desktop browsers comfortably
  * handle 2 GB or more.
  */
+export function detectOsName(): string {
+  if (typeof navigator === "undefined") return "Computer";
+  const ua = navigator.userAgent || "";
+  
+  // iOS
+  if (/iPhone/i.test(ua)) return "iPhone";
+  if (/iPad/i.test(ua) || (/(Macintosh)/i.test(ua) && typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 1)) return "iPad";
+  if (/iPod/i.test(ua)) return "iPod";
+  
+  // Mac
+  if (/Macintosh|Mac OS X/i.test(ua)) return "Mac";
+  
+  // Android
+  if (/Android/i.test(ua)) return "Android Phone";
+  
+  // Windows
+  if (/Windows/i.test(ua)) return "Windows PC";
+  
+  // Linux/ChromeOS
+  if (/CrOS/i.test(ua)) return "Chromebook";
+  if (/Linux/i.test(ua)) return "Linux PC";
+  
+  return "Computer";
+}
+
 export function detectSafeMemoryBytes(): number {
   if (typeof navigator === "undefined") return 2 * 1024 * 1024 * 1024;
   const ua = navigator.userAgent || "";

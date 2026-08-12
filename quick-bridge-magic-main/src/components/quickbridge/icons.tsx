@@ -552,3 +552,10 @@ export const Menu = (p: IconProps) => (
     <path d="M3.5 18h17" />
   </Svg>
 );
+
+export const Clock = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 6v6l4 2" />
+  </Svg>
+);

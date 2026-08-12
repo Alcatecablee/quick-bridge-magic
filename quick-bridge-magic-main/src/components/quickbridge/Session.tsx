@@ -26,7 +26,7 @@ import {
   ShieldCheck,
   ShieldX,
   Pencil,
-  Check as CheckIcon,
+  Check as CheckIcon, Clock,
   History as HistoryIcon,
   Trash2,
   ChevronDown,
@@ -73,7 +73,7 @@ import { QrDisplay } from "./QrDisplay";
 import { pinFromSessionId, formatPin } from "@/lib/pin";
 import { formatBytes } from "@/lib/session";
 import { cn } from "@/lib/utils";
-import { deviceLabel, type DeviceKind } from "@/lib/device";
+import { deviceLabel, type DeviceKind, detectOsName } from "@/lib/device";
 import { playConnectSound, playDisconnectSound, playMessageSound, playReceiveSound, playSendSound, suspendAudio, unlockAudio, setAudioMuted } from "@/lib/sound";
 import { useHistory, type HistoryItem } from "@/lib/history";
 import { ensureNotificationPermission, notify, notificationsSupported } from "@/lib/notifications";
@@ -608,13 +608,7 @@ myDeviceKindRef.current = myDeviceKind;
           const hello: NodeHello = {
             nodeId: identity.nodeId,
             publicKeyJwk: identity.publicKeyJwk,
-            nickname:
-              deviceNameRef.current.trim() ||
-              (myDeviceKindRef.current === "phone"
-                ? "Phone"
-                : myDeviceKindRef.current === "tablet"
-                ? "Tablet"
-                : "Computer"),
+            nickname: deviceNameRef.current.trim() || detectOsName(),
             deviceKind: myDeviceKindRef.current ?? "computer",
           };
           sendNodeHelloRef.current?.(hello);
@@ -642,13 +636,7 @@ myDeviceKindRef.current = myDeviceKind;
           const hello: NodeHello = {
             nodeId: identity.nodeId,
             publicKeyJwk: identity.publicKeyJwk,
-            nickname:
-              deviceName.trim() ||
-              (myDeviceKind === "phone"
-                ? "Phone"
-                : myDeviceKind === "tablet"
-                ? "Tablet"
-                : "Computer"),
+            nickname: deviceName.trim() || detectOsName(),
             deviceKind: myDeviceKind,
           };
           sendNodeHelloRef.current?.(hello);
@@ -2572,35 +2560,14 @@ myDeviceKindRef.current = myDeviceKind;
 
       <Card className="relative overflow-hidden border-border/60 bg-card transition-shadow">
         {/* Status indicator */}
-        <div className="flex flex-col items-center px-6 pt-8 pb-5 text-center">
-          <div className="relative mb-5 flex h-[48px] w-[48px] items-center justify-center">
-            {(status === "connecting" || status === "reconnecting") ? (
-              <Loader2 className={cn("h-7 w-7 animate-spin", reconnecting ? "text-warning" : "text-primary")} />
-            ) : connected ? (
-              <ArrowLeftRight className="h-7 w-7 text-success" />
-            ) : status === "ended" ? (
-              <AlertTriangle className="h-7 w-7 text-destructive" />
-            ) : (
-              <Loader2 className="h-7 w-7 animate-spin text-muted-foreground/30" />
-            )}
-          </div>
-
-          {/* Visually hidden live region: announces connection status changes
-              to screen readers without interfering with the visual heading. */}
-          <div
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-            className="sr-only"
-          >
+        <div className="flex flex-col items-center px-6 pt-6 pb-4 text-center">
+          {/* Visually hidden live region */}
+          <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
             {headerCopy.title}
           </div>
-          <h1 className="text-[22px] font-black tracking-tight leading-snug sm:text-[28px]">
+          <h1 className="text-sm font-bold tracking-widest uppercase text-muted-foreground">
             {headerCopy.title}
           </h1>
-          <p className="mt-2 max-w-[240px] text-[12.5px] leading-relaxed text-muted-foreground">
-            {headerCopy.body}
-          </p>
           {/* Resend invite: shown when a trusted-connect invite timed out.
               Lets the host re-broadcast without navigating back to the home
               screen and tapping Connect again. The QR code below is always
@@ -2643,7 +2610,7 @@ myDeviceKindRef.current = myDeviceKind;
             );
           })()}
 
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2" title={quality === "direct" ? "Peer-to-peer connection between devices." : undefined}>
             <StatusBadge
               status={status}
               quality={quality}
@@ -2653,42 +2620,11 @@ myDeviceKindRef.current = myDeviceKind;
             {connected && throughputSamples.length > 1 && (
               <Sparkline samples={throughputSamples} className="opacity-90" ariaLabel="Live throughput" />
             )}
-            {connected && qualityHistory.length > 1 && (
-              <div
-                className="flex items-center gap-0.5"
-                aria-label="Connection quality history"
-                title="Quality history: green = direct, amber = relay"
-              >
-                {qualityHistory.map((entry, i) => (
-                  <span
-                    key={i}
-                    className={cn(
-                      "h-1.5 w-3 rounded-full",
-                      entry.quality === "direct" ? "bg-success/70" : "bg-warning/70",
-                    )}
-                  />
-                ))}
-              </div>
-            )}
           </div>
-          {connected && connectedAtRef.current && (() => {
-            const totalSec = Math.max(0, Math.floor((now - connectedAtRef.current) / 1000));
-            const h = Math.floor(totalSec / 3600);
-            const m = Math.floor((totalSec % 3600) / 60);
-            const s = totalSec % 60;
-            const display = h > 0
-              ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
-              : `${m}:${String(s).padStart(2, "0")}`;
-            return (
-              <p className="mt-1.5 text-[11px] tabular-nums text-muted-foreground/60" aria-label="Session duration">
-                {display}
-              </p>
-            );
-          })()}
         </div>
 
         {/* Device pair */}
-        <div className="px-4 pb-4">
+        <div className="px-4 pb-2">
           <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-background/30 px-4 py-3">
             <div className="flex flex-1 min-w-0 flex-col items-center gap-1.5">
               <div className="flex h-9 w-9 items-center justify-center text-muted-foreground">
@@ -2778,6 +2714,23 @@ myDeviceKindRef.current = myDeviceKind;
               )}
             </div>
           </div>
+          
+          {connected && connectedAtRef.current && (() => {
+            const totalSec = Math.max(0, Math.floor((now - connectedAtRef.current) / 1000));
+            const h = Math.floor(totalSec / 3600);
+            const m = Math.floor((totalSec % 3600) / 60);
+            const s = totalSec % 60;
+            const display = h > 0
+              ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
+              : `${m}:${String(s).padStart(2, "0")}`;
+            return (
+              <div className="mt-3 text-center">
+                <span className="inline-flex items-center gap-1.5 text-[11px] tabular-nums text-muted-foreground">
+                  <Clock className="h-3 w-3" /> Connected for {display}
+                </span>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Session totals bar */}
@@ -3449,9 +3402,9 @@ myDeviceKindRef.current = myDeviceKind;
                   className="h-1.5"
                 />
                 {f.state === "completed" ? (
-                  <div className="text-[11px] tabular-nums text-muted-foreground">
-                    <span className="inline-flex items-center gap-1 text-success">
-                      <CheckCircle2 className="h-3 w-3" /> Sent in {elapsed.toFixed(1)}s
+                  <div className="text-xs tabular-nums text-muted-foreground pt-1">
+                    <span className="inline-flex items-center gap-1">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-success" /> Sent in {elapsed.toFixed(1)}s
                     </span>
                   </div>
                 ) : f.error ? (
@@ -3630,38 +3583,24 @@ myDeviceKindRef.current = myDeviceKind;
                         </div>
                       </div>
                     ) : (
-                      <div className="flex flex-wrap items-center gap-3 pt-0.5 text-xs">
-                        <span className="inline-flex items-center gap-1 text-success">
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Sent in {elapsed.toFixed(1)}s
+                      <div className="flex flex-col gap-1.5 pt-1 text-xs">
+                        <span className="inline-flex items-center gap-1 text-muted-foreground">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-success" /> Received in {elapsed.toFixed(1)}s
                         </span>
-                        {/* SHA-256 integrity badge - only shown when the sender
-                            included a hash in file-end. verified=true means bytes
-                            match exactly; verified=false means corruption detected. */}
                         {f.verified === true && (
-                          <span
-                            className="inline-flex items-center gap-1 rounded border border-success/30 bg-success/10 px-1.5 py-0.5 text-[10.5px] text-success"
-                            title={`SHA-256 verified: ${f.sha256 ?? ""}`}
-                          >
-                            <ShieldCheck className="h-3 w-3" />
-                            Verified
+                          <span className="inline-flex items-center gap-1 text-muted-foreground" title={`SHA-256 verified: ${f.sha256 ?? ""}`}>
+                            <CheckCircle2 className="h-3.5 w-3.5 text-success" /> Verified
                           </span>
                         )}
                         {f.verified === false && (
-                          <span
-                            className="inline-flex items-center gap-1 rounded border border-destructive/40 bg-destructive/10 px-1.5 py-0.5 text-[10.5px] text-destructive"
-                            title="SHA-256 mismatch: file may be corrupted. Download it again."
-                          >
-                            <ShieldX className="h-3 w-3" />
-                            Integrity check failed
+                          <span className="inline-flex items-center gap-1 text-destructive" title="SHA-256 mismatch: file may be corrupted.">
+                            <ShieldX className="h-3.5 w-3.5" /> Integrity check failed
                           </span>
                         )}
                         {f.savedToDisk && (
-                          <span
-                            className="inline-flex max-w-[200px] items-center gap-1 text-muted-foreground truncate"
-                            title={f.savedAs ? `Saved as: ${f.savedAs}` : `Saved to: ${saveDirectory?.label ?? "folder"}`}
-                          >
-                            <FolderOpen className="h-3 w-3 shrink-0" />
-                            <span className="truncate">Saved to {saveDirectory?.label ?? "folder"}</span>
+                          <span className="inline-flex items-center gap-1 text-muted-foreground" title={f.savedAs ? `Saved as: ${f.savedAs}` : undefined}>
+                            <CheckCircle2 className="h-3.5 w-3.5 text-success" /> 
+                            <span className="truncate max-w-[240px]">Saved to {saveDirectory?.label || "folder"}</span>
                           </span>
                         )}
                         {(f.type || "").startsWith("video/") && (
