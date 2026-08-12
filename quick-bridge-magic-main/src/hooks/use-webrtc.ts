@@ -1510,14 +1510,21 @@ export function useWebRTC(
       // no new offer/answer ceremony needed) but only works when:
       //   - We are within the lightweight-restart budget (first ICE_RESTART_MAX attempts).
       //   - The RTCPeerConnection is still alive and not in a terminal state.
+      //   - The DataChannel is still open (SCTP hasn't timed out).
+      //   - There are no active transfers (Chrome SCTP buffers often get permanently stuck after ICE restarts).
       //   - We are the initiator (only the offerer can trigger an ICE restart by
       //     sending a new offer with iceRestart:true). Non-initiators ask the host
       //     via a "request-ice-restart" signal instead.
+      const hasActiveTransfer = Object.values(outgoingFilesRef.current).some(
+        f => f.state === "sending" || f.state === "resuming"
+      );
       const pcUsable =
         pc !== null &&
         pc.connectionState !== "closed" &&
         pc.connectionState !== "failed" &&
-        pc.signalingState !== "closed";
+        pc.signalingState !== "closed" &&
+        dcRef.current?.readyState === "open" &&
+        !hasActiveTransfer;
 
       if (attempt <= ICE_RESTART_MAX && pcUsable) {
         qbLog(`[QB] scheduleReconnect: ICE restart attempt ${attempt}/${ICE_RESTART_MAX}`);
@@ -1578,7 +1585,7 @@ export function useWebRTC(
         for (const id of Object.keys(next)) {
           const f = next[id];
           if (f.state !== "completed" && f.state !== "failed" && f.state !== "cancelled" && !f.error) {
-            next[id] = { ...f, state: "paused" };
+            next[id] = { ...f, state: "paused", retryable: true };
           }
         }
         return next;
