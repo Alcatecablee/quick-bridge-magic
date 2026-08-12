@@ -3348,7 +3348,7 @@ myDeviceKindRef.current = myDeviceKind;
       </Card>
 
       {/* Text + clipboard */}
-      <Card className="space-y-3 p-4 border-white/10 bg-black/20 backdrop-blur-xl shadow-lg dark:bg-black/40">
+      <Card className="space-y-2 p-3 bg-transparent border-none shadow-none">
         <div className="flex gap-2">
           <Input
             placeholder="Send a message or URL…"
@@ -3387,7 +3387,7 @@ myDeviceKindRef.current = myDeviceKind;
         const headerClass = allDone ? "text-success" : "text-primary";
         const activeOutgoing = outgoingFiles.filter((f) => f.state === "sending" || f.state === "resuming" || f.state === "queued");
         return (
-        <Card className="space-y-3 p-4 border-white/10 bg-black/20 backdrop-blur-xl shadow-lg dark:bg-black/40">
+        <Card className="space-y-2 p-3 bg-transparent border-none shadow-none">
           <div className="flex items-center justify-between gap-2">
             <h3 className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${headerClass}`}>{headerLabel}</h3>
             {activeOutgoing.length >= 2 && (
@@ -3433,22 +3433,20 @@ myDeviceKindRef.current = myDeviceKind;
             const eta = rate > 0 ? remaining / rate : Infinity;
             const pct = f.size ? (f.sentBytes / f.size) * 100 : 0;
             return (
-              <div key={f.id} className="group relative overflow-hidden rounded-xl border border-border/50 bg-background/40 p-3 shadow-sm backdrop-blur-md transition-all hover:bg-muted/20 space-y-2">
+              <div key={f.id} className="rounded-lg border bg-muted/10 p-3 space-y-2 transition-colors hover:bg-muted/20">
                 <div className="flex items-center justify-between gap-3 text-sm">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/10 to-transparent border border-primary/10 text-primary shadow-inner">
-                      {fileTypeIcon(f.type, "h-5 w-5")}
-                    </div>
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <span className="text-muted-foreground shrink-0">{fileTypeIcon(f.type, "h-4 w-4")}</span>
                     <span className="truncate font-medium">{f.name}</span>
                   </div>
-                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground/80 font-medium bg-muted/40 px-2 py-1 rounded-md">
+                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                     {formatBytes(f.sentBytes)} / {formatBytes(f.size)}
                   </span>
                 </div>
                 <Progress
                   value={pct}
                   aria-label={`Sending ${f.name}: ${Math.round(pct)}%`}
-                  className="h-1.5 bg-muted/30"
+                  className="h-1.5"
                 />
                 {f.state === "completed" ? (
                   <div className="text-[11px] tabular-nums text-muted-foreground">
@@ -3538,8 +3536,8 @@ myDeviceKindRef.current = myDeviceKind;
 
       {/* Incoming */}
       {incomingFiles.length > 0 && (
-        <Card className="space-y-3 p-4 border-white/10 bg-black/20 backdrop-blur-xl shadow-lg dark:bg-black/40">
-          <h3 className="text-[11px] font-bold uppercase tracking-widest text-primary/80 px-1">Received</h3>
+        <Card className="space-y-2 p-3 bg-transparent border-none shadow-none">
+          <h3 className="text-xs font-medium text-muted-foreground px-1 pb-1">RECEIVED</h3>
           {incomingFiles.map((f) => {
             const isImage = (f.type || "").startsWith("image/");
             // Use the resume timestamp as the elapsed baseline when available so
@@ -3555,20 +3553,20 @@ myDeviceKindRef.current = myDeviceKind;
             const eta = rate > 0 ? remaining / rate : Infinity;
             const pct = f.size ? (f.receivedBytes / f.size) * 100 : 0;
             return (
-              <div key={f.id} className="group relative overflow-hidden rounded-xl border border-border/50 bg-background/40 p-3 shadow-sm backdrop-blur-md transition-all hover:bg-muted/20">
-                <div className="flex items-center gap-3">
+              <div key={f.id} className="rounded-lg border bg-muted/10 p-3 transition-colors hover:bg-muted/20">
+                <div className="flex items-start gap-3">
                   {/* Always-visible preview slot */}
-                  <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-lg border border-primary/10 bg-gradient-to-br from-primary/10 to-transparent text-primary shadow-inner">
+                  <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded border bg-background/40 text-muted-foreground">
                     {isImage && f.url ? (
-                      <img src={f.url} alt={f.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                      <img src={f.url} alt={f.name} className="h-full w-full object-cover" />
                     ) : (
                       fileTypeIcon(f.type, "h-5 w-5")
                     )}
                   </div>
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <div className="flex items-center justify-between gap-3 text-sm">
-                      <span className="min-w-0 truncate font-medium text-[13px] tracking-tight">{f.name}</span>
-                      <span className="shrink-0 text-[11px] font-medium tabular-nums text-muted-foreground/80 bg-muted/40 px-2 py-0.5 rounded-md">
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <div className="flex items-start justify-between gap-3 text-sm">
+                      <span className="min-w-0 truncate font-medium">{f.name}</span>
+                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                         {formatBytes(f.receivedBytes)} / {formatBytes(f.size)}
                       </span>
                     </div>
@@ -3577,7 +3575,7 @@ myDeviceKindRef.current = myDeviceKind;
                         <Progress
                           value={pct}
                           aria-label={`Receiving ${f.name}: ${Math.round(pct)}%`}
-                          className="h-1.5 bg-muted/30"
+                          className="h-1.5"
                         />
                         {f.paused ? (
                           <div className="flex items-center justify-between gap-2 text-[11px] tabular-nums">
@@ -3632,9 +3630,9 @@ myDeviceKindRef.current = myDeviceKind;
                         </div>
                       </div>
                     ) : (
-                      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                        <span className="inline-flex items-center gap-1 rounded bg-success/10 border border-success/20 px-2 py-0.5 text-[10px] font-medium text-success/90">
-                          <CheckCircle2 className="h-3 w-3" /> {elapsed.toFixed(1)}s
+                      <div className="flex flex-wrap items-center gap-3 pt-0.5 text-xs">
+                        <span className="inline-flex items-center gap-1 text-success">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Sent in {elapsed.toFixed(1)}s
                         </span>
                         {/* SHA-256 integrity badge - only shown when the sender
                             included a hash in file-end. verified=true means bytes
@@ -3659,7 +3657,7 @@ myDeviceKindRef.current = myDeviceKind;
                         )}
                         {f.savedToDisk && (
                           <span
-                            className="inline-flex max-w-[200px] items-center gap-1 rounded border border-border/50 bg-background/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground truncate"
+                            className="inline-flex max-w-[200px] items-center gap-1 text-muted-foreground truncate"
                             title={f.savedAs ? `Saved as: ${f.savedAs}` : `Saved to: ${saveDirectory?.label ?? "folder"}`}
                           >
                             <FolderOpen className="h-3 w-3 shrink-0" />
