@@ -7,10 +7,10 @@
   "trailingSlash": false,
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/s/:id", "destination": "/" },
-    { "source": "/session/:id", "destination": "/" },
-    { "source": "/video", "destination": "/" },
-    { "source": "/((?!api/|assets/|_vercel/).*)", "destination": "/" }
+    { "source": "/s/:id", "destination": "/index.html" },
+    { "source": "/session/:id", "destination": "/index.html" },
+    { "source": "/video", "destination": "/index.html" },
+    { "source": "/((?!api/|assets/|_vercel/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
