@@ -211,7 +211,17 @@ function buildIceServers(): RTCIceServer[] {
   return [...stuns, { urls: turnUrls, username, credential }];
 }
 
-const CHUNK_SIZE = 16 * 1024; // 16KB payload (header adds 16 bytes)
+function getSafeChunkSize(pc: RTCPeerConnection | null): number {
+  if (!pc) return 16 * 1024 - HEADER_SIZE;
+  const maxMessageSize = pc.sctp?.maxMessageSize;
+  if (maxMessageSize === undefined || maxMessageSize === null) {
+    return 16 * 1024 - HEADER_SIZE;
+  }
+  if (maxMessageSize === 0) {
+    return 16 * 1024;
+  }
+  return Math.max(1, Math.min(16 * 1024, maxMessageSize - HEADER_SIZE));
+}
 const DATA_CHANNEL_BUFFER_HIGH_WATERMARK = 64 * 1024;
 const DATA_CHANNEL_BUFFER_LOW_WATERMARK = 16 * 1024;
 const UI_UPDATE_INTERVAL = 100;
@@ -2724,11 +2734,21 @@ export function useWebRTC(
       const task = async () => {
         const generation = sessionGenerationRef.current;
         const channel = dcRef.current;
+        const pc = pcRef.current;
         if (!channel || channel.readyState !== "open") {
           setOutgoingFiles((s) => ({ ...s, [id]: { ...s[id], error: "Not connected", retryable: true } }));
           return;
         }
         const idHeader = idToBytes(id);
+        const chunkSize = getSafeChunkSize(pc);
+        const maxMessageSize = pc?.sctp?.maxMessageSize;
+        const frameSizeLimit = HEADER_SIZE + chunkSize;
+        
+        qbLog(`[QB transfer] negotiated maxMessageSize=${maxMessageSize}`);
+        qbLog(`[QB transfer] headerSize=${HEADER_SIZE}`);
+        qbLog(`[QB transfer] chunkSize=${chunkSize}`);
+        qbLog(`[QB transfer] frameSizeLimit=${frameSizeLimit}`);
+        qbLog(`[QB transfer] bufferedAmount=${channel.bufferedAmount}`);
         let actualOffset = safeStart;
         // For resume attempts we register the ack resolver BEFORE sending
         // file-start so the receiver's reply (which can arrive on the very
@@ -2856,7 +2876,7 @@ export function useWebRTC(
               if (peerAbortedSendIdsRef.current.has(id)) throw new Error("Receiver aborted");
 
               // 3. Extract exactly one chunk
-              const slice = value.subarray(chunkOffset, Math.min(chunkOffset + CHUNK_SIZE, value.byteLength));
+              const slice = value.subarray(chunkOffset, Math.min(chunkOffset + chunkSize, value.byteLength));
 
               // 4 & 5 & 6: Check readyState and bufferedAmount, wait if needed
               if (channel.readyState === "open" && channel.bufferedAmount > DATA_CHANNEL_BUFFER_HIGH_WATERMARK) {
@@ -2911,9 +2931,18 @@ export function useWebRTC(
               frame.set(idHeader, 0);
               frame.set(slice, HEADER_SIZE);
               
+              if (maxMessageSize !== undefined && maxMessageSize > 0 && frame.byteLength > maxMessageSize) {
+                throw new Error(`Frame exceeds negotiated SCTP message limit: ${frame.byteLength} > ${maxMessageSize}`);
+              }
+              
               // We rely on backpressure to prevent buffer overflow. If send() throws here,
               // it's a catastrophic protocol failure, not just a transient full buffer.
-              channel.send(frame);
+              try {
+                channel.send(frame);
+              } catch (err) {
+                qbError(`[QB transfer] send failed reason=${err instanceof Error ? err.message : String(err)} readyState=${channel.readyState} chunkSize=${chunkSize} frameSize=${frame.byteLength} maxMessageSize=${maxMessageSize} bufferedAmount=${channel.bufferedAmount}`);
+                throw err;
+              }
               
               // 8. Update internal progress
               fileHasher.update(slice);
@@ -2939,12 +2968,14 @@ export function useWebRTC(
           delete fileSourcesRef.current[id];
         } catch (err) {
           const message = err instanceof Error ? err.message : "Transfer aborted";
+          const isOversized = message.includes("Frame exceeds negotiated SCTP message limit");
+          const isRetryable = !isOversized;
 
           // User-cancelled transfers: cancelOutgoing already removed the row
           // and notified the peer. Don't resurrect the row or mark retryable.
           if (!cancelledOutgoingIdsRef.current.has(id)) {
             setOutgoingFiles((s) =>
-              s[id] ? { ...s, [id]: { ...s[id], state: "failed", error: message, retryable: true } } : s,
+              s[id] ? { ...s, [id]: { ...s[id], state: "failed", error: message, retryable: isRetryable } } : s,
             );
           } else {
             // Cancelled by user: clean up the ID so it can never re-poison
