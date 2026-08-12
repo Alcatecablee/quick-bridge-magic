@@ -633,7 +633,7 @@ export function useWebRTC(
     (dc: RTCDataChannel, isControl: boolean) => {
       dc.binaryType = "arraybuffer";
       if (!isControl) {
-      dc.bufferedAmountLowThreshold = 1 << 20; // 1MB
+      dc.bufferedAmountLowThreshold = 64 * 1024; // 64KB
       }
 
       dc.onopen = () => {
@@ -2845,7 +2845,7 @@ export function useWebRTC(
                 throw new Error("Receiver aborted");
               }
               const slice = value.subarray(chunkOffset, Math.min(chunkOffset + CHUNK_SIZE, value.byteLength));
-              while (channel.readyState === "open" && channel.bufferedAmount > 8 * 1024 * 1024) {
+              while (channel.readyState === "open" && channel.bufferedAmount > 256 * 1024) {
                 // Escape on close/error as well: if the channel closes while we
                 // are parked here, "bufferedamountlow" will never fire and the
                 // send-queue promise chain would hang permanently. Resolving on
