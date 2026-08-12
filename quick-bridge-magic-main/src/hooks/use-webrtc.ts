@@ -715,6 +715,12 @@ export function useWebRTC(
           clearTimeout(autoResumeTimerRef.current);
           autoResumeTimerRef.current = null;
         }
+        // Mark the first moment we detected degradation. The 5-minute absolute
+        // recovery window is measured from this timestamp, not from when the
+        // browser reports navigator.onLine = false (which can lag significantly).
+        if (sessionDisconnectedAtRef.current === null && !sessionEndingRef.current) {
+          sessionDisconnectedAtRef.current = Date.now();
+        }
         // Defer to connection-state handler to decide reconnect vs disconnect.
       };
       dc.onerror = (err) => {
@@ -1146,6 +1152,13 @@ export function useWebRTC(
               const id = msg.id;
               const reason: string =
                 typeof msg.reason === "string" && msg.reason ? msg.reason : "Receiver aborted";
+              // Terminal-state guard: if the outgoing transfer is already in a
+              // terminal state (completed, failed, cancelled), discard the
+              // late abort — we must not resurrect or corrupt a settled entry.
+              const existingOutgoing = outgoingFilesRef.current[id];
+              if (existingOutgoing && (existingOutgoing.state === "completed" || existingOutgoing.state === "failed" || existingOutgoing.state === "cancelled")) {
+                return;
+              }
               peerAbortedSendIdsRef.current.add(id);
               // If a resume attempt is parked waiting for an ack, fail it
               // now so the user sees the real abort reason instead of the
@@ -1198,7 +1211,10 @@ export function useWebRTC(
               if (typeof msg.id !== "string" || !msg.id) return;
               const id = msg.id;
               const buf = incomingBuffersRef.current[id];
-              if (!buf) return;
+              // Terminal-state invariant: if this transfer is already aborted
+              // (disk failure, receiver cancel, etc.), discard the late file-end.
+              // FAILED -> VERIFIED and FAILED -> COMPLETED are strictly forbidden.
+              if (!buf || buf.aborted) return;
               // Capture SHA-256 from sender and compute the receiver digest now,
               // while buf is still alive and hasher state is complete. The data
               // channel is ordered so file-end always arrives after the last
@@ -1661,6 +1677,11 @@ export function useWebRTC(
           clearTimeout(disconnectedTimerRef.current);
           disconnectedTimerRef.current = null;
         }
+        // Mark the first disconnect timestamp for the 5-minute absolute
+        // recovery window. Only set once — the earliest timestamp is authoritative.
+        if (sessionDisconnectedAtRef.current === null && !sessionEndingRef.current) {
+          sessionDisconnectedAtRef.current = Date.now();
+        }
         stopQualityPoll();
         setQuality("unknown");
         scheduleReconnect();
@@ -1670,6 +1691,11 @@ export function useWebRTC(
         // so a brief candidate swap does not kick off an unnecessary ICE
         // restart offer into a connection that would have recovered on its own.
         // The timer is cancelled above if the PC reaches "connected" first.
+        // Mark the first disconnect timestamp for the 5-minute absolute
+        // recovery window if not already recorded.
+        if (sessionDisconnectedAtRef.current === null && !sessionEndingRef.current) {
+          sessionDisconnectedAtRef.current = Date.now();
+        }
         stopQualityPoll();
         setQuality("unknown");
         if (!disconnectedTimerRef.current) {

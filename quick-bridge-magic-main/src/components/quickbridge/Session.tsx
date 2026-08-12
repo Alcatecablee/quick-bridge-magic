@@ -2272,9 +2272,13 @@ myDeviceKindRef.current = myDeviceKind;
 
   // Prompt to pick a folder the first time any file arrives and auto-save is off.
   // One toast per session (tracked by a ref) so the user isn't spammed.
+  // Suppressed when the mandatory RequireFolderModal is already visible: the two
+  // must not fight. After all 13 folder verification matrix tests pass and the
+  // modal flow is confirmed stable, this entire block should be removed.
   const folderPromptedRef = useRef(false);
   useEffect(() => {
-    if (!streamToDiskSupported || saveDirectory || folderPromptedRef.current) return;
+    // Suppress old nudge if the new mandatory modal is handling it.
+    if (!streamToDiskSupported || saveDirectory || folderPromptedRef.current || folderGateMode !== null) return;
     const hasIncoming = incomingFiles.some((f) => f.state === "receiving");
     if (!hasIncoming) return;
     folderPromptedRef.current = true;
@@ -2289,7 +2293,7 @@ myDeviceKindRef.current = myDeviceKind;
         },
       },
     });
-  }, [incomingFiles, streamToDiskSupported, saveDirectory, handleStreamToDiskClick]);
+  }, [incomingFiles, streamToDiskSupported, saveDirectory, folderGateMode, handleStreamToDiskClick]);
 
   // Persisted save-directory restore. Runs ONCE at mount (empty deps).
   // Determines whether to silently resume, show the reGrant gate, or show
