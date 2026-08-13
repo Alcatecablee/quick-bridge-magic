@@ -28,6 +28,7 @@ export interface SaveDirectory {
 
 export function streamToDiskSupported(): boolean {
   if (typeof window === "undefined") return false;
+  if ((window as any).__QB_TEST_DISABLE_FSA) return false;
   return (
     typeof (window as unknown as { showDirectoryPicker?: () => unknown }).showDirectoryPicker ===
     "function"

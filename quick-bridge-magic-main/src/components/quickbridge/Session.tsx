@@ -64,7 +64,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useWebRTC, MAX_TEXT_BYTES, RESUME_GRACE_MS, type ConnectionQuality, type SessionEndReason, type IncomingFile } from "@/hooks/use-webrtc";
+import { useWebRTC, MAX_TEXT_BYTES, DEFAULT_CONFIG, type ConnectionQuality, type SessionEndReason, type IncomingFile } from "@/hooks/use-webrtc";
 import { useBridgeSignal } from "@/lib/bridge-signal";
 import { StatusBadge } from "./StatusBadge";
 import { Sparkline } from "./Sparkline";
@@ -211,11 +211,11 @@ function PausedTransferToast({
   onDismiss: () => void;
 }) {
   const [remainingMs, setRemainingMs] = useState(() =>
-    Math.max(0, RESUME_GRACE_MS - (Date.now() - pausedAt)),
+    Math.max(0, DEFAULT_CONFIG.recoveryWindowMs - (Date.now() - pausedAt)),
   );
   useEffect(() => {
     const tick = () =>
-      setRemainingMs(Math.max(0, RESUME_GRACE_MS - (Date.now() - pausedAt)));
+      setRemainingMs(Math.max(0, DEFAULT_CONFIG.recoveryWindowMs - (Date.now() - pausedAt)));
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
@@ -914,7 +914,7 @@ myDeviceKindRef.current = myDeviceKind;
       if (tracked.has(id)) continue;
       const pausedAt = file.pausedAt;
       const fileName = file.name;
-      const remainingMs = Math.max(0, RESUME_GRACE_MS - (Date.now() - pausedAt));
+      const remainingMs = Math.max(0, DEFAULT_CONFIG.recoveryWindowMs - (Date.now() - pausedAt));
       const toastId = toast.custom(
         (t) => (
           <PausedTransferToast
@@ -3426,6 +3426,7 @@ myDeviceKindRef.current = myDeviceKind;
                           className="h-6 px-2 text-[11px]"
                           disabled={!connected}
                           onClick={() => {
+                            console.log(`[QB UI] Retry/Resume button clicked for ${f.id}, connected=${connected}`);
                             const ok = retryFile(f.id);
                             if (!ok) toast.error("Not connected yet");
                           }}

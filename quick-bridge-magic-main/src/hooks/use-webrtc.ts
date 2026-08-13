@@ -91,6 +91,7 @@ export interface IncomingFile {
   savedToDisk?: boolean;
   savedAs?: string;
   error?: string;
+  cancelledBy?: "sender" | "receiver";
   // Hex SHA-256 sent by the sender in file-end.
   sha256?: string;
   // True = received hash matches sender hash; false = mismatch; undefined = no hash provided.
@@ -116,6 +117,10 @@ export interface IncomingFile {
 
 export type OutgoingFileState = "queued" | "sending" | "paused" | "resuming" | "completed" | "failed" | "cancelled";
 
+export function isTerminalTransferState(state: OutgoingFileState | IncomingFileState | undefined): boolean {
+  return state === "failed" || state === "verified" || state === "completed" || state === "cancelled";
+}
+
 export interface OutgoingFile {
   id: string;
   name: string;
@@ -129,6 +134,7 @@ export interface OutgoingFile {
   resumeFromBytes: number;
   state: OutgoingFileState;
   error?: string;
+  cancelledBy?: "sender" | "receiver";
   retryable?: boolean;
   startedAt: number;
   completedAt?: number;
@@ -150,19 +156,31 @@ interface FileMeta {
   // Set on the second-and-later attempts when the sender is trying to
   // resume an interrupted transfer rather than start fresh. Receiver uses
   // this as a signal to look up an existing partial buffer, and replies
-  // with `file-resume-ack` carrying the byte offset it actually has.
   resumeFrom?: number;
 }
 
-// How long the receiver keeps a partial transfer alive after a connection
-// drop, waiting for the sender to resume. Long enough to cover Wi-Fi <->
-// cellular handoffs, brief router resets, and laptop wake-from-sleep;
-// short enough that abandoned transfers don't accumulate as orphan files
-// on disk.
-export const RESUME_GRACE_MS = 2 * 60 * 1000;
-// How long the sender waits for the receiver to acknowledge a resume
-// attempt before giving up and surfacing a retryable error.
-const RESUME_ACK_TIMEOUT_MS = 5_000;
+export interface WebRTCConfig {
+  // How long the receiver keeps a partial transfer alive after a connection
+  // drop, waiting for the sender to resume. Long enough to cover Wi-Fi <->
+  // cellular handoffs, brief router resets, and laptop wake-from-sleep;
+  // short enough that abandoned transfers don't accumulate as orphan files
+  // on disk.
+  recoveryWindowMs: number;
+  // How long the sender waits for the receiver to acknowledge a resume
+  // attempt before giving up and surfacing a retryable error.
+  resumeAckTimeoutMs: number;
+  diskWriteBatchSize: number;
+  
+  // Test-only hooks for deterministic disk race testing
+  beforeDiskBatchWrite?: () => Promise<void>;
+  afterDiskBatchWrite?: () => Promise<void>;
+}
+
+export const DEFAULT_CONFIG: WebRTCConfig = {
+  recoveryWindowMs: 2 * 60 * 1000,
+  resumeAckTimeoutMs: 5_000,
+  diskWriteBatchSize: 4 * 1024 * 1024,
+};
 
 interface IncomingBuffer {
   meta: FileMeta;
@@ -213,7 +231,6 @@ function buildIceServers(): RTCIceServer[] {
   return [...stuns, { urls: turnUrls, username, credential }];
 }
 
-const DISK_WRITE_BATCH_SIZE = 4 * 1024 * 1024;
 const DATA_CHANNEL_BUFFER_HIGH_WATERMARK = 64 * 1024;
 const DATA_CHANNEL_BUFFER_LOW_WATERMARK = 16 * 1024;
 const UI_UPDATE_INTERVAL = 100;
@@ -395,6 +412,7 @@ export function useWebRTC(
   // Phase 3 Continuity callbacks. Optional; hook is a no-op when omitted.
   onContinuityIntent?: (envelope: IntentEnvelope) => void,
   onIntentAck?: (ack: IntentAck) => void,
+  config: WebRTCConfig = DEFAULT_CONFIG,
 ) {
   const [statusRaw, setStatusRaw] = useState<ConnectionStatus>("waiting");
   const [protocolState, setProtocolState] = useState<ProtocolState>("unknown");
@@ -457,6 +475,8 @@ export function useWebRTC(
     };
   }, []);
 
+
+
   useEffect(() => {
     const k = detectDeviceKind();
     myDeviceKindRef.current = k;
@@ -474,6 +494,14 @@ export function useWebRTC(
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [incomingFiles, setIncomingFiles] = useState<Record<string, IncomingFile>>({});
   const [outgoingFiles, setOutgoingFiles] = useState<Record<string, OutgoingFile>>({});
+
+  useEffect(() => {
+    outgoingFilesSnapshotRef.current = outgoingFiles;
+  }, [outgoingFiles]);
+
+  useEffect(() => {
+    incomingFilesSnapshotRef.current = incomingFiles;
+  }, [incomingFiles]);
   const [sasCode, setSasCode] = useState<SasCode | null>(null);
   const [saveDirectory, setSaveDirectoryState] = useState<SaveDirectory | null>(null);
   const saveDirectoryRef = useLatestRef<SaveDirectory | null>(saveDirectory);
@@ -617,7 +645,8 @@ export function useWebRTC(
   // Snapshot of outgoing/incoming file state for use inside endSession,
   // which must cancel all active operations synchronously.
   const outgoingFilesSnapshotRef = useRef<Record<string, OutgoingFile>>({});
-  const incomingFilesSnapshotRef = useRef<Record<string, IncomingFile>>({}); 
+  const incomingFilesSnapshotRef = useRef<Record<string, IncomingFile>>({});
+  const activeResumeAttemptsRef = useRef<Record<string, string>>({});
   const isNegotiatingRef = useRef(false);
   const sessionDisconnectedAtRef = useRef<number | null>(null);
   // Fetch short-lived Cloudflare TURN credentials on mount and refresh every
@@ -745,7 +774,7 @@ export function useWebRTC(
             // their partial buffer and will reject a resume with another abort,
             // causing an unnecessary reset cycle. The user must Retry manually.
             if (peerAbortedSendIdsRef.current.has(id)) continue;
-            if (file.state === "cancelled" || file.state === "completed") continue;
+            if (file.state === "cancelled" || file.state === "completed" || file.state === "sending" || file.state === "verifying") continue;
             if (!file.retryable) continue;
             if (!fileSourcesRef.current[id]) continue;
             if (attemptedAutoResumeIdsRef.current.has(id)) continue;
@@ -908,6 +937,9 @@ export function useWebRTC(
               ]);
             } else if (msg.t === "file-start") {
               const meta: FileMeta = msg.meta;
+              
+              const existingIncoming = incomingFilesSnapshotRef.current[meta.id];
+              if (existingIncoming && isTerminalTransferState(existingIncoming.state)) return;
               const resumeFrom =
                 typeof meta.resumeFrom === "number" ? meta.resumeFrom : 0;
               // Resume attempt against an id the receiver previously
@@ -1170,6 +1202,10 @@ export function useWebRTC(
               // disk writer open without an associated buffer entry.
               if (typeof msg.id !== "string" || !msg.id) return;
               const id = msg.id;
+
+              const existingIncoming = incomingFilesSnapshotRef.current[id];
+              if (existingIncoming && isTerminalTransferState(existingIncoming.state)) return;
+
               cancelledIdsRef.current.add(id);
               const buf = incomingBuffersRef.current[id];
               if (buf) {
@@ -1204,10 +1240,18 @@ export function useWebRTC(
               }
               delete incomingBuffersRef.current[id];
               setIncomingFiles((s) => {
-                if (!s[id]) return s;
-                const next = { ...s };
-                delete next[id];
-                return next;
+                const f = s[id];
+                if (!f || isTerminalTransferState(f.state)) return s;
+                return {
+                  ...s,
+                  [id]: {
+                    ...f,
+                    state: "cancelled",
+                    cancelledBy: "sender",
+                    error: "Cancelled by sender",
+                    completedAt: Date.now(),
+                  },
+                };
               });
             } else if (msg.t === "file-abort") {
               // Receiver told us to stop sending this file (disk full, write
@@ -1222,10 +1266,15 @@ export function useWebRTC(
               // terminal state (completed, failed, cancelled), discard the
               // late abort - we must not resurrect or corrupt a settled entry.
               const existingOutgoing = outgoingFilesRef.current[id];
-              if (existingOutgoing && (existingOutgoing.state === "completed" || existingOutgoing.state === "failed" || existingOutgoing.state === "cancelled")) {
+              if (existingOutgoing && isTerminalTransferState(existingOutgoing.state)) {
                 return;
               }
               peerAbortedSendIdsRef.current.set(id, reason);
+              setOutgoingFiles((s) =>
+                s[id] && !isTerminalTransferState(s[id].state)
+                  ? { ...s, [id]: { ...s[id], state: "cancelled", cancelledBy: "receiver", error: reason, retryable: true, completedAt: Date.now() } }
+                  : s,
+              );              
               // If a resume attempt is parked waiting for an ack, fail it
               // now so the user sees the real abort reason instead of the
               // misleading "did not acknowledge resume" timeout 5s later.
@@ -1264,6 +1313,10 @@ export function useWebRTC(
               // safely, preventing double-resume or state corruption.
               if (typeof msg.id !== "string" || !msg.id) return;
               const id = msg.id;
+              
+              const existingOutgoing = outgoingFilesSnapshotRef.current[id] || outgoingFilesRef.current[id];
+              if (existingOutgoing && isTerminalTransferState(existingOutgoing.state)) return;
+              
               const offset: number =
                 typeof msg.offset === "number" && msg.offset >= 0 ? msg.offset : 0;
               const resolver = resumeAckResolversRef.current[id];
@@ -1284,6 +1337,8 @@ export function useWebRTC(
               // Terminal-state invariant: if this transfer is already aborted
               // (disk failure, receiver cancel, etc.), discard the late file-end.
               // FAILED -> VERIFIED and FAILED -> COMPLETED are strictly forbidden.
+              const existingIncoming = incomingFilesSnapshotRef.current[id];
+              if (existingIncoming && isTerminalTransferState(existingIncoming.state)) return;
               if (!buf || buf.aborted) return;
               // Capture SHA-256 from sender and compute the receiver digest now,
               // while buf is still alive and hasher state is complete. The data
@@ -1320,7 +1375,10 @@ export function useWebRTC(
                         if (buf.aborted) return;
                         try {
                           const blob = new Blob(batch as BlobPart[]);
+                          if (config.beforeDiskBatchWrite) await config.beforeDiskBatchWrite();
                           await writer.write(blob);
+                          if (config.afterDiskBatchWrite) await config.afterDiskBatchWrite();
+                          if (buf.aborted) throw new Error("Aborted during write");
                           qbLog(`[QB disk] final batch written bytes=${batchSize}`);
                         } catch (err) {
                           qbError("[QB disk] final batch write failed", err);
@@ -1340,7 +1398,7 @@ export function useWebRTC(
                       await writer.close();
                       qbLog(`[QB disk] writer closed. Finalization took ${(t1 - t0).toFixed(1)}ms, Close took ${(performance.now() - t1).toFixed(1)}ms`);
                       setIncomingFiles((s) =>
-                        s[id]
+                        s[id] && !isTerminalTransferState(s[id].state)
                           ? {
                               ...s,
                               [id]: {
@@ -1364,7 +1422,7 @@ export function useWebRTC(
                       // writer.close() or writeQueue rejection (disk full, aborted stream, etc.)
                       qbError("[QB] file-end: disk write/close failed", err);
                       setIncomingFiles((s) =>
-                        s[id]
+                        s[id] && !isTerminalTransferState(s[id].state)
                           ? {
                               ...s,
                               [id]: {
@@ -1390,18 +1448,22 @@ export function useWebRTC(
                     const blob = new Blob(buf.memoryChunks as BlobPart[], { type: buf.meta.type });
                     const url = URL.createObjectURL(blob);
                     objectUrlsRef.current.push(url);
-                    setIncomingFiles((s) => ({
-                      ...s,
-                      [id]: {
-                        ...s[id],
-                        receivedBytes: buf.meta.size,
-                        url,
-                        state: verified ? "verified" : "finalizing",
-                        completedAt: Date.now(),
-                        sha256: senderSha256,
-                        verified,
-                      },
-                    }));
+                    setIncomingFiles((s) =>
+                      s[id] && !isTerminalTransferState(s[id].state)
+                        ? {
+                            ...s,
+                            [id]: {
+                              ...s[id],
+                              receivedBytes: buf.meta.size,
+                              url,
+                              state: verified ? "verified" : "finalizing",
+                              completedAt: Date.now(),
+                              sha256: senderSha256,
+                              verified,
+                            },
+                          }
+                        : s,
+                    );
                     delete incomingBuffersRef.current[id];
                   }
                 } catch (outerErr) {
@@ -1503,17 +1565,19 @@ export function useWebRTC(
           const payload = new Uint8Array(data.byteLength - HEADER_SIZE);
           payload.set(data.subarray(HEADER_SIZE));
           const buf = incomingBuffersRef.current[id];
+          const existingIncoming = incomingFilesSnapshotRef.current[id];
+          if (existingIncoming && isTerminalTransferState(existingIncoming.state)) return;
           if (!buf || buf.aborted) return;
           if (buf.writer) {
             const writer = buf.writer;
             buf.writeBuffer.push(payload);
             buf.writeBufferLength += payload.byteLength;
 
-            if (buf.writeBufferLength > DISK_WRITE_BATCH_SIZE * 5) {
+            if (buf.writeBufferLength > config.diskWriteBatchSize * 5) {
                qbWarn(`[QB disk] writeBuffer growing unusually large: ${buf.writeBufferLength} bytes`);
             }
 
-            if (buf.writeBufferLength >= DISK_WRITE_BATCH_SIZE) {
+            if (buf.writeBufferLength >= config.diskWriteBatchSize) {
               const batch = buf.writeBuffer;
               const batchSize = buf.writeBufferLength;
               buf.writeBuffer = [];
@@ -1525,7 +1589,10 @@ export function useWebRTC(
                 if (buf.aborted) return;
                 try {
                   const blob = new Blob(batch as BlobPart[]);
+                  if (config.beforeDiskBatchWrite) await config.beforeDiskBatchWrite();
                   await writer.write(blob);
+                  if (config.afterDiskBatchWrite) await config.afterDiskBatchWrite();
+                  if (buf.aborted) throw new Error("Aborted during write");
                   qbLog(`[QB disk] batch written bytes=${batchSize}`);
                 } catch (err) {
                   qbError("[QB disk] batch write failed", err);
@@ -1746,7 +1813,10 @@ export function useWebRTC(
     if (pcRef.current) {
       qbLog("[QB] createPeerConnection: closing previous PC");
       try {
-        pcRef.current.close();
+        const oldPc = pcRef.current;
+        oldPc.onconnectionstatechange = null;
+        oldPc.oniceconnectionstatechange = null;
+        oldPc.close();
       } catch {}
     }
     qbLog("[QB] createPeerConnection: creating new RTCPeerConnection");
@@ -1970,10 +2040,10 @@ export function useWebRTC(
       const next = { ...s };
       for (const id of Object.keys(next)) {
         const f = next[id];
-        if (f.state !== "completed" && f.state !== "failed" && f.state !== "cancelled" && !f.error) {
+        if (!isTerminalTransferState(f.state) && !f.error) {
           // Tell the peer we are stopping so they don't wait indefinitely.
-          sendDataMessage({ t: "file-cancel", id });
-          next[id] = { ...f, error: "Bridge ended", retryable: false };
+          try { sendDataMessage({ t: "file-cancel", id }); } catch {}
+          next[id] = { ...f, error: "Bridge ended", retryable: false, state: "cancelled", cancelledBy: "sender" };
         }
       }
       return next;
@@ -1985,7 +2055,7 @@ export function useWebRTC(
       const next = { ...s };
       for (const id of Object.keys(next)) {
         const f = next[id];
-        if (f.state !== "verified" && f.state !== "failed" && f.state !== "cancelled" && !f.error) {
+        if (!isTerminalTransferState(f.state) && !f.error) {
           const buf = incomingBuffersRef.current[id];
           if (buf && !buf.aborted) {
             buf.aborted = true;
@@ -2003,7 +2073,7 @@ export function useWebRTC(
             delete incomingBuffersRef.current[id];
             void clearInFlightTransfer(id).catch(() => {});
           }
-          next[id] = { ...f, error: "Bridge ended", state: "failed" };
+          next[id] = { ...f, error: "Bridge ended", state: "cancelled", cancelledBy: "receiver" };
         }
       }
       return next;
@@ -2167,7 +2237,7 @@ export function useWebRTC(
               },
             };
           });
-        }, RESUME_GRACE_MS);
+        }, config.recoveryWindowMs);
         continue;
       }
       // No progress to save: surface the same explicit error as before and
@@ -2242,7 +2312,11 @@ export function useWebRTC(
         }
         attempts += 1;
         if (attempts === 1 || attempts % 5 === 0) qbLog(`[QB] hello attempt ${attempts}/30`);
-        sendSignal({ type: "hello", protocol: 1, capabilities: { controlChannel: true, fileResume: true, continuity: true, streamToDisk: true } });
+        const existing = pcRef.current;
+        if (!existing || ["closed", "failed", "disconnected"].includes(existing.connectionState)) {
+          qbLog("[QB] guest: peer appeared, sending hello");
+          sendSignal({ type: "hello", protocol: 1, capabilities: { controlChannel: true, fileResume: true, continuity: true, streamToDisk: true } });
+        }
         helloTimer = setTimeout(tick, 1000);
       };
       tick();
@@ -2326,8 +2400,11 @@ export function useWebRTC(
             if (!aborted) scheduleReconnect();
           });
         } else if (!isInitiator) {
-          qbLog("[QB] guest: peer appeared, sending hello");
-          sendSignal({ type: "hello", protocol: 1, capabilities: { controlChannel: true, fileResume: true, continuity: true, streamToDisk: true } });
+          const existing = pcRef.current;
+          if (!existing || ["closed", "failed", "disconnected"].includes(existing.connectionState)) {
+            qbLog("[QB] guest: peer appeared, sending hello");
+            sendSignal({ type: "hello", protocol: 1, capabilities: { controlChannel: true, fileResume: true, continuity: true, streamToDisk: true } });
+          }
         }
       }
       if (!hasPeer && pcRef.current) {
@@ -2429,19 +2506,27 @@ export function useWebRTC(
         }
       } else if (msg.type === "hello" && isInitiator) {
         // Guest is announcing presence (initial connect or reconnect request).
-        // Only kick off a fresh offer if we don't already have a healthy PC
+        // Only kick off a fresh offer if we don't already have an IN-FLIGHT negotiation
         // -- otherwise a hello arriving right after the presence-sync-driven
         // offer would tear down the in-flight negotiation and cause the
         // visible connect/disconnect churn on first pair.
+        // If we are already connected, the guest lost state and we MUST renegotiate.
         if (aborted) return;
         const existing = pcRef.current;
-        const healthy =
+        const inFlight =
           existing &&
-          existing.connectionState !== "failed" &&
-          existing.connectionState !== "closed" &&
-          existing.connectionState !== "disconnected";
-        qbLog(`[QB] received HELLO from guest, existingPC=${!!existing}, healthy=${healthy}`);
-        if (healthy) return;
+          (existing.connectionState === "connecting" || existing.connectionState === "new");
+        // Additional guard: if the data channel is currently open AND a transfer is actively
+        // sending, do NOT tear down the connection. The guest reload will cause the DC to
+        // close naturally (the guest's new WebRTC session won't reuse the old SCTP stream).
+        // When the DC closes, dc.onclose fires → scheduleReconnect → autoResume handles
+        // re-issuing the transfer. Calling startOffer here would close the DC prematurely
+        // and kill the in-flight transfer without giving it a chance to resume.
+        const dcIsActiveWithTransfer =
+          dcRef.current?.readyState === "open" &&
+          Object.values(outgoingFilesRef.current).some(f => f.state === "sending");
+        qbLog(`[QB] received HELLO from guest, existingPC=${!!existing}, inFlight=${inFlight}, dcActiveWithTransfer=${dcIsActiveWithTransfer}`);
+        if (inFlight || dcIsActiveWithTransfer) return;
         void startOffer().catch(err => {
           qbError("[QB] startOffer failed (hello handler)", err);
           if (!aborted) scheduleReconnect();
@@ -2524,6 +2609,10 @@ export function useWebRTC(
         if (s === "SUBSCRIBED") {
           subscribeRetries = 0;
           if (aborted) return;
+          if (ch.state !== 'joined') {
+            qbLog(`[QB] channel not joined (state: ${ch.state}), skipping track`);
+            return;
+          }
           qbLog(`[QB] tracking presence as ${role}`);
           try {
             await ch.track({
@@ -2814,41 +2903,66 @@ export function useWebRTC(
       }));
 
       const task = async () => {
-        const generation = sessionGenerationRef.current;
-        const channel = dcRef.current;
-        const pc = pcRef.current;
-        if (!channel || channel.readyState !== "open") {
-          setOutgoingFiles((s) => ({ ...s, [id]: { ...s[id], error: "Not connected", retryable: true } }));
-          return;
-        }
-        const idHeader = idToBytes(id);
-        const chunkSize = getSafeChunkSize(pc);
-        const maxMessageSize = pc?.sctp?.maxMessageSize;
-        const frameSizeLimit = HEADER_SIZE + chunkSize;
-        
-        qbLog(`[QB transfer] negotiated maxMessageSize=${maxMessageSize}`);
-        qbLog(`[QB transfer] headerSize=${HEADER_SIZE}`);
-        qbLog(`[QB transfer] chunkSize=${chunkSize}`);
-        qbLog(`[QB transfer] frameSize<=${frameSizeLimit} (header=${HEADER_SIZE} + payload<=${chunkSize})`);
-        qbLog(`[QB transfer] bufferedAmount=${channel.bufferedAmount}`);
-        let actualOffset = safeStart;
+        try {
+          const generation = sessionGenerationRef.current;
+          const channel = dcRef.current;
+          const pc = pcRef.current;
+          if (!channel || channel.readyState !== "open") {
+            setOutgoingFiles((s) => ({ ...s, [id]: { ...s[id], error: "Not connected", retryable: true } }));
+            return;
+          }
+          const idHeader = idToBytes(id);
+          const chunkSize = getSafeChunkSize(pc);
+          const maxMessageSize = pc?.sctp?.maxMessageSize;
+          const frameSizeLimit = HEADER_SIZE + chunkSize;
+          
+          qbLog(`[QB transfer] negotiated maxMessageSize=${maxMessageSize}`);
+          qbLog(`[QB transfer] headerSize=${HEADER_SIZE}`);
+          qbLog(`[QB transfer] chunkSize=${chunkSize}`);
+          qbLog(`[QB transfer] frameSize<=${frameSizeLimit} (header=${HEADER_SIZE} + payload<=${chunkSize})`);
+          qbLog(`[QB transfer] bufferedAmount=${channel.bufferedAmount}`);
+          let actualOffset = safeStart;
         // For resume attempts we register the ack resolver BEFORE sending
         // file-start so the receiver's reply (which can arrive on the very
         // next event-loop tick) cannot race past us.
         let ackPromise: Promise<number> | null = null;
         if (safeStart > 0) {
+          const attemptId = crypto.randomUUID();
+          const oldResolver = resumeAckResolversRef.current[id];
+          if (oldResolver) {
+            oldResolver(-1);
+          }
+          activeResumeAttemptsRef.current[id] = attemptId;
+
           ackPromise = new Promise<number>((resolve, reject) => {
             const timer = setTimeout(() => {
+              if (sessionGenerationRef.current !== generation) {
+                reject(new Error("Session generation changed during resume"));
+                return;
+              }
+              if (activeResumeAttemptsRef.current[id] !== attemptId) {
+                reject(new Error("Superseded by another attempt"));
+                return;
+              }
+
               delete resumeAckResolversRef.current[id];
               delete resumeAckTimersRef.current[id];
+              delete activeResumeAttemptsRef.current[id];
               reject(new Error("Receiver did not acknowledge resume"));
-            }, RESUME_ACK_TIMEOUT_MS);
+            }, config.resumeAckTimeoutMs);
             resumeAckTimersRef.current[id] = timer;
             resumeAckResolversRef.current[id] = (off) => {
+              if (activeResumeAttemptsRef.current[id] !== attemptId) return;
+              
               clearTimeout(timer);
               delete resumeAckTimersRef.current[id];
               delete resumeAckResolversRef.current[id];
-              resolve(off);
+              delete activeResumeAttemptsRef.current[id];
+              if (off === -1) {
+                reject(new Error("Superseded by newer resume attempt"));
+              } else {
+                resolve(off);
+              }
             };
           });
         }
@@ -2863,7 +2977,8 @@ export function useWebRTC(
           if (!sendDataMessage({ t: "file-start", meta })) {
             throw new Error("Failed to send file-start");
           }
-        } catch {
+        } catch (err) {
+          qbLog(`[QB transfer] sendDataMessage failed or threw: ${err}`);
           if (ackPromise) {
             // Cancel the timeout and drop the resolver together so neither
             // fires after this early-return path. Deleting only the resolver
@@ -2882,9 +2997,11 @@ export function useWebRTC(
         if (ackPromise) {
           try {
             actualOffset = await ackPromise;
+            qbLog(`[QB transfer] ackPromise resolved with offset ${actualOffset}`);
           } catch (err) {
             const message =
               err instanceof Error ? err.message : "Resume failed";
+            qbLog(`[QB transfer] ackPromise rejected: ${message}`);
             setOutgoingFiles((s) =>
               s[id] ? { ...s, [id]: { ...s[id], error: message, retryable: true } } : s,
             );
@@ -3007,9 +3124,10 @@ export function useWebRTC(
                   pollTimer = setInterval(() => {
                     if (sessionGenerationRef.current !== generation ||
                         cancelledOutgoingIdsRef.current.has(id) ||
-                        peerAbortedSendIdsRef.current.has(id)) {
+                        peerAbortedSendIdsRef.current.has(id) ||
+                        channel.readyState !== "open") {
                       cleanup();
-                      reject(new Error("Cancelled"));
+                      reject(new Error(channel.readyState !== "open" ? "Channel closed" : "Cancelled"));
                     }
                   }, 100);
                   
@@ -3088,8 +3206,12 @@ export function useWebRTC(
           // Successful: drop the cached source to free memory
           delete fileSourcesRef.current[id];
         } catch (err) {
-          qbError("[QB transfer] Fatal error in task():", err);
           const message = err instanceof Error ? err.message : "Transfer aborted";
+          if (message === "Cancelled" || message === "Channel closed" || message === "Channel error" || message.startsWith("Receiver aborted")) {
+            qbLog(`[QB transfer] task ended: ${message}`);
+          } else {
+            qbError("[QB transfer] Fatal error in task():", err);
+          }
           // An oversized frame is a hard protocol error: the frame itself is too
           // large for this session's negotiated SCTP message limit. Retrying the
           // same frame unconditionally accomplishes nothing.
@@ -3108,6 +3230,10 @@ export function useWebRTC(
             cancelledOutgoingIdsRef.current.delete(id);
           }
           reader.cancel().catch(() => {});
+        }
+        } catch (fatalErr) {
+          qbLog(`[QB transfer] Fatal unhandled error in task: ${fatalErr}`);
+          setOutgoingFiles((s) => ({ ...s, [id]: { ...s[id], error: "Fatal error", retryable: false } }));
         }
       };
 
@@ -3132,11 +3258,24 @@ export function useWebRTC(
   // resume on reconnect will hook into the same primitive.
   const resumeTransfer = useCallback(
     (id: string) => {
+      console.log(`[QB] resumeTransfer called for ${id}`);
       const dc = dcRef.current;
-      if (!dc || dc.readyState !== "open") return false;
+      if (!dc || dc.readyState !== "open") {
+        console.log(`[QB] resumeTransfer failed: dc missing or not open (readyState=${dc?.readyState})`);
+        return false;
+      }
       const file = fileSourcesRef.current[id];
-      if (!file) return false;
-      const sentBytes = outgoingFilesRef.current[id]?.sentBytes ?? 0;
+      if (!file) {
+        console.log(`[QB] resumeTransfer failed: fileSource missing for ${id}`);
+        return false;
+      }
+      const fileStateObj = outgoingFilesRef.current[id];
+      if (fileStateObj?.state === "sending" || fileStateObj?.state === "verifying") {
+        console.log(`[QB] resumeTransfer failed: already sending/verifying for ${id}`);
+        return false;
+      }
+      const sentBytes = fileStateObj?.sentBytes ?? 0;
+      console.log(`[QB] resumeTransfer calling sendFileInternal for ${id}, sentBytes=${sentBytes}`);
       sendFileInternal(file, id, sentBytes);
       return true;
     },
@@ -3215,10 +3354,18 @@ export function useWebRTC(
     // state. The send loop will also see cancelledOutgoingIdsRef and
     // delete the ID from the set once it exits, preventing ID poisoning.
     setOutgoingFiles((s) => {
-      if (!s[id]) return s;
-      const next = { ...s };
-      delete next[id];
-      return next;
+      const f = s[id];
+      if (!f || isTerminalTransferState(f.state)) return s;
+      return {
+        ...s,
+        [id]: {
+          ...f,
+          state: "cancelled",
+          cancelledBy: "sender",
+          error: "Cancelled",
+          completedAt: Date.now(),
+        },
+      };
     });
   }, []);
 
@@ -3338,9 +3485,17 @@ export function useWebRTC(
         } catch {}
         objectUrlsRef.current = objectUrlsRef.current.filter((u) => u !== f.url);
       }
-      const next = { ...s };
-      delete next[id];
-      return next;
+      if (isTerminalTransferState(f.state)) return s;
+      return {
+        ...s,
+        [id]: {
+          ...f,
+          state: "cancelled",
+          cancelledBy: "receiver",
+          error: "Cancelled",
+          completedAt: Date.now(),
+        },
+      };
     });
   }, []);
 

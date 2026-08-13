@@ -480,11 +480,15 @@ function Home() {
 
     const topic = `qb:${sessionId}`;
 
-    const goToSession = (reason: string) => {
+    const goToSession = async (reason: string) => {
       if (redirectedRef.current) return;
       console.log(`[QB] Lobby: redirecting to /session/${sessionId} (reason: ${reason})`);
       redirectedRef.current = true;
       setWaitingPing(true);
+      if (activeCh) {
+        console.log(`[QB] Lobby: unsubscribing before navigate`);
+        await activeCh.unsubscribe();
+      }
       navigate({ to: "/session/$id", params: { id: sessionId } });
     };
 
