@@ -122,7 +122,9 @@ import { TrustPrompt } from "./TrustPrompt";
 import { RequireFolderModal, type FolderGateMode } from "./RequireFolderModal";
 import { ContinuityRuntime, PENDING_INTENT_KEY_PREFIX, type PendingIntent } from "@/lib/continuity-runtime";
 import type { IntentEnvelope, IntentAck } from "@/lib/continuity-types";
+import { WebRTCFileTransferService } from "@/lib/continuity-file-transfer";
 import { useDeviceDisplayName } from "@/hooks/use-device-name";
+import { pendingIntentStore, type PendingIntent as StorePendingIntent } from "@/lib/pending-intent-store";
 
 interface Props {
   sessionId: string;
@@ -343,6 +345,11 @@ export function Session({ sessionId, isInitiator }: Props) {
   // Phase 3 Continuity send refs
   const sendContinuityIntentRef = useRef<((envelope: IntentEnvelope) => void) | null>(null);
   const sendIntentAckRef = useRef<((ack: IntentAck) => void) | null>(null);
+  // Phase 3 Continuity: FileTransferService integration
+  const transferServiceRef = useRef<WebRTCFileTransferService | null>(null);
+  const sendFileRef = useRef<((file: File, idOverride?: string) => void) | null>(null);
+  const cancelOutgoingRef = useRef<((id: string) => void) | null>(null);
+  const cancelIncomingRef = useRef<((id: string) => void) | null>(null);
   // Phase 3 Continuity runtime: session-scoped, created when DC opens.
   const continuityRuntimeRef = useRef<ContinuityRuntime | null>(null);
   // Intents that arrived during the micro-gap between DataChannel open and
@@ -564,6 +571,9 @@ sendNodeChallengeRef.current = sendNodeChallenge;
 sendNodeVerifyRef.current = sendNodeVerify;
 sendContinuityIntentRef.current = sendContinuityIntent;
 sendIntentAckRef.current = sendIntentAck;
+sendFileRef.current = sendFile;
+cancelOutgoingRef.current = cancelOutgoing;
+cancelIncomingRef.current = cancelIncoming;
 // Keep endSessionRef current so the unmount effect below always calls the
 // latest version even after React re-renders.
 endSessionRef.current = endSession;
@@ -589,6 +599,13 @@ myDeviceKindRef.current = myDeviceKind;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Sync React incoming/outgoing files state into the FileTransferService
+  useEffect(() => {
+    if (transferServiceRef.current) {
+      transferServiceRef.current.updateState(incomingFiles, outgoingFiles);
+    }
+  }, [incomingFiles, outgoingFiles]);
 
   // Load the local ECDSA identity from IndexedDB once on mount. Subsequent
   // DataChannel opens read from the in-memory cache with no IDB round-trip.
@@ -691,7 +708,14 @@ myDeviceKindRef.current = myDeviceKind;
         },
       };
 
-      continuityRuntimeRef.current = new ContinuityRuntime(transport, localNodeId, sessionId);
+      const transferService = new WebRTCFileTransferService(
+        (f, id) => sendFileRef.current?.(f, id),
+        (id) => cancelOutgoingRef.current?.(id),
+        (id) => cancelIncomingRef.current?.(id)
+      );
+      transferServiceRef.current = transferService;
+
+      continuityRuntimeRef.current = new ContinuityRuntime(transport, localNodeId, sessionId, transferService);
 
       // Flush intents that arrived during the micro-gap before the runtime was ready.
       const buffered = incomingIntentBufferRef.current.splice(0);
@@ -706,6 +730,7 @@ myDeviceKindRef.current = myDeviceKind;
         rt.teardown();
         continuityRuntimeRef.current = null;
       }
+      transferServiceRef.current = null;
       // Discard any buffered intents so stale work does not bleed into
       // the next reconnect cycle.
       incomingIntentBufferRef.current.length = 0;
@@ -720,33 +745,41 @@ myDeviceKindRef.current = myDeviceKind;
   // cleaned up, preventing a malformed payload from haunting future sessions.
   useEffect(() => {
     if (!peerTrustVerified || status !== "connected" || !continuityRuntimeRef.current) return;
-    const pendingKey = `${PENDING_INTENT_KEY_PREFIX}${sessionId}`;
-    let pending: PendingIntent | null = null;
-    try {
-      const raw = sessionStorage.getItem(pendingKey);
-      if (raw) {
-        pending = JSON.parse(raw) as PendingIntent;
-      }
-    } catch {
-      // Malformed sessionStorage payload. Fall through to finally to clean up.
-    } finally {
-      // Always remove the key so a corrupted payload cannot haunt future sessions.
-      try { sessionStorage.removeItem(pendingKey); } catch {}
-    }
+    const pendingKey = sessionId;
+    const pending = pendingIntentStore.get(pendingKey);
     if (!pending) return;
+    
+    // Always remove from store so we don't dispatch it multiple times
+    pendingIntentStore.clear(pendingKey);
+    
     const rt = continuityRuntimeRef.current;
-    const { type, payload, targetNodeId, targetNickname } = pending;
+    const { type, payload, targetNodeId, targetNickname, transientData } = pending;
+    
     rt.dispatchIntent(
       type,
       targetNodeId,
       targetNickname,
       payload,
       (ack, _retryable) => {
-        if (ack.status === "completed") {
+        if (ack.status === "accepted") {
+          // The peer has accepted the intent (e.g. user clicked "Accept" on a file transfer)
+          // For file and media intents, we now start the byte transfer.
+          if ((type === "open-file" || type === "media-share") && transientData?.file && transferServiceRef.current) {
+            const file = transientData.file as File;
+            const transferId = (payload as any).transferId;
+            if (transferId) {
+              transferServiceRef.current.offerFile(transferId, file).catch(err => {
+                console.warn("[QB] offerFile failed:", err);
+              });
+            }
+          }
+        } else if (ack.status === "completed") {
           const label =
             type === "clipboard"
               ? `Pasted on ${targetNickname}`
-              : `Sent to ${targetNickname}`;
+              : type === "open-file" || type === "media-share"
+                ? `Sent to ${targetNickname}`
+                : `Opened on ${targetNickname}`;
           toast.success(label);
         } else if (ack.status === "requires-user-action") {
           toast.info(`Action required on ${targetNickname}.`, {

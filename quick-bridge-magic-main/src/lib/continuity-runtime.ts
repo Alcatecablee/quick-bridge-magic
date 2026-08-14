@@ -22,7 +22,15 @@
 // No em dashes anywhere in this file.
 
 import type { IntentTransport } from "./continuity-executor";
-import { executorRegistry } from "./continuity-executor";
+import {
+  ExecutorRegistry,
+  openUrlExecutor,
+  continueReadingExecutor,
+  clipboardExecutor,
+  cancelExecutor,
+  FileExecutor,
+  MediaExecutor,
+} from "./continuity-executor";
 import {
   CLOCK_SKEW_TOLERANCE_MS,
   INTENT_ACK_TIMEOUT_MS,
@@ -101,11 +109,28 @@ export class ContinuityRuntime {
   private readonly incomingTimestamps: number[] = [];
 
   private readonly sessionId: string;
+  private readonly executorRegistry: ExecutorRegistry;
 
-  constructor(transport: IntentTransport, localNodeId: string, sessionId: string) {
+  constructor(
+    transport: IntentTransport,
+    localNodeId: string,
+    sessionId: string,
+    transferService?: import("./continuity-file-transfer").FileTransferService
+  ) {
     this.transport = transport;
     this.localNodeId = localNodeId;
     this.sessionId = sessionId;
+    
+    this.executorRegistry = new ExecutorRegistry();
+    this.executorRegistry.register(openUrlExecutor);
+    this.executorRegistry.register(continueReadingExecutor);
+    this.executorRegistry.register(clipboardExecutor);
+    this.executorRegistry.register(cancelExecutor);
+    
+    if (transferService) {
+      this.executorRegistry.register(new FileExecutor(transferService));
+      this.executorRegistry.register(new MediaExecutor(transferService));
+    }
   }
 
   // Call on session teardown (DataChannel close). Clears runtime state only;
@@ -127,6 +152,12 @@ export class ContinuityRuntime {
     this.serialQueue = Promise.resolve();
     // Rate-limit timestamps are session-scoped; clear on teardown.
     this.incomingTimestamps.length = 0;
+  }
+
+  // Exposed for lifecycle testing so the test suite can inject mock executors
+  // without modifying the production registry pattern.
+  registerTestExecutor(executor: import("./continuity-executor").IntentExecutor): void {
+    this.executorRegistry.register(executor);
   }
 
   // --- Sender side ---
@@ -444,7 +475,7 @@ export class ContinuityRuntime {
     }
 
     // Executor lookup via registry - no switch statement (finding 16).
-    const executor = executorRegistry.get(envelope.type);
+    const executor = this.executorRegistry.get(envelope.type);
     if (!executor) {
       this.transport.sendAck({
         intentId: envelope.intentId,
@@ -560,7 +591,7 @@ export class ContinuityRuntime {
     // Bail out if the intent was already resolved (race with teardown).
     if (!this.activeIntents.has(envelope.intentId)) return;
 
-    const executor = executorRegistry.get(envelope.type);
+    const executor = this.executorRegistry.get(envelope.type);
     if (!executor) return;
 
     // replace-existing: abort any in-flight intents of the same type (finding 2).
@@ -597,6 +628,28 @@ export class ContinuityRuntime {
     };
     ri.lastAck = acceptedAck;
     this.transport.sendAck(acceptedAck);
+
+    // Cancel protocol interception (finding 4).
+    // The cancel executor is a no-op that just returns completed. The actual cancellation
+    // must be performed by the runtime here before executor runs.
+    if (envelope.type === "cancel") {
+      const targetIntentId = (envelope.payload as any)?.targetIntentId;
+      if (typeof targetIntentId === "string") {
+        const target = this.activeIntents.get(targetIntentId);
+        if (target && target.abortController) {
+          target.abortController.abort();
+          const cancelledAck: IntentAck = {
+            intentId: targetIntentId,
+            status: "cancelled",
+            reasonCode: "CANCELLED",
+            reasonMessage: "Cancelled by remote device.",
+          };
+          try { this.transport.sendAck(cancelledAck); } catch {}
+          target.onAckUpdate?.(cancelledAck, false);
+          this.activeIntents.delete(targetIntentId);
+        }
+      }
+    }
 
     let result: {
       status: "completed" | "failed" | "requires-user-action";

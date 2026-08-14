@@ -309,6 +309,7 @@ export const ClipboardPayloadSchema = z
   );
 
 export const OpenFilePayloadSchema = z.object({
+  transferId: z.string().uuid(),
   name: z.string().min(1).max(1000),
   size: z.number().nonnegative().refine(Number.isFinite, { message: "size must be finite." }),
   mimeType: z.string().max(200),
@@ -317,12 +318,14 @@ export const OpenFilePayloadSchema = z.object({
 export const MediaSharePayloadSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("photo"),
+    transferId: z.string().uuid(),
     name: z.string().min(1).max(1000),
     size: z.number().nonnegative().refine(Number.isFinite, { message: "size must be finite." }),
     mimeType: z.string().max(200),
   }),
   z.object({
     kind: z.literal("video"),
+    transferId: z.string().uuid(),
     name: z.string().min(1).max(1000),
     size: z.number().nonnegative().refine(Number.isFinite, { message: "size must be finite." }),
     mimeType: z.string().max(200),

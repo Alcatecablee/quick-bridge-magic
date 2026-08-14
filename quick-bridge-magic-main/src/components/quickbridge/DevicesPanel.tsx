@@ -19,13 +19,18 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useTrustedNodes } from "@/hooks/use-trusted-nodes";
 import { usePresence } from "@/hooks/use-presence";
 import { Smartphone, Tablet, Monitor, Loader2, ChevronDown } from "./icons";
+import { Smartphone, Tablet, Monitor, Loader2, ChevronDown, Clipboard, FileUp, Image } from "./icons";
 import { Button } from "@/components/ui/button";
 import type { DeviceKind } from "@/lib/device";
 import type { NodeIdentity } from "@/lib/node-identity";
 import { generateSessionId } from "@/lib/session";
 import { detectLocalCapabilities } from "@/lib/capabilities";
 import { touchTrustedNode, type Capability } from "@/lib/trusted-nodes-db";
-import { PENDING_INTENT_KEY_PREFIX, type PendingIntent } from "@/lib/continuity-runtime";
+import {
+  type PendingIntent,
+  PENDING_INTENT_KEY_PREFIX,
+} from "@/lib/continuity-runtime";
+import { pendingIntentStore, type PendingIntent as StorePendingIntent } from "@/lib/pending-intent-store";
 import { createOpenUrlPayload } from "@/lib/continuity-types";
 
 interface Props {
@@ -166,21 +171,15 @@ export function DevicesPanel({
 
   const [pasteError, setPasteError] = useState<string | null>(null);
 
-  // Core connect-and-navigate helper shared by all three actions.
   const connectWithIntent = useCallback(
-    (targetNodeId: string, targetNickname: string, intent?: PendingIntent) => {
+    (targetNodeId: string, targetNickname: string, intent?: StorePendingIntent) => {
       if (connectingNodeId !== null) return;
       const sessionId = generateSessionId();
       try {
         sessionStorage.setItem(`qb:tc:to:${sessionId}`, targetNodeId);
       } catch {}
       if (intent) {
-        try {
-          sessionStorage.setItem(
-            `${PENDING_INTENT_KEY_PREFIX}${sessionId}`,
-            JSON.stringify(intent),
-          );
-        } catch {}
+        pendingIntentStore.set(sessionId, intent);
       }
       setConnectingNodeId(targetNodeId);
       sendTrustedConnect(targetNodeId, sessionId);
@@ -238,7 +237,7 @@ export function DevicesPanel({
         setPasteError("Clipboard is empty.");
         return;
       }
-      const intent: PendingIntent = {
+      const intent: StorePendingIntent = {
         type: "clipboard",
         payload: { text },
         targetNodeId,
@@ -247,6 +246,47 @@ export function DevicesPanel({
       connectWithIntent(targetNodeId, targetNickname, intent);
     },
     [connectWithIntent, connectingNodeId],
+  );
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const mediaInputRef = useRef<HTMLInputElement | null>(null);
+  const targetNodeRef = useRef<{ id: string; nickname: string } | null>(null);
+
+  const triggerFileSelection = useCallback(
+    (targetNodeId: string, targetNickname: string, isMedia: boolean) => {
+      targetNodeRef.current = { id: targetNodeId, nickname: targetNickname };
+      if (isMedia && mediaInputRef.current) {
+        mediaInputRef.current.click();
+      } else if (!isMedia && fileInputRef.current) {
+        fileInputRef.current.click();
+      }
+    },
+    [],
+  );
+
+  const handleFileSelected = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>, intentType: "open-file" | "media-share") => {
+      const file = e.target.files?.[0];
+      const target = targetNodeRef.current;
+      e.target.value = ""; // reset
+      if (!file || !target) return;
+      
+      const transferId = crypto.randomUUID();
+      const intent: StorePendingIntent = {
+        type: intentType,
+        payload: {
+          transferId,
+          name: file.name,
+          size: file.size,
+          mimeType: file.type || "application/octet-stream",
+        },
+        targetNodeId: target.id,
+        targetNickname: target.nickname,
+        transientData: { file },
+      };
+      connectWithIntent(target.id, target.nickname, intent);
+    },
+    [connectWithIntent],
   );
 
   // Render nothing while loading or when there are no trusted devices yet.

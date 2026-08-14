@@ -3244,8 +3244,8 @@ export function useWebRTC(
   );
 
   const sendFile = useCallback(
-    (file: File) => {
-      sendFileInternal(file);
+    (file: File, idOverride?: string) => {
+      sendFileInternal(file, idOverride);
     },
     [sendFileInternal],
   );

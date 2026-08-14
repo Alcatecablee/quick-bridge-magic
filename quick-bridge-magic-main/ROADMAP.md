@@ -138,7 +138,7 @@ The foundation has to be bulletproof before anything else compounds on top of it
 - Every completed transfer is cryptographically verified.
 - Mobile screens stay on during active transfers.
 
-**Status:** Complete. All five goals are implemented and shipping.
+**Status:** Implemented and acceptance-tested. Production validation ongoing.
 
 - Reconnection: two-stage ICE restart then full teardown, exponential backoff, auto-relay escalation.
 - Relay: Cloudflare TURN with 23-hour refresh, open-relay fallback, quality badge, force-relay toggle.
@@ -146,6 +146,11 @@ The foundation has to be bulletproof before anything else compounds on top of it
 - Integrity: SHA-256 computed incrementally on both sides, pre-hash pass covers already-acknowledged bytes on resume. Verified/failed badge shown on every completed incoming file.
 - Screen lock: Screen Wake Lock acquired on connect, held through reconnection attempts, reacquired correctly after the browser auto-releases the sentinel on tab hide. Covers Chrome/Edge/Android; iOS Safari does not support the API.
 - FSA orphan cleanup: if the receiver refreshes mid-transfer while streaming to disk, the partial file is removed before the restart creates a new writable, preventing "file (1).ext" leftovers.
+
+Phase 1: Transfer
+[x] Implemented
+[x] Acceptance tested
+[ ] Production validation ongoing
 
 **Kill criteria:** Transfer feels boring and reliable on both iOS and Android. No critical bug survives more than 48 hours. Do not move to Phase 2 until this is true.
 
@@ -166,7 +171,10 @@ The handshake on reconnect: when two known environments meet, they exchange a si
 
 **What not to build yet:** Capabilities delegation, rooms, SDK, any collaboration features.
 
-**Status:** Complete. All five goals are implemented and shipping.
+Phase 2: Trusted Environments
+[x] Implemented
+[x] Acceptance tested
+[ ] Production validation ongoing
 
 - Trust prompt: shown after first successful transfer; disabled and spinner-guarded during the async IDB write to prevent double-tap duplicates. An in-flight guard in `Session.tsx` (`trustingInFlightRef`) prevents concurrent calls from reaching the write layer.
 - Mutual authentication: ECDSA P-256 challenge/response on reconnect. Both sides challenge each other independently. Private key never leaves the browser; JWK import rejects any key that carries a `d` field.
@@ -198,7 +206,10 @@ Presence means: trusted environments know each other are reachable, know each ot
 - Capabilities broadcast on presence join so each environment knows what others can offer.
 - Graceful reconnect when an environment goes offline and comes back.
 
-**Status:** Complete. All four goals are implemented and shipping.
+Phase 2.5: Presence
+[x] Implemented
+[x] Acceptance tested
+[ ] Production validation ongoing
 
 - Per-node hashed channels: `qb:p:<sha256[:32]>`, bounded to 51 max (1 self + 50 peers). Re-entrancy guards on all CLOSED handlers prevent call-stack overflow on Supabase's synchronous CLOSED callback.
 - Online/offline state: join/leave/sync events all handled. Capabilities cleared on leave so stale caps never survive a reconnect.
@@ -237,7 +248,8 @@ With Presence working, build the one-click actions that make the relationship fe
 
 **What not to build in Phase 3:** bi-directional clipboard sync, auto tab sync, multi-device broadcast, background execution without user action, capability chaining, AI workload routing. All deferred until the intent pipeline is proven.
 
-**Milestones A, B, C -- Completion status: HARDENING COMPLETE, awaiting lifecycle test matrix.**
+**Milestones A, B, C -- Complete.**
+Core implementation and the 16-point lifecycle validation matrix are passing. The Continuity Runtime invariants are validated, including cancellation, timeout, deduplication, reconnect, initialization, TTL handling, and executor failure isolation.
 
 All core code for Milestones A, B, and C has been implemented and hardened against the following invariants:
 
@@ -262,16 +274,16 @@ All core code for Milestones A, B, and C has been implemented and hardened again
 | Rate limiting (checked before deduplication) | Done |
 | Multi-path deduplication (seen-set survives teardown) | Done |
 | TypeScript passes (`tsc --noEmit` exits 0) | Done |
-| Manual lifecycle test matrix | **Pending -- required before marking A/B/C complete** |
+| Manual lifecycle test matrix | **Complete** |
 
-**Milestone D:** Files and media. Not started. Prerequisite: A/B/C lifecycle test matrix passes.
+**Milestone D:** Files and media. **Now starting.**
+Prerequisite satisfied: Milestones A/B/C lifecycle matrix passes.
 
 **Milestone E:** Recent actions surface, inline permission prompts (`REQUIRES_USER_ACTION` state), permission management UI. Not started.
 
-**Kill criteria:** Two metrics, both required.
-
-1. Adoption: at least 30% of transfers among sessions with 2+ trusted environments originate from a Continuity shortcut rather than a QR scan.
-2. Behaviour change: Average Continuity Actions per Trusted Environment per Day reaches 1.0 within 60 days of Milestone B shipping. Below 0.5 means users still think of QuickBridge as a file transfer tool and Phase 3 needs to be revisited before Milestone C. Track as `continuity_action_dispatched` GA event with `intent_type` and `ack_status` parameters.
+Phase 3 Product Kill Criteria
+[ ] 30% of transfers from users with 2+ trusted environments originate from Continuity
+[ ] Average Continuity Actions per Trusted Environment per Day reaches 1.0 within 60 days of Milestone B shipping
 
 ---
 

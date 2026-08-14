@@ -28,6 +28,8 @@ import {
   OpenUrlPayloadSchema,
   ContinueReadingPayloadSchema,
   ClipboardPayloadSchema,
+  OpenFilePayloadSchema,
+  MediaSharePayloadSchema,
 } from "./continuity-types";
 
 // Transport abstraction (finding 15).
@@ -80,7 +82,7 @@ export interface IntentExecutor<
 
 // ExecutorRegistry (finding 16).
 // The runtime calls registry.get(type) - no switch statements anywhere.
-class ExecutorRegistry {
+export class ExecutorRegistry {
   private readonly map = new Map<string, IntentExecutor>();
 
   register(executor: IntentExecutor): void {
@@ -101,13 +103,11 @@ class ExecutorRegistry {
   }
 }
 
-export const executorRegistry = new ExecutorRegistry();
-
 // --- Concrete executors ---
 
 // OpenUrlExecutor: Milestone B.
 // Capability: browser.open. Concurrency: serial. Cancellable: no.
-const openUrlExecutor: IntentExecutor = {
+export const openUrlExecutor: IntentExecutor = {
   type: "open-url",
   concurrency: "serial",
   cancellable: false,
@@ -136,7 +136,7 @@ const openUrlExecutor: IntentExecutor = {
 // ContinueReadingExecutor: Milestone B.
 // Shares browser.open capability. Carries richer payload (scrollY, selection).
 // Scroll restoration is a Phase 3 Milestone E enhancement; Milestone B opens URL only.
-const continueReadingExecutor: IntentExecutor = {
+export const continueReadingExecutor: IntentExecutor = {
   type: "continue-reading",
   concurrency: "serial",
   cancellable: false,
@@ -165,7 +165,7 @@ const continueReadingExecutor: IntentExecutor = {
 // ClipboardExecutor: Milestone C.
 // Concurrency: replace-existing - latest clipboard wins (finding 2).
 // Uses ClipboardItem internally for future rich content (html, images).
-const clipboardExecutor: IntentExecutor = {
+export const clipboardExecutor: IntentExecutor = {
   type: "clipboard",
   concurrency: "replace-existing",
   cancellable: false,
@@ -214,7 +214,7 @@ const clipboardExecutor: IntentExecutor = {
 
 // CancelExecutor: Cancellation protocol end-to-end.
 // Evaluates to a no-op but safely acknowledges receipt.
-const cancelExecutor: IntentExecutor = {
+export const cancelExecutor: IntentExecutor = {
   type: "cancel",
   concurrency: "parallel",
   cancellable: false,
@@ -230,9 +230,84 @@ const cancelExecutor: IntentExecutor = {
   },
 };
 
-// Register all concrete executors.
-// New intent types: implement IntentExecutor, call register() here.
-executorRegistry.register(openUrlExecutor);
-executorRegistry.register(continueReadingExecutor);
-executorRegistry.register(clipboardExecutor);
-executorRegistry.register(cancelExecutor);
+// FileExecutor: Milestone D.
+// Capabilities: filesystem.write. Concurrency: parallel. Cancellable: true.
+// Uses FileTransferService for the actual byte transfer after metadata validation.
+export class FileExecutor implements IntentExecutor {
+  type = "open-file";
+  concurrency: ExecutorConcurrency = "parallel";
+  cancellable = true;
+
+  constructor(private readonly transferService: import("./continuity-file-transfer").FileTransferService) {}
+
+  canExecute(_intent: IntentEnvelope): boolean {
+    return true; // filesystem.write is generally supported if the capability is broadcast
+  }
+
+  validate(intent: IntentEnvelope): void {
+    OpenFilePayloadSchema.parse(intent.payload);
+  }
+
+  async execute(
+    intent: IntentEnvelope,
+    signal?: AbortSignal,
+  ): Promise<{
+    status: "completed" | "failed" | "requires-user-action";
+    reasonCode?: IntentErrorCode;
+    reasonMessage?: string;
+  }> {
+    const payload = intent.payload as any; // Type handled by Zod
+    const transferId = payload.transferId;
+
+    if (!transferId) {
+      return {
+        status: "failed",
+        reasonCode: "INVALID_PAYLOAD",
+        reasonMessage: "Missing transferId in payload.",
+      };
+    }
+
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        this.transferService.cancelTransfer(transferId, "incoming").catch(() => {});
+      });
+    }
+
+    try {
+      // The intent is accepted by the continuity engine. Now we wait for the WebRTC byte transfer.
+      // acceptFile waits until the WebRTC engine reports terminal status for this transferId.
+      const result = await this.transferService.acceptFile(transferId);
+
+      if (result.status === "completed") {
+        return { status: "completed" };
+      } else if (result.status === "cancelled") {
+        return {
+          status: "failed",
+          reasonCode: "CANCELLED",
+          reasonMessage: "Transfer was cancelled.",
+        };
+      } else {
+        return {
+          status: "failed",
+          reasonCode: "EXECUTION_FAILED",
+          reasonMessage: result.reason || "WebRTC transfer failed.",
+        };
+      }
+    } catch (err) {
+      return {
+        status: "failed",
+        reasonCode: "EXECUTION_FAILED",
+        reasonMessage: err instanceof Error ? err.message : "Unknown error during transfer.",
+      };
+    }
+  }
+}
+
+// MediaExecutor: Milestone D.
+export class MediaExecutor extends FileExecutor {
+  type = "media-share";
+
+  validate(intent: IntentEnvelope): void {
+    MediaSharePayloadSchema.parse(intent.payload);
+  }
+}
